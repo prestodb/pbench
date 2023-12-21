@@ -1,0 +1,9 @@
+{
+  "queries": [
+    "select 'query 1';"
+  ],
+  "next": [
+    "query_02",
+    "query_03"
+  ]
+}
