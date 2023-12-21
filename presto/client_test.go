@@ -12,10 +12,15 @@ func TestQuery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client.User("ethan").Catalog("tpch").Schema("sf1")
-	client.SessionParam("query_max_memory_per_node", "55GB")
-	client.SessionParam("hive.parquet_pushdown_filter_enabled", true)
-	qr, _, err := client.Query(context.Background(), `select * from customer`)
+	qr, _, err := client.
+		User("ethan").
+		Catalog("tpch").
+		Schema("sf1").
+		SessionParam("query_max_memory_per_node", "55GB").
+		SessionParam("hive.parquet_pushdown_filter_enabled", true).
+		ClientInfo("TestQuery client").
+		ClientTags("test", "client_1").
+		Query(context.Background(), `select * from customer`)
 	if err != nil {
 		t.Fatal(err)
 	}

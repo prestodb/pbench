@@ -22,6 +22,8 @@ const (
 	StartedTransactionHeader = "X-Presto-Started-Transaction-Id"
 	ClearTransactionHeader   = "X-Presto-Clear-Transaction-Id"
 	SourceHeader             = "X-Presto-Source"
+	ClientInfoHeader         = "X-Presto-Client-Info"
+	ClientTagHeader          = "X-Presto-Client-Tags"
 )
 
 // RequestOption represents an option that can modify a http.Request.
@@ -31,10 +33,9 @@ type Client struct {
 	client        *http.Client
 	serverUrl     *url.URL
 	userInfo      *url.Userinfo
-	catalog       string
-	schema        string
-	baseHeader    http.Header
 	sessionParams map[string]any
+	clientTags    []string
+	baseHeader    http.Header
 }
 
 func NewClient(serverUrl string) (*Client, error) {
@@ -65,16 +66,6 @@ func (c *Client) UserPassword(user, password string) *Client {
 	return c
 }
 
-func (c *Client) Catalog(catalog string) *Client {
-	c.catalog = catalog
-	if catalog != "" {
-		c.baseHeader.Set(CatalogHeader, catalog)
-	} else {
-		c.baseHeader.Del(CatalogHeader)
-	}
-	return c
-}
-
 func (c *Client) SessionParam(key string, value any) *Client {
 	if value == nil {
 		delete(c.sessionParams, key)
@@ -96,12 +87,38 @@ func (c *Client) SessionParam(key string, value any) *Client {
 	return c
 }
 
+func (c *Client) Catalog(catalog string) *Client {
+	if catalog != "" {
+		c.baseHeader.Set(CatalogHeader, catalog)
+	} else {
+		c.baseHeader.Del(CatalogHeader)
+	}
+	return c
+}
+
 func (c *Client) Schema(schema string) *Client {
-	c.schema = schema
 	if schema != "" {
 		c.baseHeader.Set(SchemaHeader, schema)
 	} else {
 		c.baseHeader.Del(SchemaHeader)
+	}
+	return c
+}
+
+func (c *Client) ClientInfo(info string) *Client {
+	if info != "" {
+		c.baseHeader.Set(ClientInfoHeader, info)
+	} else {
+		c.baseHeader.Del(ClientInfoHeader)
+	}
+	return c
+}
+
+func (c *Client) ClientTags(tags ...string) *Client {
+	if tags != nil {
+		c.baseHeader.Set(ClientTagHeader, strings.Join(tags, ","))
+	} else {
+		c.baseHeader.Del(ClientTagHeader)
 	}
 	return c
 }
