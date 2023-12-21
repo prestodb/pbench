@@ -4,7 +4,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
-import _ "github.com/prestodb/presto-go-client/presto"
 
 func TestTask(t *testing.T) {
 	/** from top to bottom

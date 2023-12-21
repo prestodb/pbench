@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -20,7 +21,10 @@ type Task struct {
 
 type TaskMap map[string]*Task
 
-const RootTaskId = "__root__"
+const (
+	RootTaskId = "__root__"
+	TaskDefExt = ".json"
+)
 
 func ParseDirectory(dirPath string) (TaskMap, error) {
 	entries, err := os.ReadDir(dirPath)
@@ -32,7 +36,7 @@ func ParseDirectory(dirPath string) (TaskMap, error) {
 		if entry.IsDir() {
 			continue
 		}
-		if strings.HasSuffix(entry.Name(), ".json") {
+		if strings.HasSuffix(entry.Name(), TaskDefExt) {
 			filePath := path.Join(dirPath, entry.Name())
 			bytes, err := os.ReadFile(filePath)
 			if err != nil {
@@ -43,11 +47,14 @@ func ParseDirectory(dirPath string) (TaskMap, error) {
 			if err = json.Unmarshal(bytes, task); err != nil {
 				log.Printf("failed to parse json %s: %v, skipping\n", filePath, err)
 			} else {
-				taskId := strings.TrimSuffix(entry.Name(), ".json")
+				taskId := strings.TrimSuffix(entry.Name(), TaskDefExt)
 				tasks[taskId] = task
 				for _, queryFile := range task.QueryFiles {
+					if !filepath.IsAbs(queryFile) {
+						queryFile = filepath.Join(dirPath, queryFile)
+					}
 					if _, err := os.Stat(queryFile); err != nil {
-						log.Printf("%s links to an invalid query file %s\n", taskId, queryFile)
+						log.Printf("%s links to an invalid query file %s: %v\n", taskId, queryFile, err)
 					}
 				}
 			}
@@ -62,7 +69,7 @@ func (tm *TaskMap) Link() {
 	for taskId, task := range *tm {
 		nextIds := make(map[string]bool)
 		if len(task.Next) > 0 {
-			task.Next = nil
+			task.Next = nil // clear pre-existing data, if there is any
 		}
 		for _, nextId := range task.NextIds {
 			if nextId == taskId {
