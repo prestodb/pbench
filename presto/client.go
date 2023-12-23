@@ -175,9 +175,10 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 	req = req.WithContext(ctx)
 	retryDelay := time.Second
 	const maxRetryDelay = 30 * time.Second
+	const maxRetryAttempts = 10
 	timer := time.NewTimer(0)
 	defer timer.Stop()
-	for {
+	for attempt := 0; attempt < maxRetryAttempts; attempt++ {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -228,6 +229,7 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 			}
 		}
 	}
+	return nil, fmt.Errorf("reached max attempts (%d)", maxRetryAttempts)
 }
 
 func (c *Client) BareDo(req *http.Request) (*http.Response, error) {
