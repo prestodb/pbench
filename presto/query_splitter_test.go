@@ -10,7 +10,8 @@ import (
 func TestQuerySplitter(t *testing.T) {
 	files := []string{
 		`select * from table1 where a = '\'--;'; --comment
-select * from table3;-`,
+select * from table3;-;;
+`,
 	}
 	expectedQueries := [][]string{
 		{

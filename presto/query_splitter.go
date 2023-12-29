@@ -56,6 +56,8 @@ func ScanSqlStmt(data []byte, atEOF bool) (int, []byte, error) {
 					token := strings.TrimSpace(string(data[:pos]))
 					if len(token) > 0 {
 						return pos + 1, []byte(token), nil
+					} else {
+						return pos + 1, nil, nil
 					}
 				}
 			} else {
@@ -65,7 +67,12 @@ func ScanSqlStmt(data []byte, atEOF bool) (int, []byte, error) {
 	}
 	// If we're at EOF, we have a final, non-terminated line. Return it.
 	if atEOF {
-		return len(data), []byte(strings.TrimSpace(string(data))), nil
+		token := strings.TrimSpace(string(data))
+		if len(token) > 0 {
+			return len(data), []byte(token), nil
+		} else {
+			return len(data), nil, nil
+		}
 	}
 	// Request more data.
 	return 0, nil, nil

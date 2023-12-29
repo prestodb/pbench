@@ -18,8 +18,8 @@ type GetClientFn func() *presto.Client
 
 type Task struct {
 	Id            string                  `json:"-"`
-	Queries       []string                `json:"queries"`
-	QueryFiles    []string                `json:"query_files"`
+	Queries       []string                `json:"queries,omitempty"`
+	QueryFiles    []string                `json:"query_files,omitempty"`
 	NextIds       []string                `json:"next,omitempty"`
 	AbortOnError  bool                    `json:"abort_on_error"`
 	Prerequisites []*Task                 `json:"-"`
