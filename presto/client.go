@@ -115,11 +115,25 @@ func (c *Client) ClientInfo(info string) *Client {
 }
 
 func (c *Client) ClientTags(tags ...string) *Client {
-	if tags != nil {
+	if len(tags) > 0 {
 		c.baseHeader.Set(ClientTagHeader, strings.Join(tags, ","))
 	} else {
 		c.baseHeader.Del(ClientTagHeader)
 	}
+	return c
+}
+
+func (c *Client) AppendClientTag(tags ...string) *Client {
+	if len(tags) == 0 {
+		// nothing to append.
+		return c
+	}
+	value := c.baseHeader.Get(ClientTagHeader)
+	if len(value) == 0 {
+		return c.ClientTags(tags...)
+	}
+	value += "," + strings.Join(tags, ",")
+	c.baseHeader.Set(ClientTagHeader, value)
 	return c
 }
 
