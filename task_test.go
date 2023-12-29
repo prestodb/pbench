@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestTask(t *testing.T) {
+func TestParseTaskDirectory(t *testing.T) {
 	/** from top to bottom
 	         root
 	          |
