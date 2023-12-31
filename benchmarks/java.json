@@ -1,0 +1,5 @@
+{
+  "session_params": {
+    "hive.pushdown_filter_enabled": false
+  }
+}

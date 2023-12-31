@@ -95,53 +95,6 @@ func (s *Stage) logCtxErr(ctx context.Context) {
 	logEvent.Msg("stage aborted")
 }
 
-func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *string) error {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error().Str("benchmark_stage_id", s.Id).Msgf("recovered from panic: %v", r)
-		}
-	}()
-	logExecution := func() *zerolog.Event {
-		event := log.Info().Str("benchmark_stage_id", s.Id)
-		if filePath != nil {
-			return event.Str("file", *filePath)
-		}
-		return event
-	}
-	for _, query := range queries {
-		select {
-		case <-ctx.Done():
-			s.logCtxErr(ctx)
-			return ctx.Err()
-		default:
-		}
-		qr, _, err := s.Client.Query(ctx, query)
-		if err != nil {
-			attachAdditionalInfoToQueryError(err, query, s)
-			return err
-		}
-		e := logExecution().Str("query_id", qr.Id).Str("info_url", qr.InfoUri).
-			Str("query", query)
-		if catalog := s.Client.GetCatalog(); catalog != "" {
-			e = e.Str("catalog", catalog)
-		}
-		if schema := s.Client.GetSchema(); schema != "" {
-			e = e.Str("schema", schema)
-		}
-		e.Msgf("submitted query")
-		rowCount, err := qr.Drain(ctx)
-		if err != nil {
-			attachAdditionalInfoToQueryError(err, query, s)
-			return err
-		}
-		if s.OnQueryCompletion != nil {
-			s.OnQueryCompletion(qr, rowCount)
-		}
-		logExecution().Str("query_id", qr.Id).Int("row_count", rowCount).Msgf("query finished")
-	}
-	return nil
-}
-
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) []error {
 	errs, errChan := make([]error, 0, 2), make(chan error)
@@ -164,10 +117,10 @@ func (s *Stage) Run(ctx context.Context) []error {
 	return errs
 }
 
-func (s *Stage) run(ctx context.Context, errChan chan error, wgExit *sync.WaitGroup) (err error) {
+func (s *Stage) run(ctx context.Context, errChan chan error, wgExitMainStage *sync.WaitGroup) (err error) {
 	if !s.started.CompareAndSwap(false, true) {
 		// If other prerequisites finished earlier, then this stage is already called and waiting.
-		wgExit.Done()
+		wgExitMainStage.Done()
 		return nil
 	}
 	defer func() {
@@ -185,14 +138,15 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExit *sync.WaitGr
 				s.AbortAll(err)
 			}
 		} else {
-			wgExit.Add(len(s.NextStages))
+			// Trigger descendant stages.
+			wgExitMainStage.Add(len(s.NextStages))
 			for _, nextStage := range s.NextStages {
 				go func(nextStage *Stage) {
-					_ = nextStage.run(ctx, errChan, wgExit)
+					_ = nextStage.run(ctx, errChan, wgExitMainStage)
 				}(nextStage)
 			}
 		}
-		wgExit.Done()
+		wgExitMainStage.Done()
 	}()
 	select {
 	case <-ctx.Done():
@@ -222,7 +176,7 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExit *sync.WaitGr
 	}
 	if len(s.SessionParams) > 0 {
 		log.Debug().Str("benchmark_stage_id", s.Id).
-			Object("new", log.NewMapMarshaller(s.SessionParams)).
+			Object("delta", log.NewMapMarshaller(s.SessionParams)).
 			Str("final", s.Client.GetSessionParams()).
 			Msg("added session params")
 	}
@@ -259,4 +213,73 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExit *sync.WaitGr
 		}
 	}
 	return nil
+}
+
+func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *string) error {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Str("benchmark_stage_id", s.Id).Msgf("recovered from panic: %v", r)
+		}
+	}()
+	logExecution := func() *zerolog.Event {
+		event := log.Info().Str("benchmark_stage_id", s.Id)
+		if filePath != nil {
+			return event.Str("file", *filePath)
+		}
+		return event
+	}
+	for _, query := range queries {
+		select {
+		case <-ctx.Done():
+			// context got cancelled, handle error and return.
+			s.logCtxErr(ctx)
+			return ctx.Err()
+		default:
+		}
+		qr, _, err := s.Client.Query(ctx, query)
+		if err != nil {
+			attachAdditionalInfoToQueryError(err, query, s)
+			return err
+		}
+
+		// Assemble log message
+		e := logExecution().Str("query_id", qr.Id).Str("info_url", qr.InfoUri).
+			Str("query", query)
+		if catalog := s.Client.GetCatalog(); catalog != "" {
+			e = e.Str("catalog", catalog)
+		}
+		if schema := s.Client.GetSchema(); schema != "" {
+			e = e.Str("schema", schema)
+		}
+		e.Msgf("submitted query")
+
+		rowCount, err := qr.Drain(ctx)
+		if err != nil {
+			attachAdditionalInfoToQueryError(err, query, s)
+			return err
+		}
+		if s.OnQueryCompletion != nil {
+			s.OnQueryCompletion(qr, rowCount)
+		}
+		logExecution().Str("query_id", qr.Id).Int("row_count", rowCount).Msgf("query finished")
+	}
+	return nil
+}
+
+func (s *Stage) MergeWith(other *Stage) {
+	s.Id = other.Id
+	if other.Catalog != nil {
+		s.Catalog = other.Catalog
+	}
+	if other.Schema != nil {
+		s.Schema = other.Schema
+	}
+	for k, v := range other.SessionParams {
+		s.SessionParams[k] = v
+	}
+	s.Queries = append(s.Queries, other.Queries...)
+	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
+	s.StartOnNewClient = other.StartOnNewClient
+	s.AbortOnError = other.AbortOnError
+	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 }

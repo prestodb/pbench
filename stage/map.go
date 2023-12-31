@@ -19,9 +19,9 @@ func (m *Map) Get(stageId string) *Stage {
 
 const DefaultStageFileExt = ".json"
 
-func ParseStageChain(startingFile string) (*Stage, Map, error) {
+func ParseStageGraph(startingFile string) (*Stage, Map, error) {
 	stages := make(Map)
-	startingStage, err := ParseStage(startingFile, stages)
+	startingStage, err := ParseStageFile(startingFile, stages)
 	if err == nil {
 		err = checkStageLinks(startingStage)
 	}
@@ -31,7 +31,7 @@ func ParseStageChain(startingFile string) (*Stage, Map, error) {
 	return startingStage, stages, nil
 }
 
-func ParseStage(filePath string, stages Map) (*Stage, error) {
+func ParseStageFile(filePath string, stages Map) (*Stage, error) {
 	stageId := stageIdFromFilePath(filePath)
 	stage, ok := stages[stageId]
 	if ok {
@@ -74,7 +74,7 @@ func ParseStage(filePath string, stages Map) (*Stage, error) {
 	}
 	stages[stageId] = stage
 	for _, nextStagePath := range stage.NextStagePaths {
-		if nextStage, err := ParseStage(nextStagePath, stages); err != nil {
+		if nextStage, err := ParseStageFile(nextStagePath, stages); err != nil {
 			return nil, err
 		} else {
 			stage.NextStages = append(stage.NextStages, nextStage)

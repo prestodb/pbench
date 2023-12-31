@@ -17,7 +17,18 @@ func assertStage(t *testing.T, stage *Stage, prerequisites, next []*Stage, queri
 }
 
 func testParseAndExecute(t *testing.T, abortOnError bool, expectedRowCount int, expectedErrors []string) {
-	stage1, stages, err := ParseStageChain("../benchmarks/test/stage_1.json")
+	/** from top to bottom
+	       stage_1
+	       /      \
+	  stage_2   stage_3
+	    \           |
+	     \      stage_4 (has error)
+	      \       /
+	       stage_5
+	          |
+	       stage_6
+	*/
+	stage1, stages, err := ParseStageGraph("../benchmarks/test/stage_1.json")
 	assert.Nil(t, err)
 	stage2 := stages.Get("stage_2")
 	stage3 := stages.Get("stage_3")
@@ -49,18 +60,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, expectedRowCount int, 
 	assert.Equal(t, expectedRowCount, rowCount)
 }
 
-func TestParseStageChain(t *testing.T) {
-	/** from top to bottom
-	       stage_1
-	       /      \
-	  stage_2   stage_3
-	    \           |
-	     \      stage_4 (has error)
-	      \       /
-	       stage_5
-	          |
-	       stage_6
-	*/
+func TestParseStageGraph(t *testing.T) {
 	t.Run("abortOnError = true", func(t *testing.T) {
 		testParseAndExecute(t, true, 16, []string{"Table tpch.sf1.foo does not exist"})
 	})
@@ -72,7 +72,7 @@ func TestParseStageChain(t *testing.T) {
 }
 
 func TestHttpError(t *testing.T) {
-	stage, _, err := ParseStageChain("../benchmarks/test/http_error.json")
+	stage, _, err := ParseStageGraph("../benchmarks/test/http_error.json")
 	assert.Nil(t, err)
 	errs := stage.Run(context.Background())
 	assert.Equal(t, 1, len(errs))
