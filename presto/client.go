@@ -66,6 +66,12 @@ func (c *Client) UserPassword(user, password string) *Client {
 	return c
 }
 
+func (c *Client) ClearSessionParams() *Client {
+	c.baseHeader.Del(SessionHeader)
+	c.sessionParams = make(map[string]any)
+	return c
+}
+
 func (c *Client) SessionParam(key string, value any) *Client {
 	if value == nil {
 		delete(c.sessionParams, key)
