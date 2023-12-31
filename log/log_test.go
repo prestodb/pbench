@@ -138,7 +138,7 @@ func TestLogArray(t *testing.T) {
 	logger.Info().Array("IP", log.NewArrayMarshaller(ips)).Send()
 	expected := `{"level":"info","intSlice":[1,2,3,4,5]}
 {"level":"info","stringArray":["first","second","third"]}
-{"level":"info","mixedTypeSlice":[8,12,10086,"a string",true,3.1415926,{"name":"an item","price":3.14,"quantity":6,"discount":true,"error":{"msg":"some interesting error","stack":[0,0,0]},"arr":[{"id":101},{"pai":3.14}],"customers":{"12":"Zhang","13":"Sun","24":"Li","96":"Zhou"}}]}
+{"level":"info","mixedTypeSlice":[8,12,10086,"a string",true,3.1415926,{"name":"an item","price":3.14,"quantity":6,"discount":true,"error":{"msg":"some interesting error","stack":"<errors.stack Value>"},"arr":["<log_test.A Value>","<log_test.B Value>"],"customers":{"12":"Zhang","13":"Sun","24":"Li","96":"Zhou"}}]}
 {"level":"info","IP":[{"type":"slice","value":"192.168.1.1"}]}
 `
 	assert.Equal(t, expected, b.String())
