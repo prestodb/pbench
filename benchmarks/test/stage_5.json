@@ -1,0 +1,12 @@
+{
+  "queries": [
+    "select 'query 8'",
+    "select 'query 9'"
+  ],
+  "query_files": [
+    "stage_3_2.sql"
+  ],
+  "next": [
+    "stage_6.json"
+  ]
+}

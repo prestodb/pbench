@@ -1,0 +1,6 @@
+{
+  "queries": [
+    "select 'http 400'"
+  ],
+  "schema": "hive"
+}

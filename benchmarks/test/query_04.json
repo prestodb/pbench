@@ -1,9 +1,0 @@
-{
-  "queries": [
-    "select 'query 4';",
-    "select 'query 5';"
-  ],
-  "query_files": [
-    "query_04.sql"
-  ]
-}

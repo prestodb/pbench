@@ -1,0 +1,14 @@
+{
+  "queries": [
+    "select 'query 4'",
+    "select 'query 5'"
+  ],
+  "query_files": [
+    "stage_4.sql"
+  ],
+  "next": [
+    "stage_5.json"
+  ],
+  "schema": "sf1",
+  "catalog": "tpch"
+}

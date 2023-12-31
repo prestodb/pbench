@@ -1,0 +1,11 @@
+{
+  "queries": [
+    "select 'query 1'"
+  ],
+  "next": [
+    "stage_2.json",
+    "stage_3.json"
+  ],
+  "catalog": "tpch",
+  "schema": "sf1"
+}

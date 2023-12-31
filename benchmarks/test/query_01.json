@@ -1,9 +1,0 @@
-{
-  "queries": [
-    "select 'query 1';"
-  ],
-  "next": [
-    "query_02.json",
-    "query_03.json"
-  ]
-}

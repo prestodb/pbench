@@ -1,0 +1,18 @@
+{
+  "queries": [
+    "select 'query 3'"
+  ],
+  "query_files": [
+    "stage_3_1.sql",
+    "stage_3_2.sql"
+  ],
+  "next": [
+    "stage_4.json"
+  ],
+  "start_on_new_client": true,
+  "session_params": {
+    "hive.parquet_pushdown_filter_enabled": true,
+    "join_reordering_strategy": "AUTOMATIC",
+    "join_distribution_type": "AUTOMATIC"
+  }
+}
