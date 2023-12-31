@@ -16,6 +16,13 @@ import (
 
 func TestMain(m *testing.M) {
 	log.SetGlobalLogger(zerolog.New(os.Stdout))
+	NestedLevelLimit, FieldOrElementLimit := log.NestedLevelLimit, log.FieldOrElementLimit
+	log.NestedLevelLimit, log.FieldOrElementLimit = 3, 7
+	log.MaskPointerValueForTesting = true
+	defer func() {
+		log.NestedLevelLimit, log.FieldOrElementLimit = NestedLevelLimit, FieldOrElementLimit
+		log.MaskPointerValueForTesting = false
+	}()
 	os.Exit(m.Run())
 }
 
@@ -179,4 +186,68 @@ func TestMarshalArrayAsObject(t *testing.T) {
 	logger := log.Output(b)
 	logger.Info().Object("obj", log.NewObjectMarshaller(i)).Send()
 	assert.Equal(t, `{"level":"info","obj":{"array":[6001,"6002",6003,"hello world",{"price":3.14}]}}`+"\n", b.String())
+}
+
+type NestedStruct struct {
+	Info      string
+	Map       map[string]any
+	NextLevel *NestedStruct
+	Note      string
+	Remark    string
+	Count     int
+	Sum       float64
+	Avg       float64
+}
+
+func TestLimit(t *testing.T) {
+	obj := &NestedStruct{
+		Info: "level 1",
+		NextLevel: &NestedStruct{
+			Info: "level 2",
+			Map: map[string]any{
+				"another map": map[string]any{
+					"nested struct": &NestedStruct{
+						Info:      "struct inside a map",
+						NextLevel: nil,
+					},
+					"2nd level map": map[int]string{
+						2:  "two",
+						10: "ten",
+					},
+				},
+				"passed": true,
+				"structArr": []*NestedStruct{
+					{
+						Info: "level 3",
+						NextLevel: &NestedStruct{
+							Info: "level 4",
+						},
+					},
+				},
+			},
+			NextLevel: &NestedStruct{
+				Info: "level 3",
+				NextLevel: &NestedStruct{
+					Info:      "level 4",
+					NextLevel: nil,
+				},
+			},
+		},
+		Map: map[string]any{
+			"an array":   []int{1, 2, 3, 4, 5, 6, 7, 8},
+			"id":         15,
+			"price":      12.3,
+			"comment":    "this is very good",
+			"caption":    "Holding Hands",
+			"singer":     "Julie Sue",
+			"url":        "https://youtu.be/wJNHRweW5WE?si=uphC3qgUMEi-C3M2",
+			"liked":      false,
+			"thumbs_ups": 22000,
+		},
+		Note: "nothing to note",
+	}
+	b := new(strings.Builder)
+	logger := log.Output(b)
+	logger.Info().Object("obj", log.NewObjectMarshaller(obj)).Send()
+	assert.Equal(t, `{"level":"info","obj":{"info":"level 1","map":{"an array":[1,2,3,4,5,6,7,"..."],"caption":"Holding Hands","comment":"this is very good","id":15,"liked":false,"price":12.3,"singer":"Julie Sue","...":"<map truncated>"},"next_level":{"info":"level 2","map":{"another map":"<map[string]interface {} Value>","passed":true,"struct_arr":"<[]*log_test.NestedStruct Value>"},"next_level":{"info":"level 3","map":"<map[string]interface {} Value>","next_level":"<log_test.NestedStruct Value>","note":"","remark":"","count":0,"sum":0,"...":"<field truncated>"},"note":"","remark":"","count":0,"sum":0,"...":"<field truncated>"},"note":"nothing to note","remark":"","count":0,"sum":0,"...":"<field truncated>"}}`+"\n", b.String())
 }

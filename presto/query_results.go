@@ -3,7 +3,6 @@ package presto
 import (
 	"context"
 	"encoding/json"
-	"io"
 )
 
 type QueryRow []any
@@ -33,16 +32,13 @@ func (qr *QueryResults) HasMoreBatch() bool {
 func (qr *QueryResults) FetchNextBatch(ctx context.Context) error {
 	for qr.NextUri != nil {
 		newQr, _, err := qr.client.FetchNextBatch(ctx, *qr.NextUri)
+		*qr = *newQr
 		if err != nil {
 			return err
 		}
-		*qr = *newQr
 		if len(qr.Data) > 0 {
 			break
 		}
-	}
-	if len(qr.Data) == 0 {
-		return io.EOF
 	}
 	return nil
 }

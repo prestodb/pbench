@@ -12,17 +12,22 @@ import (
 var MaskPointerValueForTesting bool
 var logObjectMarshallerInterface = reflect.TypeOf((*zerolog.LogObjectMarshaler)(nil)).Elem()
 var logArrayMarshallerInterface = reflect.TypeOf((*zerolog.LogArrayMarshaler)(nil)).Elem()
+var NestedLevelLimit = 2
+var FieldOrElementLimit = 12
 
 type ObjectMarshaller struct {
-	objValue reflect.Value
+	objValue    reflect.Value
+	nestedLevel int
 }
 
 type MapMarshaller struct {
-	mapValue reflect.Value
+	mapValue    reflect.Value
+	nestedLevel int
 }
 
 type ArrayMarshaller struct {
-	arrValue reflect.Value
+	arrValue    reflect.Value
+	nestedLevel int
 }
 
 type UnsupportedTypeMarshaller struct {
@@ -30,6 +35,10 @@ type UnsupportedTypeMarshaller struct {
 }
 
 func NewObjectMarshaller(obj any) zerolog.LogObjectMarshaler {
+	return newObjectMarshallerWithNestedLevel(obj, 1)
+}
+
+func newObjectMarshallerWithNestedLevel(obj any, nestedLevel int) zerolog.LogObjectMarshaler {
 	v, ok := obj.(reflect.Value)
 	if !ok {
 		v = reflect.ValueOf(obj)
@@ -48,10 +57,14 @@ func NewObjectMarshaller(obj any) zerolog.LogObjectMarshaler {
 	if k != reflect.Struct && k != reflect.Array && k != reflect.Slice {
 		log.Panicf("the supplied arr parameter is %v, not a struct, array, or slice.", k)
 	}
-	return &ObjectMarshaller{objValue: v}
+	return &ObjectMarshaller{objValue: v, nestedLevel: nestedLevel}
 }
 
 func NewMapMarshaller(m any) zerolog.LogObjectMarshaler {
+	return newMapMarshallerWithNestedLevel(m, 1)
+}
+
+func newMapMarshallerWithNestedLevel(m any, nestedLevel int) zerolog.LogObjectMarshaler {
 	v, ok := m.(reflect.Value)
 	if !ok {
 		v = reflect.ValueOf(m)
@@ -70,10 +83,14 @@ func NewMapMarshaller(m any) zerolog.LogObjectMarshaler {
 	if k != reflect.Map {
 		log.Panicf("the supplied m parameter is %v, not a map.", k)
 	}
-	return &MapMarshaller{mapValue: v}
+	return &MapMarshaller{mapValue: v, nestedLevel: nestedLevel}
 }
 
 func NewArrayMarshaller(arr any) zerolog.LogArrayMarshaler {
+	return newArrayMarshallerWithNestedLevel(arr, 1)
+}
+
+func newArrayMarshallerWithNestedLevel(arr any, nestedLevel int) zerolog.LogArrayMarshaler {
 	v, ok := arr.(reflect.Value)
 	if !ok {
 		v = reflect.ValueOf(arr)
@@ -89,7 +106,7 @@ func NewArrayMarshaller(arr any) zerolog.LogArrayMarshaler {
 	if k != reflect.Array && k != reflect.Slice {
 		log.Panicf("the supplied arr parameter is %v, not an array or slice.", k)
 	}
-	return &ArrayMarshaller{arrValue: v}
+	return &ArrayMarshaller{arrValue: v, nestedLevel: nestedLevel}
 }
 
 func NewUnsupportedTypeMarshaller(value any) zerolog.LogObjectMarshaler {
@@ -115,7 +132,11 @@ func (obj *ObjectMarshaller) MarshalZerologObject(e *zerolog.Event) {
 	}
 	typ := obj.objValue.Type()
 	for i := 0; i < obj.objValue.NumField(); i++ {
-		logField(e, toSnakeCase(typ.Field(i).Name), obj.objValue.Field(i))
+		if i >= FieldOrElementLimit {
+			e.Str("...", "<field truncated>")
+			break
+		}
+		logField(e, toSnakeCase(typ.Field(i).Name), obj.objValue.Field(i), obj.nestedLevel)
 	}
 }
 
@@ -155,18 +176,21 @@ func (m *MapMarshaller) MarshalZerologObject(e *zerolog.Event) {
 		fieldNames = append(fieldNames, k)
 	}
 	sort.Strings(fieldNames)
-	for _, fieldName := range fieldNames {
-		logField(e, toSnakeCase(fieldName), m.mapValue.MapIndex(fieldNameMap[fieldName]))
+	for i := 0; i < len(fieldNames); i++ {
+		if i >= FieldOrElementLimit {
+			e.Str("...", "<map truncated>")
+			break
+		}
+		logField(e, toSnakeCase(fieldNames[i]), m.mapValue.MapIndex(fieldNameMap[fieldNames[i]]), m.nestedLevel)
 	}
-}
-
-func (m *UnsupportedTypeMarshaller) MarshalZerologObject(e *zerolog.Event) {
-	e.Str("type", fmt.Sprint(m.value.Kind()))
-	e.Str("value", fmt.Sprint(m.value))
 }
 
 func (arr *ArrayMarshaller) MarshalZerologArray(a *zerolog.Array) {
 	for i := 0; i < arr.arrValue.Len(); i++ {
+		if i >= FieldOrElementLimit {
+			a.Str("...")
+			break
+		}
 		v := arr.arrValue.Index(i)
 		k := v.Kind()
 		for k == reflect.Interface || k == reflect.Pointer {
@@ -214,13 +238,26 @@ func (arr *ArrayMarshaller) MarshalZerologArray(a *zerolog.Array) {
 		case reflect.Float64:
 			a.Float64(v.Float())
 		case reflect.Struct:
-			a.Object(NewObjectMarshaller(v))
+			if arr.nestedLevel+1 > NestedLevelLimit {
+				a.Str(v.String())
+			} else {
+				a.Object(newObjectMarshallerWithNestedLevel(v, arr.nestedLevel+1))
+			}
 		case reflect.Map:
-			a.Object(NewMapMarshaller(v))
+			if arr.nestedLevel+1 > NestedLevelLimit {
+				a.Str(v.String())
+			} else {
+				a.Object(newMapMarshallerWithNestedLevel(v, arr.nestedLevel+1))
+			}
 		default:
 			a.Object(NewUnsupportedTypeMarshaller(v))
 		}
 	}
+}
+
+func (m *UnsupportedTypeMarshaller) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("type", fmt.Sprint(m.value.Kind()))
+	e.Str("value", fmt.Sprint(m.value))
 }
 
 func toSnakeCase(in string) string {
@@ -238,7 +275,7 @@ func toSnakeCase(in string) string {
 	return b.String()
 }
 
-func logField(e *zerolog.Event, fieldName string, field reflect.Value) {
+func logField(e *zerolog.Event, fieldName string, field reflect.Value, nestedLevel int) {
 	k := field.Kind()
 	for k == reflect.Interface || k == reflect.Pointer {
 		if field.Type().Implements(logObjectMarshallerInterface) {
@@ -288,11 +325,23 @@ func logField(e *zerolog.Event, fieldName string, field reflect.Value) {
 	case reflect.Float64:
 		e.Float64(fieldName, field.Float())
 	case reflect.Array, reflect.Slice:
-		e.Array(fieldName, NewArrayMarshaller(field))
+		if nestedLevel+1 > NestedLevelLimit {
+			e.Str(fieldName, field.String())
+		} else {
+			e.Array(fieldName, newArrayMarshallerWithNestedLevel(field, nestedLevel+1))
+		}
 	case reflect.Struct:
-		e.Object(fieldName, NewObjectMarshaller(field))
+		if nestedLevel+1 > NestedLevelLimit {
+			e.Str(fieldName, field.String())
+		} else {
+			e.Object(fieldName, newObjectMarshallerWithNestedLevel(field, nestedLevel+1))
+		}
 	case reflect.Map:
-		e.Object(fieldName, NewMapMarshaller(field))
+		if nestedLevel+1 > NestedLevelLimit {
+			e.Str(fieldName, field.String())
+		} else {
+			e.Object(fieldName, newMapMarshallerWithNestedLevel(field, nestedLevel+1))
+		}
 	case reflect.Invalid:
 	default:
 		e.Object(fieldName, NewUnsupportedTypeMarshaller(field))

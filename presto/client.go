@@ -66,6 +66,10 @@ func (c *Client) UserPassword(user, password string) *Client {
 	return c
 }
 
+func (c *Client) GetSessionParams() string {
+	return c.baseHeader.Get(SessionHeader)
+}
+
 func (c *Client) ClearSessionParams() *Client {
 	c.baseHeader.Del(SessionHeader)
 	c.sessionParams = make(map[string]any)
@@ -109,6 +113,14 @@ func (c *Client) Schema(schema string) *Client {
 		c.baseHeader.Del(SchemaHeader)
 	}
 	return c
+}
+
+func (c *Client) GetCatalog() string {
+	return c.baseHeader.Get(CatalogHeader)
+}
+
+func (c *Client) GetSchema() string {
+	return c.baseHeader.Get(SchemaHeader)
 }
 
 func (c *Client) ClientInfo(info string) *Client {
