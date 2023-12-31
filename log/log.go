@@ -2,12 +2,11 @@ package log
 
 import (
 	"context"
-	"io"
-	"os"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/rs/zerolog/pkgerrors"
+	"io"
+	"os"
 )
 
 // OverrideFatal indicates if the program should exit on a fatal log message.

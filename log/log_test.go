@@ -4,13 +4,20 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"net"
+	"os"
 	"presto-benchmark/log"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	log.SetGlobalLogger(zerolog.New(os.Stdout))
+	os.Exit(m.Run())
+}
 
 func TestLog(t *testing.T) {
 	b := new(strings.Builder)
@@ -57,8 +64,22 @@ func TestLogStringMap(t *testing.T) {
 		"name":   "Tom",
 		"friend": "Jerry",
 	}
-	logger.Info().Object("map", log.StringMapMarshaller(m)).Msg("test map")
+	logger.Info().Object("map", log.NewMapMarshaller(m)).Msg("test map")
 	assert.Equal(t, `{"level":"info","map":{"friend":"Jerry","name":"Tom"},"message":"test map"}`+"\n", b.String())
+}
+
+func TestMultiTypeMap(t *testing.T) {
+	b := new(strings.Builder)
+	logger := log.Output(b)
+	m := map[any]any{
+		"name":       "Tom",
+		"married":    true,
+		123:          []any{"a", "c", 16, 3.2},
+		false:        44,
+		"SnakeField": float32(10.555),
+	}
+	logger.Info().Object("map", log.NewMapMarshaller(m)).Msg("test multi-type map")
+	assert.Equal(t, `{"level":"info","map":{"123":["a","c",16,3.2],"snake_field":10.555,"false":44,"married":true,"name":"Tom"},"message":"test multi-type map"}`+"\n", b.String())
 }
 
 type A struct {
@@ -110,7 +131,7 @@ func TestLogArray(t *testing.T) {
 	logger.Info().Array("IP", log.NewArrayMarshaller(ips)).Send()
 	expected := `{"level":"info","intSlice":[1,2,3,4,5]}
 {"level":"info","stringArray":["first","second","third"]}
-{"level":"info","mixedTypeSlice":[8,12,10086,"a string",true,3.1415926,{"name":"an item","price":3.14,"quantity":6,"discount":true,"error":{"msg":"some interesting error","stack":[0,0,0]},"arr":[{"id":101},{"pai":3.14}],"customers":{"type":"map","value":"map[12:Zhang 13:Sun 24:Li 96:Zhou]"}}]}
+{"level":"info","mixedTypeSlice":[8,12,10086,"a string",true,3.1415926,{"name":"an item","price":3.14,"quantity":6,"discount":true,"error":{"msg":"some interesting error","stack":[0,0,0]},"arr":[{"id":101},{"pai":3.14}],"customers":{"12":"Zhang","13":"Sun","24":"Li","96":"Zhou"}}]}
 {"level":"info","IP":[{"type":"slice","value":"192.168.1.1"}]}
 `
 	assert.Equal(t, expected, b.String())
