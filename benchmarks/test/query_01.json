@@ -3,7 +3,7 @@
     "select 'query 1';"
   ],
   "next": [
-    "query_02",
-    "query_03"
+    "query_02.json",
+    "query_03.json"
   ]
 }
