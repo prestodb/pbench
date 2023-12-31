@@ -1,0 +1,8 @@
+{
+    "query_files": [
+        "query_08.sql"
+    ],
+    "next": [
+        "query_09.json"
+    ]
+}
