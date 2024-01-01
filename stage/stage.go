@@ -68,16 +68,16 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 	return ch
 }
 
-func (s *Stage) attachAdditionalInfoToQueryError(err error, query string, filePath *string, queryIndex int) {
-	var queryErr *presto.QueryError
-	if errors.As(err, &queryErr) {
-		queryErr.StageId = s.Id
-		if filePath == nil {
-			queryErr.Query = &query
-		} else {
-			queryErr.QueryFile = filePath
-		}
-		queryErr.QueryIndex = queryIndex
+func (s *Stage) attachAdditionalInfoToQueryResults(qr *presto.QueryResults, query string, filePath *string, queryIndex int) {
+	qr.StageId = s.Id
+	if filePath == nil {
+		qr.Query = &query
+	} else {
+		qr.QueryFile = filePath
+	}
+	qr.QueryIndex = queryIndex
+	if qr.Error != nil {
+		qr.Error.QueryMetadata = &qr.QueryMetadata
 	}
 }
 
@@ -94,8 +94,8 @@ func (s *Stage) logCtxErr(ctx context.Context) {
 		var queryError *presto.QueryError
 		if errors.As(cause, &queryError) {
 			logEvent.Str("caused_by_stage", queryError.StageId).
-				Str("caused_by_query", queryError.QueryId).
-				Str("info_url", queryError.InfoUrl)
+				Str("caused_by_query", *queryError.QueryId).
+				Str("info_url", *queryError.InfoUrl)
 		} else {
 			logEvent.AnErr("caused_by_error", ctx.Err())
 		}
@@ -241,8 +241,8 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		default:
 		}
 		qr, _, err := s.Client.Query(ctx, query)
+		s.attachAdditionalInfoToQueryResults(qr, query, filePath, i)
 		if err != nil {
-			s.attachAdditionalInfoToQueryError(err, query, filePath, i)
 			if !s.AbortOnError {
 				if !errors.Is(err, context.Canceled) {
 					s.errorChan <- err
@@ -272,8 +272,8 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		e.Msgf("submitted query")
 
 		rowCount, err := qr.Drain(ctx)
+		s.attachAdditionalInfoToQueryResults(qr, query, filePath, i)
 		if err != nil {
-			s.attachAdditionalInfoToQueryError(err, query, filePath, i)
 			if !s.AbortOnError {
 				if !errors.Is(err, context.Canceled) {
 					s.errorChan <- err

@@ -20,6 +20,7 @@ type QueryResults struct {
 	Warnings    []Warning      `json:"warnings"`
 	UpdateType  *string        `json:"updateType,omitempty"`
 	UpdateCount *int64         `json:"updateCount,omitempty"`
+	QueryMetadata
 
 	client *Client
 	rowPos int

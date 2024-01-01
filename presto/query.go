@@ -13,8 +13,8 @@ func (c *Client) requestQueryResults(ctx context.Context, req *http.Request) (*Q
 	}
 	qr.client = c
 	if qr.Error != nil {
-		qr.Error.QueryId = qr.Id
-		qr.Error.InfoUrl = qr.InfoUri
+		qr.Error.QueryId = &qr.Id
+		qr.Error.InfoUrl = &qr.InfoUri
 		return qr, resp, qr.Error
 	}
 	return qr, resp, nil

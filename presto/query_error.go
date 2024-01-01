@@ -5,6 +5,13 @@ import (
 	"fmt"
 )
 
+type QueryMetadata struct {
+	StageId    string  `json:"stage_id"`
+	Query      *string `json:"query,omitempty"`
+	QueryFile  *string `json:"query_file,omitempty"`
+	QueryIndex int     `json:"query_index"`
+}
+
 type QueryError struct {
 	Message   string `json:"message"`
 	ErrorCode int    `json:"errorCode"`
@@ -14,13 +21,12 @@ type QueryError struct {
 	Retriable     bool           `json:"boolean"`
 	ErrorLocation *ErrorLocation `json:"errorLocation,omitempty"`
 	FailureInfo   *FailureInfo   `json:"failureInfo,omitempty"`
+	// QueryId and InfoUrl exist in QueryResult, maintaining a duplicate here since
+	// we sometimes return errors by themselves.
+	QueryId *string `json:"query_id"`
+	InfoUrl *string `json:"info_url"`
 	// Not in standard REST API response, added manually.
-	StageId    string  `json:"stage_id"`
-	QueryId    string  `json:"query_id"`
-	InfoUrl    string  `json:"info_url"`
-	Query      *string `json:"query,omitempty"`
-	QueryFile  *string `json:"query_file,omitempty"`
-	QueryIndex int     `json:"query_index"`
+	*QueryMetadata
 }
 
 func (q *QueryError) String() string {
