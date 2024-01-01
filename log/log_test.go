@@ -15,12 +15,10 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	// Stop the logger from printing out the timestamp, so we can make the test output comparable.
 	log.SetGlobalLogger(zerolog.New(os.Stdout))
-	NestedLevelLimit, FieldOrElementLimit := log.NestedLevelLimit, log.FieldOrElementLimit
-	log.NestedLevelLimit, log.FieldOrElementLimit = 3, 7
 	log.MaskPointerValueForTesting = true
 	defer func() {
-		log.NestedLevelLimit, log.FieldOrElementLimit = NestedLevelLimit, FieldOrElementLimit
 		log.MaskPointerValueForTesting = false
 	}()
 	os.Exit(m.Run())
@@ -60,7 +58,7 @@ func TestLogStringArray(t *testing.T) {
 	b := new(strings.Builder)
 	logger := log.Output(b)
 	arr := []string{"a", "b", "c", "d\ne"}
-	logger.Info().Array("arr", log.NewArrayMarshaller(arr)).Send()
+	logger.Info().Array("arr", log.NewMarshaller(arr)).Send()
 	assert.Equal(t, `{"level":"info","arr":["a","b","c","d\ne"]}`+"\n", b.String())
 }
 
@@ -71,7 +69,7 @@ func TestLogStringMap(t *testing.T) {
 		"name":   "Tom",
 		"friend": "Jerry",
 	}
-	logger.Info().Object("map", log.NewMapMarshaller(m)).Msg("test map")
+	logger.Info().Object("map", log.NewMarshaller(m)).Msg("test map")
 	assert.Equal(t, `{"level":"info","map":{"friend":"Jerry","name":"Tom"},"message":"test map"}`+"\n", b.String())
 }
 
@@ -85,7 +83,7 @@ func TestMultiTypeMap(t *testing.T) {
 		false:        44,
 		"SnakeField": float32(10.555),
 	}
-	logger.Info().Object("map", log.NewMapMarshaller(m)).Msg("test multi-type map")
+	logger.Info().Object("map", log.NewMarshaller(m)).Msg("test multi-type map")
 	assert.Equal(t, `{"level":"info","map":{"123":["a","c",16,3.2],"snake_field":10.555,"false":44,"married":true,"name":"Tom"},"message":"test multi-type map"}`+"\n", b.String())
 }
 
@@ -132,14 +130,14 @@ func TestLogArray(t *testing.T) {
 		customers: map[uint]string{12: "Zhang", 13: "Sun", 24: "Li", 96: "Zhou"},
 	}}
 	ips := []net.IP{net.ParseIP("192.168.1.1")}
-	logger.Info().Array("intSlice", log.NewArrayMarshaller(intSlice)).Send()
-	logger.Info().Array("stringArray", log.NewArrayMarshaller(stringArray)).Send()
-	logger.Info().Array("mixedTypeSlice", log.NewArrayMarshaller(mixedTypeSlice)).Send()
-	logger.Info().Array("IP", log.NewArrayMarshaller(ips)).Send()
+	logger.Info().Array("intSlice", log.NewMarshaller(intSlice)).Send()
+	logger.Info().Array("stringArray", log.NewMarshaller(stringArray)).Send()
+	logger.Info().Array("mixedTypeSlice", log.NewMarshaller(mixedTypeSlice).SetNestedLevelLimit(4)).Send()
+	logger.Info().Array("IP", log.NewMarshaller(ips).SetNestedLevelLimit(3)).Send()
 	expected := `{"level":"info","intSlice":[1,2,3,4,5]}
 {"level":"info","stringArray":["first","second","third"]}
-{"level":"info","mixedTypeSlice":[8,12,10086,"a string",true,3.1415926,{"name":"an item","price":3.14,"quantity":6,"discount":true,"error":{"msg":"some interesting error","stack":"<errors.stack Value>"},"arr":["<log_test.A Value>","<log_test.B Value>"],"customers":{"12":"Zhang","13":"Sun","24":"Li","96":"Zhou"}}]}
-{"level":"info","IP":[{"type":"slice","value":"192.168.1.1"}]}
+{"level":"info","mixedTypeSlice":[8,12,10086,"a string",true,3.1415926,{"name":"an item","price":3.14,"quantity":6,"discount":true,"error":{"msg":"some interesting error","stack":[0,0,0]},"arr":[{"id":101},{"pai":3.14}],"customers":{"12":"Zhang","13":"Sun","24":"Li","96":"Zhou"}}]}
+{"level":"info","IP":["192.168.1.1"]}
 `
 	assert.Equal(t, expected, b.String())
 }
@@ -170,7 +168,7 @@ func TestLogStruct(t *testing.T) {
 			open    bool
 		}{name: "Banana", address: "12345 Xyz Rd", open: true},
 	}
-	logger.Info().Object("item", log.NewObjectMarshaller(item)).Send()
+	logger.Info().Object("item", log.NewMarshaller(item)).Send()
 	assert.Equal(t, `{"level":"info","item":{"name":"an item","price":3.14,"quantity":6,"discount":true,"orders":[6001,6002,6003],"company":{"name":"Banana","address":"12345 Xyz Rd","open":true}}}
 `, b.String())
 }
@@ -184,7 +182,7 @@ func TestMarshalArrayAsObject(t *testing.T) {
 	b := new(strings.Builder)
 	var i any = &orders
 	logger := log.Output(b)
-	logger.Info().Object("obj", log.NewObjectMarshaller(i)).Send()
+	logger.Info().Object("obj", log.NewMarshaller(i)).Send()
 	assert.Equal(t, `{"level":"info","obj":{"array":[6001,"6002",6003,"hello world",{"price":3.14}]}}`+"\n", b.String())
 }
 
@@ -248,6 +246,8 @@ func TestLimit(t *testing.T) {
 	}
 	b := new(strings.Builder)
 	logger := log.Output(b)
-	logger.Info().Object("obj", log.NewObjectMarshaller(obj)).Send()
+	logger.Info().Object("obj", log.NewMarshaller(obj).
+		SetNestedLevelLimit(3).
+		SetFieldOrElementLimit(7)).Send()
 	assert.Equal(t, `{"level":"info","obj":{"info":"level 1","map":{"an array":[1,2,3,4,5,6,7,"..."],"caption":"Holding Hands","comment":"this is very good","id":15,"liked":false,"price":12.3,"singer":"Julie Sue","...":"<map truncated>"},"next_level":{"info":"level 2","map":{"another map":"<map[string]interface {} Value>","passed":true,"struct_arr":"<[]*log_test.NestedStruct Value>"},"next_level":{"info":"level 3","map":"<map[string]interface {} Value>","next_level":"<log_test.NestedStruct Value>","note":"","remark":"","count":0,"sum":0,"...":"<field truncated>"},"note":"","remark":"","count":0,"sum":0,"...":"<field truncated>"},"note":"nothing to note","remark":"","count":0,"sum":0,"...":"<field truncated>"}}`+"\n", b.String())
 }

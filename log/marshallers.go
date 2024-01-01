@@ -7,200 +7,138 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 )
 
-var MaskPointerValueForTesting bool
-var logObjectMarshallerInterface = reflect.TypeOf((*zerolog.LogObjectMarshaler)(nil)).Elem()
-var logArrayMarshallerInterface = reflect.TypeOf((*zerolog.LogArrayMarshaler)(nil)).Elem()
-var NestedLevelLimit = 2
-var FieldOrElementLimit = 12
+var (
+	MaskPointerValueForTesting bool
+	DefaultNestedLevelLimit    = 2
+	DefaultFieldOrElementLimit = 12
+	DurationType               = reflect.TypeOf((*time.Duration)(nil)).Elem()
+	StringerInterface          = reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
+)
 
-type ObjectMarshaller struct {
-	objValue    reflect.Value
-	nestedLevel int
+type Marshaller struct {
+	value               reflect.Value
+	nestedLevel         int
+	nestedLevelLimit    int
+	fieldOrElementLimit int
 }
 
-type MapMarshaller struct {
-	mapValue    reflect.Value
-	nestedLevel int
+func (ms *Marshaller) SetNestedLevelLimit(nestedLevelLimit int) *Marshaller {
+	ms.nestedLevelLimit = nestedLevelLimit
+	return ms
 }
 
-type ArrayMarshaller struct {
-	arrValue    reflect.Value
-	nestedLevel int
+func (ms *Marshaller) SetFieldOrElementLimit(fieldOrElementLimit int) *Marshaller {
+	ms.fieldOrElementLimit = fieldOrElementLimit
+	return ms
 }
 
-type UnsupportedTypeMarshaller struct {
-	value reflect.Value
+func (ms *Marshaller) SetNestedLevel(nestedLevel int) *Marshaller {
+	ms.nestedLevel = nestedLevel
+	return ms
 }
 
-func NewObjectMarshaller(obj any) zerolog.LogObjectMarshaler {
-	return newObjectMarshallerWithNestedLevel(obj, 1)
+func (ms *Marshaller) Nest() *Marshaller {
+	ms.nestedLevel++
+	return ms
 }
 
-func newObjectMarshallerWithNestedLevel(obj any, nestedLevel int) zerolog.LogObjectMarshaler {
+// NewMarshaller creates a new marshaller to serialize objects to log. If another marshaller
+// is provided in "other", its internal state will be copied to the newly created marshaller.
+func NewMarshaller(obj any, other ...*Marshaller) *Marshaller {
 	v, ok := obj.(reflect.Value)
 	if !ok {
 		v = reflect.ValueOf(obj)
 	}
 	k := v.Kind()
 	for k == reflect.Pointer || k == reflect.Interface {
-		if v.Type().Implements(logObjectMarshallerInterface) {
-			return v.Interface().(zerolog.LogObjectMarshaler)
-		}
 		v = v.Elem()
 		k = v.Kind()
 	}
-	if k == reflect.Map {
-		return &MapMarshaller{mapValue: v}
+	if k != reflect.Struct && k != reflect.Array && k != reflect.Slice && k != reflect.Map {
+		log.Panicf("the supplied arr parameter is %v, not a struct, array, slice, or map.", k)
 	}
-	if k != reflect.Struct && k != reflect.Array && k != reflect.Slice {
-		log.Panicf("the supplied arr parameter is %v, not a struct, array, or slice.", k)
-	}
-	return &ObjectMarshaller{objValue: v, nestedLevel: nestedLevel}
-}
-
-func NewMapMarshaller(m any) zerolog.LogObjectMarshaler {
-	return newMapMarshallerWithNestedLevel(m, 1)
-}
-
-func newMapMarshallerWithNestedLevel(m any, nestedLevel int) zerolog.LogObjectMarshaler {
-	v, ok := m.(reflect.Value)
-	if !ok {
-		v = reflect.ValueOf(m)
-	}
-	k := v.Kind()
-	for k == reflect.Pointer || k == reflect.Interface {
-		if v.Type().Implements(logObjectMarshallerInterface) {
-			return v.Interface().(zerolog.LogObjectMarshaler)
+	if len(other) > 0 {
+		return &Marshaller{
+			value:               v,
+			nestedLevel:         other[0].nestedLevel,
+			nestedLevelLimit:    other[0].nestedLevelLimit,
+			fieldOrElementLimit: other[0].fieldOrElementLimit,
 		}
-		v = v.Elem()
-		k = v.Kind()
 	}
-	if k == reflect.Struct {
-		return &ObjectMarshaller{objValue: v}
-	}
-	if k != reflect.Map {
-		log.Panicf("the supplied m parameter is %v, not a map.", k)
-	}
-	return &MapMarshaller{mapValue: v, nestedLevel: nestedLevel}
-}
-
-func NewArrayMarshaller(arr any) zerolog.LogArrayMarshaler {
-	return newArrayMarshallerWithNestedLevel(arr, 1)
-}
-
-func newArrayMarshallerWithNestedLevel(arr any, nestedLevel int) zerolog.LogArrayMarshaler {
-	v, ok := arr.(reflect.Value)
-	if !ok {
-		v = reflect.ValueOf(arr)
-	}
-	k := v.Kind()
-	for k == reflect.Pointer || k == reflect.Interface {
-		if v.Type().Implements(logArrayMarshallerInterface) {
-			return v.Interface().(zerolog.LogArrayMarshaler)
-		}
-		v = v.Elem()
-		k = v.Kind()
-	}
-	if k != reflect.Array && k != reflect.Slice {
-		log.Panicf("the supplied arr parameter is %v, not an array or slice.", k)
-	}
-	return &ArrayMarshaller{arrValue: v, nestedLevel: nestedLevel}
-}
-
-func NewUnsupportedTypeMarshaller(value any) zerolog.LogObjectMarshaler {
-	v, ok := value.(reflect.Value)
-	if !ok {
-		v = reflect.ValueOf(value)
-	}
-	k := v.Kind()
-	for k == reflect.Pointer || k == reflect.Interface {
-		if v.Type().Implements(logObjectMarshallerInterface) {
-			return v.Interface().(zerolog.LogObjectMarshaler)
-		}
-		v = v.Elem()
-		k = v.Kind()
-	}
-	return &UnsupportedTypeMarshaller{value: v}
-}
-
-func (obj *ObjectMarshaller) MarshalZerologObject(e *zerolog.Event) {
-	if k := obj.objValue.Kind(); k == reflect.Array || k == reflect.Slice {
-		e.Array("array", NewArrayMarshaller(obj.objValue))
-		return
-	}
-	typ := obj.objValue.Type()
-	for i := 0; i < obj.objValue.NumField(); i++ {
-		if i >= FieldOrElementLimit {
-			e.Str("...", "<field truncated>")
-			break
-		}
-		logField(e, toSnakeCase(typ.Field(i).Name), obj.objValue.Field(i), obj.nestedLevel)
+	return &Marshaller{
+		value:               v,
+		nestedLevel:         1,
+		nestedLevelLimit:    DefaultNestedLevelLimit,
+		fieldOrElementLimit: DefaultFieldOrElementLimit,
 	}
 }
 
-func (m *MapMarshaller) MarshalZerologObject(e *zerolog.Event) {
-	fieldNameMap := make(map[string]reflect.Value)
-	for _, mapKey := range m.mapValue.MapKeys() {
-		var fieldName string
-		k := mapKey.Kind()
-		for k == reflect.Pointer || k == reflect.Interface {
-			mapKey = mapKey.Elem()
-			k = mapKey.Kind()
-		}
-		switch k {
-		case reflect.String:
-			fieldName = mapKey.String()
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			fieldName = fmt.Sprint(mapKey.Int())
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			fieldName = fmt.Sprint(mapKey.Uint())
-		case reflect.Uintptr:
-			if MaskPointerValueForTesting {
-				fieldName = "0x0"
-			} else {
-				fieldName = fmt.Sprint(mapKey.Uint())
+func (ms *Marshaller) MarshalZerologObject(e *zerolog.Event) {
+	switch k := ms.value.Kind(); k {
+	case reflect.Map:
+		ms.marshalZerologMap(e)
+	case reflect.Struct:
+		typ := ms.value.Type()
+		for i := 0; i < ms.value.NumField(); i++ {
+			if i >= ms.fieldOrElementLimit {
+				e.Str("...", "<field truncated>")
+				break
 			}
-		case reflect.Bool:
-			fieldName = fmt.Sprint(mapKey.Bool())
-		case reflect.Float32, reflect.Float64:
-			fieldName = fmt.Sprint(mapKey.Float())
-		default:
-			fieldName = mapKey.String()
+			ms.logField(e, toSnakeCase(typ.Field(i).Name), ms.value.Field(i))
 		}
-		fieldNameMap[fieldName] = mapKey
+	case reflect.Slice, reflect.Array:
+		e.Array("array", ms)
+	default:
+		e.Str("kind", fmt.Sprint(k)).
+			Str("type", fmt.Sprint(ms.value.Type()))
+		if ms.value.Type().Implements(StringerInterface) {
+			e.Str("value", fmt.Sprint(ms.value))
+		} else {
+			e.Str("value", fmt.Sprintf("%#v", ms.value))
+		}
+	}
+}
+
+func (ms *Marshaller) marshalZerologMap(e *zerolog.Event) {
+	// We first get all the keys from the map then sort those keys.
+	fieldNameMap := make(map[string]reflect.Value)
+	for _, mapKey := range ms.value.MapKeys() {
+		for k := mapKey.Kind(); k == reflect.Pointer || k == reflect.Interface; k = mapKey.Kind() {
+			mapKey = mapKey.Elem()
+		}
+		fieldNameMap[fmt.Sprint(mapKey)] = mapKey
 	}
 	fieldNames := make([]string, 0, len(fieldNameMap))
-	for k := range fieldNameMap {
-		fieldNames = append(fieldNames, k)
+	for fieldName := range fieldNameMap {
+		fieldNames = append(fieldNames, fieldName)
 	}
 	sort.Strings(fieldNames)
 	for i := 0; i < len(fieldNames); i++ {
-		if i >= FieldOrElementLimit {
+		if i >= ms.fieldOrElementLimit {
 			e.Str("...", "<map truncated>")
 			break
 		}
-		logField(e, toSnakeCase(fieldNames[i]), m.mapValue.MapIndex(fieldNameMap[fieldNames[i]]), m.nestedLevel)
+		ms.logField(e, toSnakeCase(fieldNames[i]), ms.value.MapIndex(fieldNameMap[fieldNames[i]]))
 	}
 }
 
-func (arr *ArrayMarshaller) MarshalZerologArray(a *zerolog.Array) {
-	for i := 0; i < arr.arrValue.Len(); i++ {
-		if i >= FieldOrElementLimit {
+func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
+	if k := ms.value.Kind(); k != reflect.Array && k != reflect.Slice {
+		return
+	}
+	for i := 0; i < ms.value.Len(); i++ {
+		if i >= ms.fieldOrElementLimit {
 			a.Str("...")
 			break
 		}
-		v := arr.arrValue.Index(i)
+		v := ms.value.Index(i)
 		k := v.Kind()
 		for k == reflect.Interface || k == reflect.Pointer {
-			if v.Type().Implements(logObjectMarshallerInterface) {
-				a.Object(v.Interface().(zerolog.LogObjectMarshaler))
-				break
-			} else {
-				v = v.Elem()
-				k = v.Kind()
-			}
+			v = v.Elem()
+			k = v.Kind()
 		}
 		switch k {
 		case reflect.String:
@@ -214,7 +152,11 @@ func (arr *ArrayMarshaller) MarshalZerologArray(a *zerolog.Array) {
 		case reflect.Int32:
 			a.Int32(int32(v.Int()))
 		case reflect.Int64:
-			a.Int64(v.Int())
+			if v.Type() == DurationType {
+				a.Dur(v.Interface().(time.Duration))
+			} else {
+				a.Int64(v.Int())
+			}
 		case reflect.Uint:
 			a.Uint(uint(v.Uint()))
 		case reflect.Uint8:
@@ -237,27 +179,20 @@ func (arr *ArrayMarshaller) MarshalZerologArray(a *zerolog.Array) {
 			a.Float32(float32(v.Float()))
 		case reflect.Float64:
 			a.Float64(v.Float())
-		case reflect.Struct:
-			if arr.nestedLevel+1 > NestedLevelLimit {
+		case reflect.Struct, reflect.Map:
+			if ms.nestedLevel+1 > ms.nestedLevelLimit {
 				a.Str(v.String())
 			} else {
-				a.Object(newObjectMarshallerWithNestedLevel(v, arr.nestedLevel+1))
-			}
-		case reflect.Map:
-			if arr.nestedLevel+1 > NestedLevelLimit {
-				a.Str(v.String())
-			} else {
-				a.Object(newMapMarshallerWithNestedLevel(v, arr.nestedLevel+1))
+				a.Object(NewMarshaller(v, ms).Nest())
 			}
 		default:
-			a.Object(NewUnsupportedTypeMarshaller(v))
+			if v.Type().Implements(StringerInterface) {
+				a.Str(fmt.Sprint(v))
+			} else {
+				a.Object(NewMarshaller(v, ms))
+			}
 		}
 	}
-}
-
-func (m *UnsupportedTypeMarshaller) MarshalZerologObject(e *zerolog.Event) {
-	e.Str("type", fmt.Sprint(m.value.Kind()))
-	e.Str("value", fmt.Sprint(m.value))
 }
 
 func toSnakeCase(in string) string {
@@ -275,19 +210,11 @@ func toSnakeCase(in string) string {
 	return b.String()
 }
 
-func logField(e *zerolog.Event, fieldName string, field reflect.Value, nestedLevel int) {
+func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect.Value) {
 	k := field.Kind()
 	for k == reflect.Interface || k == reflect.Pointer {
-		if field.Type().Implements(logObjectMarshallerInterface) {
-			e.Object(fieldName, field.Interface().(zerolog.LogObjectMarshaler))
-			break
-		} else if field.Type().Implements(logArrayMarshallerInterface) {
-			e.Array(fieldName, field.Interface().(zerolog.LogArrayMarshaler))
-			break
-		} else {
-			field = field.Elem()
-			k = field.Kind()
-		}
+		field = field.Elem()
+		k = field.Kind()
 	}
 	switch k {
 	case reflect.String:
@@ -301,7 +228,11 @@ func logField(e *zerolog.Event, fieldName string, field reflect.Value, nestedLev
 	case reflect.Int32:
 		e.Int32(fieldName, int32(field.Int()))
 	case reflect.Int64:
-		e.Int64(fieldName, field.Int())
+		if field.Type() == DurationType {
+			e.Dur(fieldName, field.Interface().(time.Duration))
+		} else {
+			e.Int64(fieldName, field.Int())
+		}
 	case reflect.Uint:
 		e.Uint(fieldName, uint(field.Uint()))
 	case reflect.Uint8:
@@ -325,25 +256,23 @@ func logField(e *zerolog.Event, fieldName string, field reflect.Value, nestedLev
 	case reflect.Float64:
 		e.Float64(fieldName, field.Float())
 	case reflect.Array, reflect.Slice:
-		if nestedLevel+1 > NestedLevelLimit {
+		if ms.nestedLevel+1 > ms.nestedLevelLimit {
 			e.Str(fieldName, field.String())
 		} else {
-			e.Array(fieldName, newArrayMarshallerWithNestedLevel(field, nestedLevel+1))
+			e.Array(fieldName, NewMarshaller(field, ms).Nest())
 		}
-	case reflect.Struct:
-		if nestedLevel+1 > NestedLevelLimit {
+	case reflect.Struct, reflect.Map:
+		if ms.nestedLevel+1 > ms.nestedLevelLimit {
 			e.Str(fieldName, field.String())
 		} else {
-			e.Object(fieldName, newObjectMarshallerWithNestedLevel(field, nestedLevel+1))
-		}
-	case reflect.Map:
-		if nestedLevel+1 > NestedLevelLimit {
-			e.Str(fieldName, field.String())
-		} else {
-			e.Object(fieldName, newMapMarshallerWithNestedLevel(field, nestedLevel+1))
+			e.Object(fieldName, NewMarshaller(field, ms).Nest())
 		}
 	case reflect.Invalid:
 	default:
-		e.Object(fieldName, NewUnsupportedTypeMarshaller(field))
+		if field.Type().Implements(StringerInterface) {
+			e.Str(fieldName, fmt.Sprint(field))
+		} else {
+			e.Object(fieldName, NewMarshaller(field))
+		}
 	}
 }
