@@ -69,7 +69,7 @@ func TestParseStageGraph(t *testing.T) {
 		testParseAndExecute(t, true, 16, []string{"Table tpch.sf1.foo does not exist"})
 	})
 	t.Run("abortOnError = false", func(t *testing.T) {
-		testParseAndExecute(t, false, 23, []string{
+		testParseAndExecute(t, false, 24, []string{
 			"Table tpch.sf1.foo does not exist",
 			"line 1:11: Function sum1 not registered"})
 	})

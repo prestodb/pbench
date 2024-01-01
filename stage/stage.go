@@ -72,8 +72,11 @@ func (s *Stage) attachAdditionalInfoToQueryError(err error, query string, filePa
 	var queryErr *presto.QueryError
 	if errors.As(err, &queryErr) {
 		queryErr.StageId = s.Id
-		queryErr.Query = query
-		queryErr.FilePath = filePath
+		if filePath == nil {
+			queryErr.Query = &query
+		} else {
+			queryErr.QueryFile = filePath
+		}
 		queryErr.QueryIndex = queryIndex
 	}
 }
@@ -198,6 +201,9 @@ func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err e
 		if nextStage.OnQueryCompletion == nil {
 			nextStage.OnQueryCompletion = s.OnQueryCompletion
 		}
+		if nextStage.errorChan == nil {
+			nextStage.errorChan = s.errorChan
+		}
 	}
 	s.Client.AppendClientTag(s.Id)
 	if err = s.runQueries(ctx, s.Queries, nil); err != nil {
@@ -226,12 +232,6 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 			s.logStageId(log.Error()).Msgf("recovered from panic: %v", r)
 		}
 	}()
-	withFilePath := func(e *zerolog.Event) *zerolog.Event {
-		if filePath != nil {
-			return e.Str("query_file", *filePath)
-		}
-		return e
-	}
 	for i, query := range queries {
 		select {
 		case <-ctx.Done():
@@ -244,19 +244,25 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		if err != nil {
 			s.attachAdditionalInfoToQueryError(err, query, filePath, i)
 			if !s.AbortOnError {
-				s.errorChan <- err
-				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
+				if !errors.Is(err, context.Canceled) {
+					s.errorChan <- err
+					s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
+				}
 				continue
 			}
 			return err
 		}
 
 		// Assemble log message
-		e := withFilePath(s.logStageId(log.Info())).
+		e := s.logStageId(log.Info()).
 			Int("query_index", i).
 			Str("query_id", qr.Id).
-			Str("info_url", qr.InfoUri).
-			Str("query", query)
+			Str("info_url", qr.InfoUri)
+		if filePath != nil {
+			e = e.Str("query_file", *filePath)
+		} else {
+			e = e.Str("query", query)
+		}
 		if catalog := s.Client.GetCatalog(); catalog != "" {
 			e = e.Str("catalog", catalog)
 		}
@@ -269,8 +275,10 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		if err != nil {
 			s.attachAdditionalInfoToQueryError(err, query, filePath, i)
 			if !s.AbortOnError {
-				s.errorChan <- err
-				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
+				if !errors.Is(err, context.Canceled) {
+					s.errorChan <- err
+					s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
+				}
 				continue
 			}
 			return err
@@ -278,11 +286,14 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(qr, rowCount)
 		}
-		withFilePath(s.logStageId(log.Info())).
+		e = s.logStageId(log.Info()).
 			Int("query_index", i).
 			Str("query_id", qr.Id).
-			Int("row_count", rowCount).
-			Msgf("query finished")
+			Int("row_count", rowCount)
+		if filePath != nil {
+			e = e.Str("query_file", *filePath)
+		}
+		e.Msgf("query finished")
 	}
 	return nil
 }

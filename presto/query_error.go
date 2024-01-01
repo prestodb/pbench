@@ -18,9 +18,9 @@ type QueryError struct {
 	StageId    string  `json:"stage_id"`
 	QueryId    string  `json:"query_id"`
 	InfoUrl    string  `json:"info_url"`
-	Query      string  `json:"query"`
-	FilePath   *string `json:"file_path"`
-	QueryIndex int     `json:"query_sequence_number"`
+	Query      *string `json:"query,omitempty"`
+	QueryFile  *string `json:"query_file,omitempty"`
+	QueryIndex int     `json:"query_index"`
 }
 
 func (q *QueryError) String() string {
