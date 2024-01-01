@@ -14,10 +14,13 @@ type QueryError struct {
 	Retriable     bool           `json:"boolean"`
 	ErrorLocation *ErrorLocation `json:"errorLocation,omitempty"`
 	FailureInfo   *FailureInfo   `json:"failureInfo,omitempty"`
-	StageId       string         `json:"stage_id"` // Not in standard REST API response, added manually.
-	QueryId       string         `json:"query_id"` // Not in standard REST API response, added manually.
-	InfoUrl       string         `json:"info_url"` // Not in standard REST API response, added manually.
-	Query         string         `json:"query"`    // Not in standard REST API response, added manually.
+	// Not in standard REST API response, added manually.
+	StageId    string  `json:"stage_id"`
+	QueryId    string  `json:"query_id"`
+	InfoUrl    string  `json:"info_url"`
+	Query      string  `json:"query"`
+	FilePath   *string `json:"file_path"`
+	QueryIndex int     `json:"query_sequence_number"`
 }
 
 func (q *QueryError) String() string {

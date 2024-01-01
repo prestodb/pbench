@@ -13,7 +13,7 @@ import (
 var (
 	MaskPointerValueForTesting bool
 	DefaultNestedLevelLimit    = 3
-	DefaultFieldOrElementLimit = 12
+	DefaultFieldOrElementLimit = 15
 
 	durationType      = reflect.TypeOf((*time.Duration)(nil)).Elem()
 	stringerInterface = reflect.TypeOf((*fmt.Stringer)(nil)).Elem()

@@ -68,13 +68,13 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 	return ch
 }
 
-func (s *Stage) attachAdditionalInfoToQueryError(err error, query string) {
+func (s *Stage) attachAdditionalInfoToQueryError(err error, query string, filePath *string, queryIndex int) {
 	var queryErr *presto.QueryError
 	if errors.As(err, &queryErr) {
-		if s != nil {
-			queryErr.StageId = s.Id
-		}
+		queryErr.StageId = s.Id
 		queryErr.Query = query
+		queryErr.FilePath = filePath
+		queryErr.QueryIndex = queryIndex
 	}
 }
 
@@ -228,11 +228,11 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 	}()
 	withFilePath := func(e *zerolog.Event) *zerolog.Event {
 		if filePath != nil {
-			return e.Str("file", *filePath)
+			return e.Str("query_file", *filePath)
 		}
 		return e
 	}
-	for _, query := range queries {
+	for i, query := range queries {
 		select {
 		case <-ctx.Done():
 			// context got cancelled, handle error and return.
@@ -242,7 +242,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		}
 		qr, _, err := s.Client.Query(ctx, query)
 		if err != nil {
-			s.attachAdditionalInfoToQueryError(err, query)
+			s.attachAdditionalInfoToQueryError(err, query, filePath, i)
 			if !s.AbortOnError {
 				s.errorChan <- err
 				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
@@ -252,7 +252,10 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		}
 
 		// Assemble log message
-		e := withFilePath(s.logStageId(log.Info())).Str("query_id", qr.Id).Str("info_url", qr.InfoUri).
+		e := withFilePath(s.logStageId(log.Info())).
+			Int("query_index", i).
+			Str("query_id", qr.Id).
+			Str("info_url", qr.InfoUri).
 			Str("query", query)
 		if catalog := s.Client.GetCatalog(); catalog != "" {
 			e = e.Str("catalog", catalog)
@@ -264,7 +267,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 
 		rowCount, err := qr.Drain(ctx)
 		if err != nil {
-			s.attachAdditionalInfoToQueryError(err, query)
+			s.attachAdditionalInfoToQueryError(err, query, filePath, i)
 			if !s.AbortOnError {
 				s.errorChan <- err
 				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
@@ -275,7 +278,11 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(qr, rowCount)
 		}
-		withFilePath(s.logStageId(log.Info())).Str("query_id", qr.Id).Int("row_count", rowCount).Msgf("query finished")
+		withFilePath(s.logStageId(log.Info())).
+			Int("query_index", i).
+			Str("query_id", qr.Id).
+			Int("row_count", rowCount).
+			Msgf("query finished")
 	}
 	return nil
 }
