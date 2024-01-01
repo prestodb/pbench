@@ -8,6 +8,8 @@ import (
 	"presto-benchmark/log"
 )
 
+const DefaultStageFileExt = ".json"
+
 type Map map[string]*Stage
 
 func (m *Map) Get(stageId string) *Stage {
@@ -17,11 +19,9 @@ func (m *Map) Get(stageId string) *Stage {
 	return (*m)[stageId]
 }
 
-const DefaultStageFileExt = ".json"
-
-func ParseStageGraph(startingFile string) (*Stage, Map, error) {
+func ParseStageGraph(startingStage *Stage) (*Stage, Map, error) {
 	stages := make(Map)
-	startingStage, err := ParseStageFile(startingFile, stages)
+	startingStage, err := ParseStage(startingStage, stages)
 	if err == nil {
 		err = checkStageLinks(startingStage)
 	}
@@ -31,20 +31,26 @@ func ParseStageGraph(startingFile string) (*Stage, Map, error) {
 	return startingStage, stages, nil
 }
 
-func ParseStageFile(filePath string, stages Map) (*Stage, error) {
-	stageId := stageIdFromFilePath(filePath)
-	stage, ok := stages[stageId]
-	if ok {
-		log.Debug().Msgf("%s already parsed, returned", stageId)
-		return stage, nil
+func ParseStageGraphFromFile(startingFile string) (*Stage, Map, error) {
+	stages := make(Map)
+	startingStage, err := ParseStageFromFile(startingFile, stages)
+	if err == nil {
+		err = checkStageLinks(startingStage)
 	}
-	log.Debug().Msgf("parsing stage %s", stageId)
-	stage = &Stage{
-		Id: stageId,
+	if err != nil {
+		return nil, nil, err
 	}
+	return startingStage, stages, nil
+}
+
+func ReadStageFromFile(filePath string) (*Stage, error) {
 	filePath, err := filepath.Abs(filePath)
 	if err != nil {
 		return nil, err
+	}
+	stage := &Stage{
+		Id:      stageIdFromFilePath(filePath),
+		BaseDir: filepath.Dir(filePath),
 	}
 	bytes, err := os.ReadFile(filePath)
 	if err != nil {
@@ -53,28 +59,50 @@ func ParseStageFile(filePath string, stages Map) (*Stage, error) {
 	if err = json.Unmarshal(bytes, stage); err != nil {
 		return nil, fmt.Errorf("failed to parse json %s: %w", filePath, err)
 	}
-	dirPath := filepath.Dir(filePath)
+	log.Debug().Str("id", stage.Id).Str("path", filePath).Msg("read stage file")
+	return stage, nil
+}
+
+func ParseStageFromFile(filePath string, stages Map) (*Stage, error) {
+	stage, ok := stages[stageIdFromFilePath(filePath)]
+	if ok {
+		log.Debug().Msgf("%s already parsed, returned", stage.Id)
+		return stage, nil
+	}
+	stage, err := ReadStageFromFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return ParseStage(stage, stages)
+}
+
+func ParseStage(stage *Stage, stages Map) (*Stage, error) {
+	stageFound, ok := stages[stage.Id]
+	if ok {
+		log.Debug().Msgf("%s already parsed, returned", stage.Id)
+		return stageFound, nil
+	}
 	for i, queryFile := range stage.QueryFiles {
 		if !filepath.IsAbs(queryFile) {
-			queryFile = filepath.Join(dirPath, queryFile)
+			queryFile = filepath.Join(stage.BaseDir, queryFile)
 			stage.QueryFiles[i] = queryFile
 		}
-		if _, err = os.Stat(queryFile); err != nil {
-			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stageId, queryFile, err)
+		if _, err := os.Stat(queryFile); err != nil {
+			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stage.Id, queryFile, err)
 		}
 	}
 	for i, nextStagePath := range stage.NextStagePaths {
 		if !filepath.IsAbs(nextStagePath) {
-			nextStagePath = filepath.Join(dirPath, nextStagePath)
+			nextStagePath = filepath.Join(stage.BaseDir, nextStagePath)
 			stage.NextStagePaths[i] = nextStagePath
 		}
-		if _, err = os.Stat(nextStagePath); err != nil {
-			return nil, fmt.Errorf("%s links to an invalid next stage file %s: %w", stageId, nextStagePath, err)
+		if _, err := os.Stat(nextStagePath); err != nil {
+			return nil, fmt.Errorf("%s links to an invalid next stage file %s: %w", stage.Id, nextStagePath, err)
 		}
 	}
-	stages[stageId] = stage
+	stages[stage.Id] = stage
 	for _, nextStagePath := range stage.NextStagePaths {
-		if nextStage, err := ParseStageFile(nextStagePath, stages); err != nil {
+		if nextStage, err := ParseStageFromFile(nextStagePath, stages); err != nil {
 			return nil, err
 		} else {
 			stage.NextStages = append(stage.NextStages, nextStage)

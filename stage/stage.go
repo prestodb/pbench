@@ -3,7 +3,6 @@ package stage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/rs/zerolog"
 	"os"
 	"presto-benchmark/log"
@@ -39,6 +38,7 @@ type Stage struct {
 	// Depending on when the cancellable context was created, this may abort some or all other running stages and all future stages.
 	AbortOnError   bool     `json:"abort_on_error,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
+	BaseDir        string   `json:"-"`
 	Prerequisites  []*Stage `json:"-"`
 	NextStages     []*Stage `json:"-"`
 	// Client is by default passed down to descendant stages.
@@ -51,7 +51,8 @@ type Stage struct {
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
 	// started is used to make sure only one goroutine is started to run this stage when there are multiple prerequisites.
-	started atomic.Bool
+	started   atomic.Bool
+	errorChan chan error
 }
 
 func (s *Stage) String() string {
@@ -67,7 +68,7 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 	return ch
 }
 
-func attachAdditionalInfoToQueryError(err error, query string, s *Stage) {
+func (s *Stage) attachAdditionalInfoToQueryError(err error, query string) {
 	var queryErr *presto.QueryError
 	if errors.As(err, &queryErr) {
 		if s != nil {
@@ -77,11 +78,15 @@ func attachAdditionalInfoToQueryError(err error, query string, s *Stage) {
 	}
 }
 
+func (s *Stage) logStageId(e *zerolog.Event) *zerolog.Event {
+	return e.Str("benchmark_stage_id", s.Id)
+}
+
 func (s *Stage) logCtxErr(ctx context.Context) {
 	if ctx.Err() == nil {
 		return
 	}
-	logEvent := log.Error().Str("benchmark_stage_id", s.Id).Err(ctx.Err())
+	logEvent := s.logStageId(log.Error()).Err(ctx.Err())
 	if cause := context.Cause(ctx); cause != nil {
 		var queryError *presto.QueryError
 		if errors.As(cause, &queryError) {
@@ -89,7 +94,7 @@ func (s *Stage) logCtxErr(ctx context.Context) {
 				Str("caused_by_query", queryError.QueryId).
 				Str("info_url", queryError.InfoUrl)
 		} else {
-			logEvent.Str("caused_by_error", fmt.Sprint(ctx.Err()))
+			logEvent.AnErr("caused_by_error", ctx.Err())
 		}
 	}
 	logEvent.Msg("stage aborted")
@@ -97,27 +102,28 @@ func (s *Stage) logCtxErr(ctx context.Context) {
 
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) []error {
-	errs, errChan := make([]error, 0, 2), make(chan error)
+	errs := make([]error, 0, 2)
+	s.errorChan = make(chan error)
 	wgExit := &sync.WaitGroup{}
 	wgExit.Add(1)
 	go func() {
 		wgExit.Wait()
-		close(errChan)
+		close(s.errorChan)
 	}()
 
 	ctx, s.AbortAll = context.WithCancelCause(ctx)
-	log.Debug().Str("benchmark_stage_id", s.Id).Msg("created cancellable context")
+	s.logStageId(log.Debug()).Msg("created cancellable context")
 
 	go func() {
-		_ = s.run(ctx, errChan, wgExit)
+		_ = s.run(ctx, wgExit)
 	}()
-	for err := range errChan {
+	for err := range s.errorChan {
 		errs = append(errs, err)
 	}
 	return errs
 }
 
-func (s *Stage) run(ctx context.Context, errChan chan error, wgExitMainStage *sync.WaitGroup) (err error) {
+func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err error) {
 	if !s.started.CompareAndSwap(false, true) {
 		// If other prerequisites finished earlier, then this stage is already called and waiting.
 		wgExitMainStage.Done()
@@ -129,12 +135,11 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExitMainStage *sy
 		}
 		if err != nil {
 			if !errors.Is(err, context.Canceled) {
-				log.Error().Str("benchmark_stage_id", s.Id).
-					Object("details", log.NewObjectMarshaller(err)).Msg("query failed")
-				errChan <- err
+				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
+				s.errorChan <- err
 			}
 			if s.AbortOnError && s.AbortAll != nil {
-				log.Debug().Str("benchmark_stage_id", s.Id).Msg("canceling the context because abort_on_error is set to true")
+				s.logStageId(log.Debug()).Msg("canceling the context because abort_on_error is set to true")
 				s.AbortAll(err)
 			}
 		} else {
@@ -142,7 +147,7 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExitMainStage *sy
 			wgExitMainStage.Add(len(s.NextStages))
 			for _, nextStage := range s.NextStages {
 				go func(nextStage *Stage) {
-					_ = nextStage.run(ctx, errChan, wgExitMainStage)
+					_ = nextStage.run(ctx, wgExitMainStage)
 				}(nextStage)
 			}
 		}
@@ -153,7 +158,7 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExitMainStage *sy
 		s.logCtxErr(ctx)
 		return ctx.Err()
 	case <-s.waitForPrerequisites():
-		log.Debug().Str("benchmark_stage_id", s.Id).Msg("all prerequisites finished")
+		s.logStageId(log.Debug()).Msg("all prerequisites finished")
 	}
 	if s.Client == nil || s.StartOnNewClient {
 		if s.GetClient == nil {
@@ -161,22 +166,22 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExitMainStage *sy
 			log.Debug().Msg("using DefaultGetClientFn")
 		}
 		s.Client = s.GetClient()
-		log.Debug().Str("benchmark_stage_id", s.Id).Msg("created new client")
+		s.logStageId(log.Debug()).Msg("created new client")
 	}
 	if s.Catalog != nil {
 		s.Client.Catalog(*s.Catalog)
-		log.Debug().Str("benchmark_stage_id", s.Id).Str("catalog", *s.Catalog).Msg("set catalog")
+		s.logStageId(log.Debug()).Str("catalog", *s.Catalog).Msg("set catalog")
 	}
 	if s.Schema != nil {
 		s.Client.Schema(*s.Schema)
-		log.Debug().Str("benchmark_stage_id", s.Id).Str("schema", *s.Schema).Msg("set schema")
+		s.logStageId(log.Debug()).Str("schema", *s.Schema).Msg("set schema")
 	}
 	for k, v := range s.SessionParams {
 		s.Client.SessionParam(k, v)
 	}
 	if len(s.SessionParams) > 0 {
-		log.Debug().Str("benchmark_stage_id", s.Id).
-			Object("delta", log.NewMapMarshaller(s.SessionParams)).
+		s.logStageId(log.Debug()).
+			Object("delta", log.NewMarshaller(s.SessionParams)).
 			Str("final", s.Client.GetSessionParams()).
 			Msg("added session params")
 	}
@@ -218,15 +223,14 @@ func (s *Stage) run(ctx context.Context, errChan chan error, wgExitMainStage *sy
 func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *string) error {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error().Str("benchmark_stage_id", s.Id).Msgf("recovered from panic: %v", r)
+			s.logStageId(log.Error()).Msgf("recovered from panic: %v", r)
 		}
 	}()
-	logExecution := func() *zerolog.Event {
-		event := log.Info().Str("benchmark_stage_id", s.Id)
+	withFilePath := func(e *zerolog.Event) *zerolog.Event {
 		if filePath != nil {
-			return event.Str("file", *filePath)
+			return e.Str("file", *filePath)
 		}
-		return event
+		return e
 	}
 	for _, query := range queries {
 		select {
@@ -238,12 +242,17 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		}
 		qr, _, err := s.Client.Query(ctx, query)
 		if err != nil {
-			attachAdditionalInfoToQueryError(err, query, s)
+			s.attachAdditionalInfoToQueryError(err, query)
+			if !s.AbortOnError {
+				s.errorChan <- err
+				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
+				continue
+			}
 			return err
 		}
 
 		// Assemble log message
-		e := logExecution().Str("query_id", qr.Id).Str("info_url", qr.InfoUri).
+		e := withFilePath(s.logStageId(log.Info())).Str("query_id", qr.Id).Str("info_url", qr.InfoUri).
 			Str("query", query)
 		if catalog := s.Client.GetCatalog(); catalog != "" {
 			e = e.Str("catalog", catalog)
@@ -255,24 +264,32 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 
 		rowCount, err := qr.Drain(ctx)
 		if err != nil {
-			attachAdditionalInfoToQueryError(err, query, s)
+			s.attachAdditionalInfoToQueryError(err, query)
+			if !s.AbortOnError {
+				s.errorChan <- err
+				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
+				continue
+			}
 			return err
 		}
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(qr, rowCount)
 		}
-		logExecution().Str("query_id", qr.Id).Int("row_count", rowCount).Msgf("query finished")
+		withFilePath(s.logStageId(log.Info())).Str("query_id", qr.Id).Int("row_count", rowCount).Msgf("query finished")
 	}
 	return nil
 }
 
-func (s *Stage) MergeWith(other *Stage) {
+func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.Id = other.Id
 	if other.Catalog != nil {
 		s.Catalog = other.Catalog
 	}
 	if other.Schema != nil {
 		s.Schema = other.Schema
+	}
+	if s.SessionParams == nil {
+		s.SessionParams = make(map[string]any)
 	}
 	for k, v := range other.SessionParams {
 		s.SessionParams[k] = v
@@ -282,4 +299,6 @@ func (s *Stage) MergeWith(other *Stage) {
 	s.StartOnNewClient = other.StartOnNewClient
 	s.AbortOnError = other.AbortOnError
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
+	s.BaseDir = other.BaseDir
+	return s
 }

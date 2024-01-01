@@ -12,10 +12,12 @@ import (
 
 var (
 	MaskPointerValueForTesting bool
-	DefaultNestedLevelLimit    = 2
+	DefaultNestedLevelLimit    = 3
 	DefaultFieldOrElementLimit = 12
-	DurationType               = reflect.TypeOf((*time.Duration)(nil)).Elem()
-	StringerInterface          = reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
+
+	durationType      = reflect.TypeOf((*time.Duration)(nil)).Elem()
+	stringerInterface = reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
+	errorInterface    = reflect.TypeOf((*error)(nil)).Elem()
 )
 
 type Marshaller struct {
@@ -94,7 +96,7 @@ func (ms *Marshaller) MarshalZerologObject(e *zerolog.Event) {
 	default:
 		e.Str("kind", fmt.Sprint(k)).
 			Str("type", fmt.Sprint(ms.value.Type()))
-		if ms.value.Type().Implements(StringerInterface) {
+		if ms.value.Type().Implements(stringerInterface) {
 			e.Str("value", fmt.Sprint(ms.value))
 		} else {
 			e.Str("value", fmt.Sprintf("%#v", ms.value))
@@ -140,6 +142,13 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 			v = v.Elem()
 			k = v.Kind()
 		}
+		if k == reflect.Invalid {
+			continue
+		}
+		if v.Type().Implements(errorInterface) {
+			a.Err(v.Interface().(error))
+			continue
+		}
 		switch k {
 		case reflect.String:
 			a.Str(v.String())
@@ -152,7 +161,7 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 		case reflect.Int32:
 			a.Int32(int32(v.Int()))
 		case reflect.Int64:
-			if v.Type() == DurationType {
+			if v.Type() == durationType {
 				a.Dur(v.Interface().(time.Duration))
 			} else {
 				a.Int64(v.Int())
@@ -186,7 +195,7 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 				a.Object(NewMarshaller(v, ms).Nest())
 			}
 		default:
-			if v.Type().Implements(StringerInterface) {
+			if v.Type().Implements(stringerInterface) {
 				a.Str(fmt.Sprint(v))
 			} else {
 				a.Object(NewMarshaller(v, ms))
@@ -216,6 +225,13 @@ func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect
 		field = field.Elem()
 		k = field.Kind()
 	}
+	if k == reflect.Invalid {
+		return
+	}
+	if field.Type().Implements(errorInterface) {
+		e.AnErr(fieldName, field.Interface().(error))
+		return
+	}
 	switch k {
 	case reflect.String:
 		e.Str(fieldName, field.String())
@@ -228,7 +244,7 @@ func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect
 	case reflect.Int32:
 		e.Int32(fieldName, int32(field.Int()))
 	case reflect.Int64:
-		if field.Type() == DurationType {
+		if field.Type() == durationType {
 			e.Dur(fieldName, field.Interface().(time.Duration))
 		} else {
 			e.Int64(fieldName, field.Int())
@@ -267,9 +283,8 @@ func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect
 		} else {
 			e.Object(fieldName, NewMarshaller(field, ms).Nest())
 		}
-	case reflect.Invalid:
 	default:
-		if field.Type().Implements(StringerInterface) {
+		if field.Type().Implements(stringerInterface) {
 			e.Str(fieldName, fmt.Sprint(field))
 		} else {
 			e.Object(fieldName, NewMarshaller(field))

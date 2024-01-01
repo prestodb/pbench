@@ -24,6 +24,8 @@ const (
 	SourceHeader             = "X-Presto-Source"
 	ClientInfoHeader         = "X-Presto-Client-Info"
 	ClientTagHeader          = "X-Presto-Client-Tags"
+
+	DefaultUser = "presto-benchmark"
 )
 
 // RequestOption represents an option that can modify a http.Request.
@@ -49,8 +51,8 @@ func NewClient(serverUrl string) (*Client, error) {
 		baseHeader:    make(http.Header),
 		sessionParams: make(map[string]any),
 	}
-	client.User("presto-benchmark")
-	client.baseHeader.Set(SourceHeader, "presto-benchmark")
+	client.User(DefaultUser)
+	client.baseHeader.Set(SourceHeader, DefaultUser)
 	return client, nil
 }
 
@@ -250,7 +252,8 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 				return resp, err
 			case http.StatusServiceUnavailable:
 				resp.Body.Close()
-				log.Printf("http retry delay = %d\n", retryDelay)
+				log.Debug().Dur("delay", retryDelay).
+					Msg("retry after getting http Service Unavailable response (503)")
 				timer.Reset(retryDelay)
 				retryDelay *= 2
 				if retryDelay > maxRetryDelay {

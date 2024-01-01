@@ -2,12 +2,15 @@ package presto_test
 
 import (
 	"context"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"presto-benchmark/presto"
+	"syscall"
 	"testing"
 )
 
 func TestQuery(t *testing.T) {
+	// This test requires Presto hive query runner.
 	client, err := presto.NewClient("http://127.0.0.1:8080")
 	if err != nil {
 		t.Fatal(err)
@@ -22,7 +25,11 @@ func TestQuery(t *testing.T) {
 		ClientTags("test", "client_1").
 		Query(context.Background(), `select * from customer`)
 	if err != nil {
-		t.Fatal(err)
+		if errors.Is(err, syscall.ECONNREFUSED) {
+			t.Fatalf("%v: this test requires Presto Hive query runner to run.", err)
+		} else {
+			t.Fatal(err)
+		}
 	}
 	count, err := qr.Drain(context.Background())
 	if err != nil {

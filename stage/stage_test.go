@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"presto-benchmark/presto"
+	"syscall"
 	"testing"
 )
 
@@ -28,7 +29,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, expectedRowCount int, 
 	          |
 	       stage_6
 	*/
-	stage1, stages, err := ParseStageGraph("../benchmarks/test/stage_1.json")
+	stage1, stages, err := ParseStageGraphFromFile("../benchmarks/test/stage_1.json")
 	assert.Nil(t, err)
 	stage2 := stages.Get("stage_2")
 	stage3 := stages.Get("stage_3")
@@ -53,6 +54,9 @@ func testParseAndExecute(t *testing.T, abortOnError bool, expectedRowCount int, 
 
 	assert.Equal(t, len(expectedErrors), len(errs))
 	for i, err := range errs {
+		if errors.Is(err, syscall.ECONNREFUSED) {
+			t.Fatalf("%v: this test requires Presto Hive query runner to run.", err)
+		}
 		var qe *presto.QueryError
 		assert.True(t, errors.As(err, &qe))
 		assert.Equal(t, expectedErrors[i], qe.Message)
@@ -72,7 +76,7 @@ func TestParseStageGraph(t *testing.T) {
 }
 
 func TestHttpError(t *testing.T) {
-	stage, _, err := ParseStageGraph("../benchmarks/test/http_error.json")
+	stage, _, err := ParseStageGraphFromFile("../benchmarks/test/http_error.json")
 	assert.Nil(t, err)
 	errs := stage.Run(context.Background())
 	assert.Equal(t, 1, len(errs))
