@@ -55,7 +55,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	}
 
 	results := stage1.Run(context.Background())
-	if err := os.Remove(stage1.outputPath); err != nil {
+	if err := os.RemoveAll(stage1.outputPath); err != nil {
 		t.Fatal(err)
 	}
 
@@ -87,7 +87,7 @@ func TestHttpError(t *testing.T) {
 	stage, _, err := ParseStageGraphFromFile("../benchmarks/test/http_error.json")
 	assert.Nil(t, err)
 	results := stage.Run(context.Background())
-	if err := os.Remove(stage.outputPath); err != nil {
+	if err := os.RemoveAll(stage.outputPath); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, 1, len(results))
