@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
-	"presto-benchmark/presto"
 	"presto-benchmark/stage"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -29,19 +29,22 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to parse benchmark")
 	}
 
-	results := make([]stage.BenchMarkQueryResult, 0, 100)
-	startingStage.OnQueryCompletion = func(qr *presto.QueryResults, rowCount int) {
-		results = append(results, stage.BenchMarkQueryResult{
-			StageContext: &qr.QueryMetadata,
-			RowCount:     rowCount,
-		})
+	b := strings.Builder{}
+	startingStage.OnQueryCompletion = func(qr *stage.QueryResult) {
+		b.WriteString(qr.StageId + ",")
+		if qr.QueryFile != nil {
+			b.WriteString(*qr.QueryFile)
+		} else {
+			b.WriteString("inline")
+		}
+		b.WriteString(fmt.Sprintf(",%d,%d,%s,%s,%s\n",
+			qr.QueryIndex, qr.RowCount,
+			qr.StartTime.Format(time.RFC3339), qr.EndTime.Format(time.RFC3339), *qr.Duration))
 	}
-	errs := startingStage.Run(context.Background())
-	if len(errs) > 0 {
-		log.Error().Array("errors", log.NewMarshaller(errs)).Send()
-	}
+	results := startingStage.Run(context.Background())
 	byt, _ := json.Marshal(results)
-	os.WriteFile(startingStage.Id+".result.json", byt, 0644)
+	_ = os.WriteFile(startingStage.Id+"_result.json", byt, 0644)
+	_ = os.WriteFile(startingStage.Id+"_time.csv", []byte(b.String()), 0644)
 }
 
 func processPath(path string) (st *stage.Stage, err error) {

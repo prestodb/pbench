@@ -17,7 +17,7 @@ func assertStage(t *testing.T, stage *Stage, prerequisites, next []*Stage, queri
 	assert.Equal(t, queryFiles, len(stage.QueryFiles))
 }
 
-func testParseAndExecute(t *testing.T, abortOnError bool, expectedRowCount int, expectedErrors []string) {
+func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, expectedRowCount int, expectedErrors []string) {
 	/** from top to bottom
 	       stage_1
 	       /      \
@@ -45,13 +45,17 @@ func testParseAndExecute(t *testing.T, abortOnError bool, expectedRowCount int, 
 	assertStage(t, stage6, []*Stage{stage5}, []*Stage(nil), 0, 1)
 
 	stage4.AbortOnError = abortOnError
-	rowCount := 0
-	stage1.OnQueryCompletion = func(_ *presto.QueryResults, rc int) {
-		rowCount += rc
+	rowCount, errs := 0, make([]error, 0, len(expectedErrors))
+	stage1.OnQueryCompletion = func(result *QueryResult) {
+		rowCount += result.RowCount
+		if result.QueryError != nil {
+			errs = append(errs, result.QueryError)
+		}
 	}
 
-	errs := stage1.Run(context.Background())
+	results := stage1.Run(context.Background())
 
+	assert.Equal(t, totalQueryCount, len(results))
 	assert.Equal(t, len(expectedErrors), len(errs))
 	for i, err := range errs {
 		if errors.Is(err, syscall.ECONNREFUSED) {
@@ -66,10 +70,10 @@ func testParseAndExecute(t *testing.T, abortOnError bool, expectedRowCount int, 
 
 func TestParseStageGraph(t *testing.T) {
 	t.Run("abortOnError = true", func(t *testing.T) {
-		testParseAndExecute(t, true, 16, []string{"Table tpch.sf1.foo does not exist"})
+		testParseAndExecute(t, true, 9, 16, []string{"Table tpch.sf1.foo does not exist"})
 	})
 	t.Run("abortOnError = false", func(t *testing.T) {
-		testParseAndExecute(t, false, 24, []string{
+		testParseAndExecute(t, false, 15, 24, []string{
 			"Table tpch.sf1.foo does not exist",
 			"line 1:11: Function sum1 not registered"})
 	})
@@ -78,7 +82,7 @@ func TestParseStageGraph(t *testing.T) {
 func TestHttpError(t *testing.T) {
 	stage, _, err := ParseStageGraphFromFile("../benchmarks/test/http_error.json")
 	assert.Nil(t, err)
-	errs := stage.Run(context.Background())
-	assert.Equal(t, 1, len(errs))
-	assert.Equal(t, "Schema is set but catalog is not (status code: 400)", errs[0].Error())
+	results := stage.Run(context.Background())
+	assert.Equal(t, 1, len(results))
+	assert.Equal(t, "Schema is set but catalog is not (status code: 400)", results[0].QueryError.Error())
 }

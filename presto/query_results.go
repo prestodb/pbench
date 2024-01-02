@@ -20,10 +20,8 @@ type QueryResults struct {
 	Warnings    []Warning      `json:"warnings"`
 	UpdateType  *string        `json:"updateType,omitempty"`
 	UpdateCount *int64         `json:"updateCount,omitempty"`
-	QueryMetadata
 
 	client *Client
-	rowPos int
 }
 
 func (qr *QueryResults) HasMoreBatch() bool {
@@ -44,15 +42,19 @@ func (qr *QueryResults) FetchNextBatch(ctx context.Context) error {
 	return nil
 }
 
-func (qr *QueryResults) Drain(ctx context.Context) (int, error) {
-	count := 0
+type ResultBatchHandler func(qr *QueryResults)
+
+func (qr *QueryResults) Drain(ctx context.Context, handler ResultBatchHandler) error {
 	for qr.HasMoreBatch() {
 		err := qr.FetchNextBatch(ctx)
 		if err != nil {
-			return count, err
+			return err
 		}
 		//sort.Slice(qr.Data, func(i, j int) bool { return bytes.Compare(qr.Data[i], qr.Data[j]) < 0 })
-		count += len(qr.Data)
+		if handler != nil {
+			handler(qr)
+		}
+		qr.Data = nil
 	}
-	return count, nil
+	return nil
 }

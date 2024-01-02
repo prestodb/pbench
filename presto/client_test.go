@@ -31,9 +31,12 @@ func TestQuery(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	count, err := qr.Drain(context.Background())
+	rowCount := 0
+	err = qr.Drain(context.Background(), func(qr *presto.QueryResults) {
+		rowCount += len(qr.Data)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, 150000, count)
+	assert.Equal(t, 150000, rowCount)
 }

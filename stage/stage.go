@@ -9,10 +9,11 @@ import (
 	"presto-benchmark/presto"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type GetClientFn func() *presto.Client
-type OnQueryCompletionFn func(qr *presto.QueryResults, rowCount int)
+type OnQueryCompletionFn func(result *QueryResult)
 
 var DefaultServerUrl = "http://127.0.0.1:8080"
 var DefaultGetClientFn = func() *presto.Client {
@@ -36,7 +37,9 @@ type Stage struct {
 	StartOnNewClient bool `json:"start_on_new_client,omitempty"`
 	// If AbortOnError is set to true, the context associated with this stage will be canceled if an error occurs.
 	// Depending on when the cancellable context was created, this may abort some or all other running stages and all future stages.
-	AbortOnError   bool     `json:"abort_on_error,omitempty"`
+	AbortOnError bool `json:"abort_on_error,omitempty"`
+	// If SaveData is set to true, the query result will be saved to files in its raw form.
+	SaveData       bool     `json:"save_data"`
 	NextStagePaths []string `json:"next,omitempty"`
 	BaseDir        string   `json:"-"`
 	Prerequisites  []*Stage `json:"-"`
@@ -51,8 +54,12 @@ type Stage struct {
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
 	// started is used to make sure only one goroutine is started to run this stage when there are multiple prerequisites.
-	started   atomic.Bool
-	errorChan chan error
+	started    atomic.Bool
+	resultChan chan *QueryResult
+}
+
+func (s *Stage) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("benchmark_stage_id", s.Id)
 }
 
 func (s *Stage) String() string {
@@ -68,65 +75,99 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 	return ch
 }
 
-func (s *Stage) attachAdditionalInfoToQueryResults(qr *presto.QueryResults, query string, filePath *string, queryIndex int) {
-	if qr == nil {
-		return
-	}
-	qr.StageId = s.Id
-	if filePath == nil {
-		qr.Query = &query
-	} else {
-		qr.QueryFile = filePath
-	}
-	qr.QueryIndex = queryIndex
-	if qr.Error != nil {
-		qr.Error.QueryMetadata = &qr.QueryMetadata
-	}
-}
-
-func (s *Stage) logStageId(e *zerolog.Event) *zerolog.Event {
-	return e.Str("benchmark_stage_id", s.Id)
-}
-
-func (s *Stage) logCtxErr(ctx context.Context) {
-	if ctx.Err() == nil {
-		return
-	}
-	logEvent := s.logStageId(log.Error()).Err(ctx.Err())
-	if cause := context.Cause(ctx); cause != nil {
-		var queryError *presto.QueryError
-		if errors.As(cause, &queryError) {
-			logEvent.Str("caused_by_stage", queryError.StageId).
-				Str("caused_by_query", *queryError.QueryId).
-				Str("info_url", *queryError.InfoUrl)
+func (s *Stage) logErr(ctx context.Context, err error) {
+	var queryResult *QueryResult
+	logEvent := log.Error()
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		logEvent.EmbedObject(s)
+		if cause := context.Cause(ctx); cause != nil && errors.As(cause, &queryResult) {
+			logEvent.Str("caused_by_stage", queryResult.StageId).
+				Str("caused_by_query", queryResult.QueryId).
+				Str("info_url", queryResult.InfoUrl)
 		} else {
-			logEvent.AnErr("caused_by_error", ctx.Err())
+			logEvent.AnErr("caused_by_error", err)
+		}
+		logEvent.Msg("stage aborted")
+		return
+	}
+	if errors.As(err, &queryResult) {
+		logEvent.EmbedObject(queryResult)
+	} else {
+		logEvent.EmbedObject(s).EmbedObject(log.NewMarshaller(err))
+	}
+	logEvent.Msg("query failed")
+}
+
+func (s *Stage) prepareClient() {
+	if s.Client == nil || s.StartOnNewClient {
+		if s.GetClient == nil {
+			s.GetClient = DefaultGetClientFn
+			log.Debug().Msg("using DefaultGetClientFn")
+		}
+		s.Client = s.GetClient()
+		log.Debug().EmbedObject(s).Msg("created new client")
+	}
+	if s.Catalog != nil {
+		s.Client.Catalog(*s.Catalog)
+		log.Debug().EmbedObject(s).Str("catalog", *s.Catalog).Msg("set catalog")
+	}
+	if s.Schema != nil {
+		s.Client.Schema(*s.Schema)
+		log.Debug().EmbedObject(s).Str("schema", *s.Schema).Msg("set schema")
+	}
+	for k, v := range s.SessionParams {
+		s.Client.SessionParam(k, v)
+	}
+	if len(s.SessionParams) > 0 {
+		log.Debug().EmbedObject(s).
+			Object("delta", log.NewMarshaller(s.SessionParams)).
+			Str("final", s.Client.GetSessionParams()).
+			Msg("added session params")
+	}
+	s.Client.AppendClientTag(s.Id)
+}
+
+func (s *Stage) propagateStates() {
+	for _, nextStage := range s.NextStages {
+		if nextStage.GetClient == nil {
+			nextStage.GetClient = s.GetClient
+		}
+		if nextStage.Client == nil {
+			nextStage.Client = s.Client
+		}
+		if nextStage.AbortAll == nil {
+			nextStage.AbortAll = s.AbortAll
+		}
+		if nextStage.OnQueryCompletion == nil {
+			nextStage.OnQueryCompletion = s.OnQueryCompletion
+		}
+		if nextStage.resultChan == nil {
+			nextStage.resultChan = s.resultChan
 		}
 	}
-	logEvent.Msg("stage aborted")
 }
 
 // Run this stage and trigger its downstream stages.
-func (s *Stage) Run(ctx context.Context) []error {
-	errs := make([]error, 0, 2)
-	s.errorChan = make(chan error)
-	wgExit := &sync.WaitGroup{}
-	wgExit.Add(1)
+func (s *Stage) Run(ctx context.Context) []*QueryResult {
+	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))
+	s.resultChan = make(chan *QueryResult)
+	wgExitMainStage := &sync.WaitGroup{}
+	wgExitMainStage.Add(1)
 	go func() {
-		wgExit.Wait()
-		close(s.errorChan)
+		wgExitMainStage.Wait()
+		close(s.resultChan)
 	}()
 
 	ctx, s.AbortAll = context.WithCancelCause(ctx)
-	s.logStageId(log.Debug()).Msg("created cancellable context")
+	log.Debug().EmbedObject(s).Msg("created cancellable context")
 
 	go func() {
-		_ = s.run(ctx, wgExit)
+		_ = s.run(ctx, wgExitMainStage)
 	}()
-	for err := range s.errorChan {
-		errs = append(errs, err)
+	for result := range s.resultChan {
+		results = append(results, result)
 	}
-	return errs
+	return results
 }
 
 func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err error) {
@@ -140,12 +181,9 @@ func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err e
 			nextStage.wgPrerequisites.Done()
 		}
 		if err != nil {
-			if !errors.Is(err, context.Canceled) {
-				s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
-				s.errorChan <- err
-			}
+			s.logErr(ctx, err)
 			if s.AbortOnError && s.AbortAll != nil {
-				s.logStageId(log.Debug()).Msg("canceling the context because abort_on_error is set to true")
+				log.Debug().EmbedObject(s).Msg("canceling the context because abort_on_error is set to true")
 				s.AbortAll(err)
 			}
 		} else {
@@ -161,54 +199,12 @@ func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err e
 	}()
 	select {
 	case <-ctx.Done():
-		s.logCtxErr(ctx)
 		return ctx.Err()
 	case <-s.waitForPrerequisites():
-		s.logStageId(log.Debug()).Msg("all prerequisites finished")
+		log.Debug().EmbedObject(s).Msg("all prerequisites finished")
 	}
-	if s.Client == nil || s.StartOnNewClient {
-		if s.GetClient == nil {
-			s.GetClient = DefaultGetClientFn
-			log.Debug().Msg("using DefaultGetClientFn")
-		}
-		s.Client = s.GetClient()
-		s.logStageId(log.Debug()).Msg("created new client")
-	}
-	if s.Catalog != nil {
-		s.Client.Catalog(*s.Catalog)
-		s.logStageId(log.Debug()).Str("catalog", *s.Catalog).Msg("set catalog")
-	}
-	if s.Schema != nil {
-		s.Client.Schema(*s.Schema)
-		s.logStageId(log.Debug()).Str("schema", *s.Schema).Msg("set schema")
-	}
-	for k, v := range s.SessionParams {
-		s.Client.SessionParam(k, v)
-	}
-	if len(s.SessionParams) > 0 {
-		s.logStageId(log.Debug()).
-			Object("delta", log.NewMarshaller(s.SessionParams)).
-			Str("final", s.Client.GetSessionParams()).
-			Msg("added session params")
-	}
-	for _, nextStage := range s.NextStages {
-		if nextStage.GetClient == nil {
-			nextStage.GetClient = s.GetClient
-		}
-		if nextStage.Client == nil {
-			nextStage.Client = s.Client
-		}
-		if nextStage.AbortAll == nil {
-			nextStage.AbortAll = s.AbortAll
-		}
-		if nextStage.OnQueryCompletion == nil {
-			nextStage.OnQueryCompletion = s.OnQueryCompletion
-		}
-		if nextStage.errorChan == nil {
-			nextStage.errorChan = s.errorChan
-		}
-	}
-	s.Client.AppendClientTag(s.Id)
+	s.prepareClient()
+	s.propagateStates()
 	if err = s.runQueries(ctx, s.Queries, nil); err != nil {
 		return err
 	}
@@ -229,43 +225,64 @@ func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err e
 	return nil
 }
 
-func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *string) error {
-	defer func() {
-		if r := recover(); r != nil {
-			s.logStageId(log.Error()).Msgf("recovered from panic: %v", r)
-		}
-	}()
+func getNow() *time.Time {
+	now := time.Now()
+	return &now
+}
+
+func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (err error) {
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
+	//		if e, ok := r.(error); ok {
+	//			err = e
+	//		}
+	//	}
+	//}()
 	for i, query := range queries {
 		select {
 		case <-ctx.Done():
-			// context got cancelled, handle error and return.
-			s.logCtxErr(ctx)
 			return ctx.Err()
 		default:
 		}
-		qr, _, err := s.Client.Query(ctx, query)
-		s.attachAdditionalInfoToQueryResults(qr, query, filePath, i)
-		if err != nil {
-			if !s.AbortOnError {
-				if !errors.Is(err, context.Canceled) {
-					s.errorChan <- err
-					s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
-				}
-				continue
+		result := &QueryResult{
+			StageId:    s.Id,
+			Query:      query,
+			QueryFile:  queryFile,
+			QueryIndex: i,
+			QueryRows:  make([]presto.QueryRow, 0),
+			StartTime:  time.Now(),
+		}
+		qr, _, queryErr := s.Client.Query(ctx, query)
+		if qr != nil {
+			result.QueryId = qr.Id
+			result.InfoUrl = qr.InfoUri
+		}
+		if queryErr != nil {
+			result.QueryError = queryErr
+			result.ConcludeExecution()
+			if s.OnQueryCompletion != nil {
+				s.OnQueryCompletion(result)
 			}
-			return err
+			// Each query should have a query result sent to the channel, no matter
+			// its execution succeeded or not.
+			s.resultChan <- result
+			if errors.Is(queryErr, context.Canceled) || errors.Is(queryErr, context.DeadlineExceeded) {
+				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
+				return queryErr
+			}
+			if s.AbortOnError {
+				// Skip the rest queries in the same batch.
+				// Logging etc. will be handled in the parent stack.
+				return result
+			}
+			// Log the error information and continue running
+			s.logErr(ctx, result)
+			continue
 		}
 
-		// Assemble log message
-		e := s.logStageId(log.Info()).
-			Int("query_index", i).
-			Str("query_id", qr.Id).
-			Str("info_url", qr.InfoUri)
-		if filePath != nil {
-			e = e.Str("query_file", *filePath)
-		} else {
-			e = e.Str("query", query)
-		}
+		// Log query submission
+		e := log.Info().EmbedObject(result)
 		if catalog := s.Client.GetCatalog(); catalog != "" {
 			e = e.Str("catalog", catalog)
 		}
@@ -274,29 +291,35 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, filePath *stri
 		}
 		e.Msgf("submitted query")
 
-		rowCount, err := qr.Drain(ctx)
-		s.attachAdditionalInfoToQueryResults(qr, query, filePath, i)
-		if err != nil {
-			if !s.AbortOnError {
-				if !errors.Is(err, context.Canceled) {
-					s.errorChan <- err
-					s.logStageId(log.Error()).Object("details", log.NewMarshaller(err)).Msg("query failed")
-				}
-				continue
+		queryErr = qr.Drain(ctx, func(qr *presto.QueryResults) {
+			result.RowCount += len(qr.Data)
+			if s.SaveData {
+				// TODO: save data
 			}
-			return err
-		}
+		})
+		result.QueryError = queryErr
+		result.ConcludeExecution()
 		if s.OnQueryCompletion != nil {
-			s.OnQueryCompletion(qr, rowCount)
+			s.OnQueryCompletion(result)
 		}
-		e = s.logStageId(log.Info()).
-			Int("query_index", i).
-			Str("query_id", qr.Id).
-			Int("row_count", rowCount)
-		if filePath != nil {
-			e = e.Str("query_file", *filePath)
+		// Each query should have a query result sent to the channel, no matter
+		// its execution succeeded or not.
+		s.resultChan <- result
+		if queryErr != nil {
+			if errors.Is(queryErr, context.Canceled) || errors.Is(queryErr, context.DeadlineExceeded) {
+				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
+				return queryErr
+			}
+			if s.AbortOnError {
+				// Skip the rest queries in the same batch.
+				// Logging etc. will be handled in the parent stack.
+				return result
+			}
+			// Log the error information and continue running
+			s.logErr(ctx, result)
+			continue
 		}
-		e.Msgf("query finished")
+		log.Info().EmbedObject(result.NoLoggingQuery()).Msgf("query finished")
 	}
 	return nil
 }
