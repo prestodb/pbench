@@ -44,7 +44,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	assertStage(t, stage5, []*Stage{stage2, stage4}, []*Stage{stage6}, 2, 1)
 	assertStage(t, stage6, []*Stage{stage5}, []*Stage(nil), 0, 1)
 
-	stage4.AbortOnError = abortOnError
+	stage4.AbortOnError = &abortOnError
 	rowCount, errs := 0, make([]error, 0, len(expectedErrors))
 	stage1.OnQueryCompletion = func(result *QueryResult) {
 		rowCount += result.RowCount

@@ -23,7 +23,9 @@ var DefaultGetClientFn = func() *presto.Client {
 
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
-	Id            string         `json:"-"`
+	Id string `json:"-"`
+	// Catalog, schema, and session params will be inherited by the children stages unless a new client is created
+	// by setting start_on_new_client = true on children stages.
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`
@@ -34,12 +36,18 @@ type Stage struct {
 	// If StartOnNewClient is set to true, this stage will create a new client to execute itself.\
 	// This new client will be passed down to its descendant stages unless those stages also set StartOnNewClient to true.
 	// Each client can carry their own set of client information, tags, session properties, user credentials, etc.
+	// Descendant stages will **NOT** inherit this value from their predecessors.
 	StartOnNewClient bool `json:"start_on_new_client,omitempty"`
 	// If AbortOnError is set to true, the context associated with this stage will be canceled if an error occurs.
 	// Depending on when the cancellable context was created, this may abort some or all other running stages and all future stages.
-	AbortOnError bool `json:"abort_on_error,omitempty"`
+	// Children stages will inherit this value from their parent if it is not set.
+	AbortOnError *bool `json:"abort_on_error,omitempty"`
 	// If SaveData is set to true, the query result will be saved to files in its raw form.
-	SaveData       bool     `json:"save_data"`
+	// Children stages will inherit this value from their parent if it is not set.
+	SaveData *bool `json:"save_data,omitempty"`
+	// If SaveJson is set to true, the query json will be saved to files in its raw form.
+	// Children stages will inherit this value from their parent if it is not set.
+	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
 	BaseDir        string   `json:"-"`
 	Prerequisites  []*Stage `json:"-"`
@@ -128,12 +136,25 @@ func (s *Stage) prepareClient() {
 }
 
 func (s *Stage) propagateStates() {
+	falseValue := false
+	if s.SaveJson == nil {
+		s.SaveJson = &falseValue
+	}
+	if s.SaveData == nil {
+		s.SaveData = &falseValue
+	}
+	if s.AbortOnError == nil {
+		s.AbortOnError = &falseValue
+	}
 	for _, nextStage := range s.NextStages {
 		if nextStage.GetClient == nil {
 			nextStage.GetClient = s.GetClient
 		}
 		if nextStage.Client == nil {
 			nextStage.Client = s.Client
+		}
+		if nextStage.AbortOnError == nil {
+			nextStage.AbortOnError = s.AbortOnError
 		}
 		if nextStage.AbortAll == nil {
 			nextStage.AbortAll = s.AbortAll
@@ -143,6 +164,12 @@ func (s *Stage) propagateStates() {
 		}
 		if nextStage.resultChan == nil {
 			nextStage.resultChan = s.resultChan
+		}
+		if nextStage.SaveData == nil {
+			nextStage.SaveData = s.SaveData
+		}
+		if nextStage.SaveJson == nil {
+			nextStage.SaveJson = s.SaveJson
 		}
 	}
 }
@@ -182,7 +209,7 @@ func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err e
 		}
 		if err != nil {
 			s.logErr(ctx, err)
-			if s.AbortOnError && s.AbortAll != nil {
+			if *s.AbortOnError && s.AbortAll != nil {
 				log.Debug().EmbedObject(s).Msg("canceling the context because abort_on_error is set to true")
 				s.AbortAll(err)
 			}
@@ -271,7 +298,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
 				return queryErr
 			}
-			if s.AbortOnError {
+			if *s.AbortOnError {
 				// Skip the rest queries in the same batch.
 				// Logging etc. will be handled in the parent stack.
 				return result
@@ -293,7 +320,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 
 		queryErr = qr.Drain(ctx, func(qr *presto.QueryResults) {
 			result.RowCount += len(qr.Data)
-			if s.SaveData {
+			if *s.SaveData {
 				// TODO: save data
 			}
 		})
@@ -310,7 +337,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
 				return queryErr
 			}
-			if s.AbortOnError {
+			if *s.AbortOnError {
 				// Skip the rest queries in the same batch.
 				// Logging etc. will be handled in the parent stack.
 				return result
@@ -344,5 +371,6 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.AbortOnError = other.AbortOnError
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
+	s.SaveData = other.SaveData
 	return s
 }

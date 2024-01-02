@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,6 +29,7 @@ func main() {
 	}
 
 	b := strings.Builder{}
+	b.WriteString("stage_id,query_file,query_index,info_url,succeeded,row_count,start_time,end_time,duration\n")
 	startingStage.OnQueryCompletion = func(qr *stage.QueryResult) {
 		b.WriteString(qr.StageId + ",")
 		if qr.QueryFile != nil {
@@ -37,14 +37,12 @@ func main() {
 		} else {
 			b.WriteString("inline")
 		}
-		b.WriteString(fmt.Sprintf(",%d,%d,%s,%s,%s\n",
-			qr.QueryIndex, qr.RowCount,
+		b.WriteString(fmt.Sprintf(",%d,%s,%t,%d,%s,%s,%s\n",
+			qr.QueryIndex, qr.InfoUrl, qr.QueryError == nil, qr.RowCount,
 			qr.StartTime.Format(time.RFC3339), qr.EndTime.Format(time.RFC3339), *qr.Duration))
 	}
-	results := startingStage.Run(context.Background())
-	byt, _ := json.Marshal(results)
-	_ = os.WriteFile(startingStage.Id+"_result.json", byt, 0644)
-	_ = os.WriteFile(startingStage.Id+"_time.csv", []byte(b.String()), 0644)
+	startingStage.Run(context.Background())
+	_ = os.WriteFile(startingStage.Id+"_log.csv", []byte(b.String()), 0644)
 }
 
 func processPath(path string) (st *stage.Stage, err error) {
