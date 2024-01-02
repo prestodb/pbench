@@ -2,6 +2,7 @@ package presto
 
 import (
 	"context"
+	"io"
 	"net/http"
 )
 
@@ -46,4 +47,17 @@ func (c *Client) CancelQuery(ctx context.Context, nextUri string, opts ...Reques
 	}
 
 	return c.requestQueryResults(ctx, req)
+}
+
+func (c *Client) GetQueryInfo(ctx context.Context, queryId string, writer io.Writer, opts ...RequestOption) (*http.Response, error) {
+	req, err := c.NewRequest("GET",
+		"v1/query/"+queryId+"?pretty", nil, opts...)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.Do(ctx, req, writer)
+	if err != nil {
+		return resp, err
+	}
+	return resp, nil
 }
