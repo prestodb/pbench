@@ -8,23 +8,23 @@ import (
 )
 
 type QueryResult struct {
-	StageId        string
-	Query          string
-	QueryFile      *string
-	QueryIndex     int
-	QueryId        string
-	InfoUrl        string
-	QueryError     error
-	RowCount       int
-	QueryRows      []presto.QueryRow
-	StartTime      time.Time
-	EndTime        *time.Time
-	Duration       *time.Duration
-	noLoggingQuery bool
+	StageId       string
+	Query         string
+	QueryFile     *string
+	QueryIndex    int
+	QueryId       string
+	InfoUrl       string
+	QueryError    error
+	RowCount      int
+	QueryRows     []presto.QueryRow
+	StartTime     time.Time
+	EndTime       *time.Time
+	Duration      *time.Duration
+	simpleLogging bool
 }
 
-func (q *QueryResult) NoLoggingQuery() *QueryResult {
-	q.noLoggingQuery = true
+func (q *QueryResult) SimpleLogging() *QueryResult {
+	q.simpleLogging = true
 	return q
 }
 
@@ -32,14 +32,16 @@ func (q *QueryResult) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("benchmark_stage_id", q.StageId)
 	if q.QueryFile != nil {
 		e.Str("query_file", *q.QueryFile)
-	} else if q.noLoggingQuery {
-		q.noLoggingQuery = false
-	} else {
+	} else if !q.simpleLogging {
 		e.Str("query", q.Query)
 	}
-	e.Int("query_index", q.QueryIndex).
-		Str("query_id", q.QueryId).
-		Str("info_url", q.InfoUrl)
+	e.Int("query_index", q.QueryIndex)
+	e.Str("info_url", q.InfoUrl)
+	if q.simpleLogging {
+		q.simpleLogging = false
+		return
+	}
+	e.Str("query_id", q.QueryId)
 	if q.QueryError != nil {
 		e.Object("query_error", log.NewMarshaller(q.QueryError))
 	} else {

@@ -49,7 +49,7 @@ func ReadStageFromFile(filePath string) (*Stage, error) {
 		return nil, err
 	}
 	stage := &Stage{
-		Id:      stageIdFromFilePath(filePath),
+		Id:      fileNameWithoutPathAndExt(filePath),
 		BaseDir: filepath.Dir(filePath),
 	}
 	bytes, err := os.ReadFile(filePath)
@@ -64,7 +64,7 @@ func ReadStageFromFile(filePath string) (*Stage, error) {
 }
 
 func ParseStageFromFile(filePath string, stages Map) (*Stage, error) {
-	stage, ok := stages[stageIdFromFilePath(filePath)]
+	stage, ok := stages[fileNameWithoutPathAndExt(filePath)]
 	if ok {
 		log.Debug().Msgf("%s already parsed, returned", stage.Id)
 		return stage, nil
@@ -113,7 +113,7 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 	return stage, nil
 }
 
-func stageIdFromFilePath(filePath string) string {
+func fileNameWithoutPathAndExt(filePath string) string {
 	// The stage ID is the file name without directory path and extension.
 	// It will be filePath[lastPathSeparator+1 : lastDot], so we have the following default values.
 	lastPathSeparator, lastDot := -1, len(filePath)

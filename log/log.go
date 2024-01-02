@@ -15,6 +15,7 @@ var OverrideFatal bool
 func init() {
 	// Initialize logger to omit the timestamp and print directly to stdout.
 	log.Logger = zerolog.New(os.Stdout).With().Timestamp().Stack().Logger()
+	zerolog.DurationFieldInteger = true
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 }
 

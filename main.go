@@ -8,7 +8,6 @@ import (
 	"presto-benchmark/log"
 	"presto-benchmark/stage"
 	"strings"
-	"time"
 )
 
 func main() {
@@ -28,21 +27,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to parse benchmark")
 	}
 
-	b := strings.Builder{}
-	b.WriteString("stage_id,query_file,query_index,info_url,succeeded,row_count,start_time,end_time,duration\n")
-	startingStage.OnQueryCompletion = func(qr *stage.QueryResult) {
-		b.WriteString(qr.StageId + ",")
-		if qr.QueryFile != nil {
-			b.WriteString(*qr.QueryFile)
-		} else {
-			b.WriteString("inline")
-		}
-		b.WriteString(fmt.Sprintf(",%d,%s,%t,%d,%s,%s,%s\n",
-			qr.QueryIndex, qr.InfoUrl, qr.QueryError == nil, qr.RowCount,
-			qr.StartTime.Format(time.RFC3339), qr.EndTime.Format(time.RFC3339), *qr.Duration))
-	}
 	startingStage.Run(context.Background())
-	_ = os.WriteFile(startingStage.Id+"_log.csv", []byte(b.String()), 0644)
 }
 
 func processPath(path string) (st *stage.Stage, err error) {

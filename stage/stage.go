@@ -1,14 +1,18 @@
 package stage
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"presto-benchmark/log"
 	"presto-benchmark/presto"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -63,9 +67,11 @@ type Stage struct {
 	OnQueryCompletion OnQueryCompletionFn     `json:"-"`
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
+	wgExitMainStage *sync.WaitGroup
 	// started is used to make sure only one goroutine is started to run this stage when there are multiple prerequisites.
 	started    atomic.Bool
 	resultChan chan *QueryResult
+	outputPath string
 }
 
 func (s *Stage) MarshalZerologObject(e *zerolog.Event) {
@@ -115,21 +121,21 @@ func (s *Stage) prepareClient() {
 			log.Debug().Msg("using DefaultGetClientFn")
 		}
 		s.Client = s.GetClient()
-		log.Debug().EmbedObject(s).Msg("created new client")
+		log.Info().EmbedObject(s).Msg("created new client")
 	}
 	if s.Catalog != nil {
 		s.Client.Catalog(*s.Catalog)
-		log.Debug().EmbedObject(s).Str("catalog", *s.Catalog).Msg("set catalog")
+		log.Info().EmbedObject(s).Str("catalog", *s.Catalog).Msg("set catalog")
 	}
 	if s.Schema != nil {
 		s.Client.Schema(*s.Schema)
-		log.Debug().EmbedObject(s).Str("schema", *s.Schema).Msg("set schema")
+		log.Info().EmbedObject(s).Str("schema", *s.Schema).Msg("set schema")
 	}
 	for k, v := range s.SessionParams {
 		s.Client.SessionParam(k, v)
 	}
 	if len(s.SessionParams) > 0 {
-		log.Debug().EmbedObject(s).
+		log.Info().EmbedObject(s).
 			Object("delta", log.NewMarshaller(s.SessionParams)).
 			Str("final", s.Client.GetSessionParams()).
 			Msg("added session params")
@@ -164,15 +170,15 @@ func (s *Stage) propagateStates() {
 		if nextStage.OnQueryCompletion == nil {
 			nextStage.OnQueryCompletion = s.OnQueryCompletion
 		}
-		if nextStage.resultChan == nil {
-			nextStage.resultChan = s.resultChan
-		}
 		if nextStage.SaveData == nil {
 			nextStage.SaveData = s.SaveData
 		}
 		if nextStage.SaveJson == nil {
 			nextStage.SaveJson = s.SaveJson
 		}
+		nextStage.resultChan = s.resultChan
+		nextStage.outputPath = s.outputPath
+		nextStage.wgExitMainStage = s.wgExitMainStage
 	}
 }
 
@@ -180,15 +186,20 @@ func (s *Stage) propagateStates() {
 func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))
 	s.resultChan = make(chan *QueryResult)
-	wgExitMainStage := &sync.WaitGroup{}
-	wgExitMainStage.Add(1)
-	go func() {
-		wgExitMainStage.Wait()
-		close(s.resultChan)
-	}()
-
+	s.wgExitMainStage = &sync.WaitGroup{}
+	s.wgExitMainStage.Add(1)
 	ctx, s.AbortAll = context.WithCancelCause(ctx)
 	log.Debug().EmbedObject(s).Msg("created cancellable context")
+
+	// create output directory
+	s.outputPath = filepath.Join(s.BaseDir, fmt.Sprintf("%s-output-%s", s.Id, time.Now().Format(time.RFC3339)))
+	if err := os.Mkdir(s.outputPath, 0755); err != nil {
+		log.Fatal().Str("output_path", s.outputPath).
+			Err(err).Msg("failed to create output directory")
+	} else {
+		log.Info().Str("output_path", s.outputPath).
+			Msg("output will be saved in this path")
+	}
 
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
@@ -198,18 +209,34 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		signal.Stop(sigint)
 	}()
 	go func() {
-		_ = s.run(ctx, wgExitMainStage)
+		s.wgExitMainStage.Wait()
+		close(s.resultChan)
 	}()
+	go func() {
+		_ = s.run(ctx)
+	}()
+	b := strings.Builder{}
+	b.WriteString("stage_id,query_file,query_index,info_url,succeeded,row_count,start_time,end_time,duration\n")
 	for result := range s.resultChan {
 		results = append(results, result)
+		b.WriteString(result.StageId + ",")
+		if result.QueryFile != nil {
+			b.WriteString(*result.QueryFile)
+		} else {
+			b.WriteString("inline")
+		}
+		b.WriteString(fmt.Sprintf(",%d,%s,%t,%d,%s,%s,%s\n",
+			result.QueryIndex, result.InfoUrl, result.QueryError == nil, result.RowCount,
+			result.StartTime.Format(time.RFC3339), result.EndTime.Format(time.RFC3339), *result.Duration))
 	}
+	_ = os.WriteFile(filepath.Join(s.outputPath, "summary.csv"), []byte(b.String()), 0644)
 	return results
 }
 
-func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err error) {
+func (s *Stage) run(ctx context.Context) (err error) {
 	if !s.started.CompareAndSwap(false, true) {
 		// If other prerequisites finished earlier, then this stage is already called and waiting.
-		wgExitMainStage.Done()
+		s.wgExitMainStage.Done()
 		return nil
 	}
 	defer func() {
@@ -224,14 +251,14 @@ func (s *Stage) run(ctx context.Context, wgExitMainStage *sync.WaitGroup) (err e
 			}
 		} else {
 			// Trigger descendant stages.
-			wgExitMainStage.Add(len(s.NextStages))
+			s.wgExitMainStage.Add(len(s.NextStages))
 			for _, nextStage := range s.NextStages {
 				go func(nextStage *Stage) {
-					_ = nextStage.run(ctx, wgExitMainStage)
+					_ = nextStage.run(ctx)
 				}(nextStage)
 			}
 		}
-		wgExitMainStage.Done()
+		s.wgExitMainStage.Done()
 	}()
 	select {
 	case <-ctx.Done():
@@ -266,12 +293,22 @@ func getNow() *time.Time {
 	return &now
 }
 
-func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (err error) {
+func queryOutputFileName(s *Stage, result *QueryResult) (fileName string) {
+	if result.QueryFile != nil {
+		fileName = fileNameWithoutPathAndExt(*result.QueryFile)
+	} else {
+		fileName = "inline"
+	}
+	fileName = fmt.Sprintf("%s_%s_q%d", s.Id, fileName, result.QueryIndex)
+	return
+}
+
+func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
 			if e, ok := r.(error); ok {
-				err = e
+				retErr = e
 			}
 		}
 	}()
@@ -289,13 +326,13 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			QueryRows:  make([]presto.QueryRow, 0),
 			StartTime:  time.Now(),
 		}
-		qr, _, queryErr := s.Client.Query(ctx, query)
+		qr, _, err := s.Client.Query(ctx, query)
 		if qr != nil {
 			result.QueryId = qr.Id
 			result.InfoUrl = qr.InfoUri
 		}
-		if queryErr != nil {
-			result.QueryError = queryErr
+		if err != nil {
+			result.QueryError = err
 			result.ConcludeExecution()
 			if s.OnQueryCompletion != nil {
 				s.OnQueryCompletion(result)
@@ -303,7 +340,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			// Each query should have a query result sent to the channel, no matter
 			// its execution succeeded or not.
 			s.resultChan <- result
-			if errors.Is(queryErr, context.Canceled) || errors.Is(queryErr, context.DeadlineExceeded) {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
 				return result
 			}
@@ -318,22 +355,78 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		}
 
 		// Log query submission
-		e := log.Info().EmbedObject(result)
+		e := log.Debug().EmbedObject(result.SimpleLogging())
 		if catalog := s.Client.GetCatalog(); catalog != "" {
 			e = e.Str("catalog", catalog)
 		}
 		if schema := s.Client.GetSchema(); schema != "" {
 			e = e.Str("schema", schema)
 		}
+		if *s.SaveData {
+			e.Bool("save_data", true)
+		}
 		e.Msgf("submitted query")
 
-		queryErr = qr.Drain(ctx, func(qr *presto.QueryResults) {
-			result.RowCount += len(qr.Data)
-			if *s.SaveData {
-				// TODO: save data
+		var (
+			queryOutputFile *os.File
+			queryOutput     *bufio.Writer
+			wgQueryOutput   *sync.WaitGroup
+		)
+		if *s.SaveData {
+			queryOutputFile, err = os.OpenFile(
+				filepath.Join(s.outputPath, queryOutputFileName(s, result))+".output",
+				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+			if err == nil {
+				queryOutput = bufio.NewWriterSize(queryOutputFile, 8192)
+				wgQueryOutput = &sync.WaitGroup{}
 			}
-		})
-		result.QueryError = queryErr
+		}
+		if err == nil {
+			err = qr.Drain(ctx, func(qr *presto.QueryResults) error {
+				result.RowCount += len(qr.Data)
+				if queryOutput == nil {
+					return nil
+				}
+				// Write output asynchronously. wgExitMainStage prevents the program from exiting if there is still
+				// output data to write after all the queries finish running.
+				s.wgExitMainStage.Add(1)
+				// wgQueryOutput waits for all the writes to complete then flush and close the file.
+				wgQueryOutput.Add(1)
+				go func(data []json.RawMessage) {
+					defer func() {
+						wgQueryOutput.Done()
+						s.wgExitMainStage.Done()
+					}()
+					for _, row := range data {
+						_, ioErr := queryOutput.Write(row)
+						if ioErr == nil {
+							ioErr = queryOutput.WriteByte('\n')
+						}
+						if ioErr != nil {
+							log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+								Msg("failed to write query result")
+							return
+						}
+					}
+				}(qr.Data)
+				return nil
+			})
+			// Now all the data for this query is being written
+			if queryOutput != nil {
+				s.wgExitMainStage.Add(1)
+				go func() {
+					wgQueryOutput.Wait()
+					if ioErr := queryOutput.Flush(); ioErr != nil {
+						log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+							Msg("failed to write query result")
+					}
+					_ = queryOutputFile.Close()
+					log.Debug().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
+					s.wgExitMainStage.Done()
+				}()
+			}
+		}
+		result.QueryError = err
 		result.ConcludeExecution()
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(result)
@@ -341,8 +434,8 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		// Each query should have a query result sent to the channel, no matter
 		// its execution succeeded or not.
 		s.resultChan <- result
-		if queryErr != nil {
-			if errors.Is(queryErr, context.Canceled) || errors.Is(queryErr, context.DeadlineExceeded) {
+		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
 				return result
 			}
@@ -355,7 +448,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			s.logErr(ctx, result)
 			continue
 		}
-		log.Info().EmbedObject(result.NoLoggingQuery()).Msgf("query finished")
+		log.Info().EmbedObject(result).Msgf("query finished")
 	}
 	return nil
 }

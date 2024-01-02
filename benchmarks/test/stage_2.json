@@ -4,5 +4,6 @@
   ],
   "next": [
     "stage_5.json"
-  ]
+  ],
+  "save_data": true
 }

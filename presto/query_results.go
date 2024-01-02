@@ -48,7 +48,7 @@ func (qr *QueryResults) FetchNextBatch(ctx context.Context) error {
 	return nil
 }
 
-type ResultBatchHandler func(qr *QueryResults)
+type ResultBatchHandler func(qr *QueryResults) error
 
 func (qr *QueryResults) Drain(ctx context.Context, handler ResultBatchHandler) error {
 	for qr.HasMoreBatch() {
@@ -58,7 +58,10 @@ func (qr *QueryResults) Drain(ctx context.Context, handler ResultBatchHandler) e
 		}
 		//sort.Slice(qr.Data, func(i, j int) bool { return bytes.Compare(qr.Data[i], qr.Data[j]) < 0 })
 		if handler != nil {
-			handler(qr)
+			if err = handler(qr); err != nil {
+				qr.Data = nil
+				return err
+			}
 		}
 		qr.Data = nil
 	}
