@@ -120,32 +120,3 @@ order by cs1.product_name
        , cs2.s1
 limit 100
 ;
-
--- drop table if exists q64_result_0;
--- create table q64_result_0 (
--- product_name    varchar(50), -- string,
--- store_name      varchar(50), -- string,
--- store_zip       varchar(50), -- string,
--- b_street_number varchar(50), -- string,
--- b_street_name   varchar(50), -- string,
--- b_city          varchar(50), -- string,
--- b_zip           varchar(50), -- string,
--- c_street_number varchar(50), -- string,
--- c_street_name   varchar(50), -- string,
--- c_city          varchar(50), -- string,
--- c_zip           varchar(50), -- string,
--- syear1          int,
--- cnt1            bigint,
--- s11             decimal(38,2),
--- s21             decimal(38,2),
--- s31             decimal(38,2),
--- s12             decimal(38,2),
--- s22             decimal(38,2),
--- s32             decimal(38,2),
--- syear2          int,
--- cnt2            bigint
--- ) 
--- --USING delta;
--- ;
--- insert into q64_result_0
---
