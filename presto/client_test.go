@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"presto-benchmark/presto"
+	"strings"
 	"syscall"
 	"testing"
 )
@@ -12,9 +13,7 @@ import (
 func TestQuery(t *testing.T) {
 	// This test requires Presto hive query runner.
 	client, err := presto.NewClient("http://127.0.0.1:8080")
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 	qr, _, err := client.
 		User("ethan").
 		Catalog("tpch").
@@ -36,8 +35,11 @@ func TestQuery(t *testing.T) {
 		rowCount += len(qr.Data)
 		return nil
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, err)
 	assert.Equal(t, 150000, rowCount)
+
+	buf := &strings.Builder{}
+	_, err = client.GetQueryInfo(context.Background(), qr.Id, buf)
+	assert.Nil(t, err)
+	assert.Greater(t, buf.Len(), 0)
 }

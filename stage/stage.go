@@ -190,7 +190,30 @@ func (s *Stage) run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (retErr error) {
+func (s *Stage) SaveQueryJsonFile(ctx context.Context, result *QueryResult) {
+	if !*s.SaveJson && result.QueryError == nil {
+		return
+	}
+	queryJsonFile, err := os.OpenFile(
+		filepath.Join(s.outputPath, queryOutputFileName(s, result))+".json",
+		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err == nil {
+		queryJson := bufio.NewWriterSize(queryJsonFile, 8192)
+		_, err = s.Client.GetQueryInfo(ctx, result.QueryId, queryJson)
+		if err == nil {
+			err = queryJson.Flush()
+			if err == nil {
+				err = queryJsonFile.Close()
+			}
+		}
+	}
+	if err != nil {
+		log.Error().Err(err).EmbedObject(result.SimpleLogging()).
+			Msg("failed to write query json")
+	}
+}
+
+func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, queryFile *string) (result *QueryResult, retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
@@ -198,126 +221,119 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				retErr = e
 			}
 		}
-	}()
-	for i, query := range queries {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-		result := &QueryResult{
-			StageId:    s.Id,
-			Query:      query,
-			QueryFile:  queryFile,
-			QueryIndex: i,
-			QueryRows:  make([]presto.QueryRow, 0),
-			StartTime:  time.Now(),
-		}
-		qr, _, err := s.Client.Query(ctx, query)
-		if qr != nil {
-			result.QueryId = qr.Id
-			result.InfoUrl = qr.InfoUri
-		}
-		if err != nil {
-			result.QueryError = err
-			result.ConcludeExecution()
-			if s.OnQueryCompletion != nil {
-				s.OnQueryCompletion(result)
-			}
-			// Each query should have a query result sent to the channel, no matter
-			// its execution succeeded or not.
-			s.resultChan <- result
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
-				return result
-			}
-			if *s.AbortOnError {
-				// Skip the rest queries in the same batch.
-				// Logging etc. will be handled in the parent stack.
-				return result
-			}
-			// Log the error information and continue running
-			s.logErr(ctx, result)
-			continue
-		}
-
-		// Log query submission
-		e := log.Debug().EmbedObject(result.SimpleLogging())
-		if catalog := s.Client.GetCatalog(); catalog != "" {
-			e = e.Str("catalog", catalog)
-		}
-		if schema := s.Client.GetSchema(); schema != "" {
-			e = e.Str("schema", schema)
-		}
-		if *s.SaveData {
-			e.Bool("save_data", true)
-		}
-		e.Msgf("submitted query")
-
-		var (
-			queryOutputFile *os.File
-			queryOutput     *bufio.Writer
-			wgQueryOutput   *sync.WaitGroup
-		)
-		if *s.SaveData {
-			queryOutputFile, err = os.OpenFile(
-				filepath.Join(s.outputPath, queryOutputFileName(s, result))+".output",
-				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-			if err == nil {
-				queryOutput = bufio.NewWriterSize(queryOutputFile, 8192)
-				wgQueryOutput = &sync.WaitGroup{}
-			}
-		}
-		if err == nil {
-			err = qr.Drain(ctx, func(qr *presto.QueryResults) error {
-				result.RowCount += len(qr.Data)
-				if queryOutput == nil {
-					return nil
-				}
-				// Write output asynchronously. wgExitMainStage prevents the program from exiting if there is still
-				// output data to write after all the queries finish running.
-				s.wgExitMainStage.Add(1)
-				// wgQueryOutput waits for all the writes to complete then flush and close the file.
-				wgQueryOutput.Add(1)
-				go func(data []json.RawMessage) {
-					defer func() {
-						wgQueryOutput.Done()
-						s.wgExitMainStage.Done()
-					}()
-					for _, row := range data {
-						_, ioErr := queryOutput.Write(row)
-						if ioErr == nil {
-							ioErr = queryOutput.WriteByte('\n')
-						}
-						if ioErr != nil {
-							log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
-								Msg("failed to write query result")
-							return
-						}
-					}
-				}(qr.Data)
-				return nil
-			})
-			// Now all the data for this query is being written
-			if queryOutput != nil {
-				s.wgExitMainStage.Add(1)
-				go func() {
-					wgQueryOutput.Wait()
-					if ioErr := queryOutput.Flush(); ioErr != nil {
-						log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
-							Msg("failed to write query result")
-					}
-					_ = queryOutputFile.Close()
-					log.Debug().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
-					s.wgExitMainStage.Done()
-				}()
-			}
-		}
-		result.QueryError = err
+		result.QueryError = retErr
 		result.ConcludeExecution()
+	}()
+
+	result = &QueryResult{
+		StageId:    s.Id,
+		Query:      query,
+		QueryFile:  queryFile,
+		QueryIndex: queryIndex,
+		QueryRows:  make([]presto.QueryRow, 0),
+		StartTime:  time.Now(),
+	}
+
+	select {
+	case <-ctx.Done():
+		return result, ctx.Err()
+	default:
+	}
+
+	clientResult, _, err := s.Client.Query(ctx, query)
+	if clientResult != nil {
+		result.QueryId = clientResult.Id
+		result.InfoUrl = clientResult.InfoUri
+	}
+	if err != nil {
+		return result, err
+	}
+
+	// Log query submission
+	e := log.Debug().EmbedObject(result.SimpleLogging())
+	if catalog := s.Client.GetCatalog(); catalog != "" {
+		e = e.Str("catalog", catalog)
+	}
+	if schema := s.Client.GetSchema(); schema != "" {
+		e = e.Str("schema", schema)
+	}
+	if *s.SaveData {
+		e.Bool("save_data", true)
+	}
+	e.Msgf("submitted query")
+
+	var (
+		queryOutputFile *os.File
+		queryOutput     *bufio.Writer
+		wgQueryOutput   *sync.WaitGroup
+	)
+	if *s.SaveData {
+		queryOutputFile, err = os.OpenFile(
+			filepath.Join(s.outputPath, queryOutputFileName(s, result))+".output",
+			os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+		if err != nil {
+			return result, err
+		}
+		queryOutput = bufio.NewWriterSize(queryOutputFile, 8192)
+		wgQueryOutput = &sync.WaitGroup{}
+	}
+
+	err = clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
+		result.RowCount += len(qr.Data)
+		if queryOutput == nil {
+			return nil
+		}
+		// Write output asynchronously. wgExitMainStage prevents the program from exiting if there is still
+		// output data to write after all the queries finish running.
+		s.wgExitMainStage.Add(1)
+		// wgQueryOutput waits for all the writes to complete then flush and close the file.
+		wgQueryOutput.Add(1)
+		go func(data []json.RawMessage) {
+			defer func() {
+				wgQueryOutput.Done()
+				s.wgExitMainStage.Done()
+			}()
+			for _, row := range data {
+				_, ioErr := queryOutput.Write(row)
+				if ioErr == nil {
+					ioErr = queryOutput.WriteByte('\n')
+				}
+				if ioErr != nil {
+					log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+						Msg("failed to write query result")
+					return
+				}
+			}
+		}(qr.Data)
+		return nil
+	})
+
+	// Now all the data for this query is being written
+	if queryOutput != nil {
+		s.wgExitMainStage.Add(1)
+		go func() {
+			wgQueryOutput.Wait()
+			if ioErr := queryOutput.Flush(); ioErr != nil {
+				log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+					Msg("failed to write query result")
+			} else {
+				log.Debug().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
+			}
+			_ = queryOutputFile.Close()
+			s.wgExitMainStage.Done()
+		}()
+	}
+	return result, err
+}
+
+func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (retErr error) {
+	for i, query := range queries {
+		result, err := s.runQuery(ctx, i, query, queryFile)
+
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(result)
 		}
+		s.SaveQueryJsonFile(ctx, result)
 		// Each query should have a query result sent to the channel, no matter
 		// its execution succeeded or not.
 		s.resultChan <- result

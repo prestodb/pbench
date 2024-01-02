@@ -55,9 +55,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	}
 
 	results := stage1.Run(context.Background())
-	if err := os.RemoveAll(stage1.outputPath); err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, os.RemoveAll(stage1.outputPath))
 
 	assert.Equal(t, totalQueryCount, len(results))
 	assert.Equal(t, len(expectedErrors), len(errs))
@@ -87,9 +85,7 @@ func TestHttpError(t *testing.T) {
 	stage, _, err := ParseStageGraphFromFile("../benchmarks/test/http_error.json")
 	assert.Nil(t, err)
 	results := stage.Run(context.Background())
-	if err := os.RemoveAll(stage.outputPath); err != nil {
-		t.Fatal(err)
-	}
+	assert.Nil(t, os.RemoveAll(stage.outputPath))
 	assert.Equal(t, 1, len(results))
 	assert.Equal(t, "Schema is set but catalog is not (status code: 400)", results[0].QueryError.Error())
 }
