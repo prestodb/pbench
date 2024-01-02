@@ -48,7 +48,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	rowCount, errs := 0, make([]error, 0, len(expectedErrors))
 	stage1.OnQueryCompletion = func(result *QueryResult) {
 		rowCount += result.RowCount
-		if result.QueryError != nil {
+		if result.QueryError != nil && !errors.Is(result.QueryError, context.Canceled) {
 			errs = append(errs, result.QueryError)
 		}
 	}

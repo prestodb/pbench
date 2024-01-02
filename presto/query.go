@@ -37,3 +37,13 @@ func (c *Client) FetchNextBatch(ctx context.Context, nextUri string, opts ...Req
 
 	return c.requestQueryResults(ctx, req)
 }
+
+func (c *Client) CancelQuery(ctx context.Context, nextUri string, opts ...RequestOption) (*QueryResults, *http.Response, error) {
+	req, err := c.NewRequest("DELETE",
+		nextUri, nil, opts...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return c.requestQueryResults(ctx, req)
+}

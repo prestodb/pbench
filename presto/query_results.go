@@ -3,6 +3,8 @@ package presto
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"presto-benchmark/log"
 )
 
 type QueryRow []any
@@ -31,10 +33,14 @@ func (qr *QueryResults) HasMoreBatch() bool {
 func (qr *QueryResults) FetchNextBatch(ctx context.Context) error {
 	for qr.NextUri != nil {
 		newQr, _, err := qr.client.FetchNextBatch(ctx, *qr.NextUri)
-		*qr = *newQr
 		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				_, _, _ = qr.client.CancelQuery(context.Background(), *qr.NextUri)
+				log.Debug().Str("query_id", qr.Id).Msg("canceling query because the context is cancelled")
+			}
 			return err
 		}
+		*qr = *newQr
 		if len(qr.Data) > 0 {
 			break
 		}

@@ -3,8 +3,10 @@ package stage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/rs/zerolog"
 	"os"
+	"os/signal"
 	"presto-benchmark/log"
 	"presto-benchmark/presto"
 	"sync"
@@ -188,6 +190,13 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	ctx, s.AbortAll = context.WithCancelCause(ctx)
 	log.Debug().EmbedObject(s).Msg("created cancellable context")
 
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, os.Interrupt)
+	go func() {
+		sig := <-sigint
+		s.AbortAll(fmt.Errorf(sig.String()))
+		signal.Stop(sigint)
+	}()
 	go func() {
 		_ = s.run(ctx, wgExitMainStage)
 	}()
@@ -258,14 +267,14 @@ func getNow() *time.Time {
 }
 
 func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (err error) {
-	//defer func() {
-	//	if r := recover(); r != nil {
-	//		log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
-	//		if e, ok := r.(error); ok {
-	//			err = e
-	//		}
-	//	}
-	//}()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
+			if e, ok := r.(error); ok {
+				err = e
+			}
+		}
+	}()
 	for i, query := range queries {
 		select {
 		case <-ctx.Done():
@@ -296,7 +305,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			s.resultChan <- result
 			if errors.Is(queryErr, context.Canceled) || errors.Is(queryErr, context.DeadlineExceeded) {
 				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
-				return queryErr
+				return result
 			}
 			if *s.AbortOnError {
 				// Skip the rest queries in the same batch.
@@ -335,7 +344,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		if queryErr != nil {
 			if errors.Is(queryErr, context.Canceled) || errors.Is(queryErr, context.DeadlineExceeded) {
 				// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
-				return queryErr
+				return result
 			}
 			if *s.AbortOnError {
 				// Skip the rest queries in the same batch.
