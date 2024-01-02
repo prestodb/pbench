@@ -32,7 +32,7 @@ func main() {
 	results := make([]stage.BenchMarkQueryResult, 0, 100)
 	startingStage.OnQueryCompletion = func(qr *presto.QueryResults, rowCount int) {
 		results = append(results, stage.BenchMarkQueryResult{
-			StageContext: &qr.StageContext,
+			StageContext: &qr.QueryMetadata,
 			RowCount:     rowCount,
 		})
 	}
