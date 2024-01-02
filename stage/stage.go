@@ -47,9 +47,9 @@ type Stage struct {
 	// Depending on when the cancellable context was created, this may abort some or all other running stages and all future stages.
 	// Children stages will inherit this value from their parent if it is not set.
 	AbortOnError *bool `json:"abort_on_error,omitempty"`
-	// If SaveData is set to true, the query result will be saved to files in its raw form.
+	// If SaveOutput is set to true, the query result will be saved to files in its raw form.
 	// Children stages will inherit this value from their parent if it is not set.
-	SaveData *bool `json:"save_data,omitempty"`
+	SaveOutput *bool `json:"save_output,omitempty"`
 	// If SaveJson is set to true, the query json will be saved to files in its raw form.
 	// Children stages will inherit this value from their parent if it is not set.
 	SaveJson       *bool    `json:"save_json,omitempty"`
@@ -257,8 +257,8 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 	if schema := s.Client.GetSchema(); schema != "" {
 		e = e.Str("schema", schema)
 	}
-	if *s.SaveData {
-		e.Bool("save_data", true)
+	if *s.SaveOutput {
+		e.Bool("save_output", true)
 	}
 	e.Msgf("submitted query")
 
@@ -267,7 +267,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 		queryOutput     *bufio.Writer
 		wgQueryOutput   *sync.WaitGroup
 	)
-	if *s.SaveData {
+	if *s.SaveOutput {
 		queryOutputFile, err = os.OpenFile(
 			filepath.Join(s.outputPath, queryOutputFileName(s, result))+".output",
 			os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)

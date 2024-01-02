@@ -89,8 +89,8 @@ func (s *Stage) propagateStates() {
 	if s.SaveJson == nil {
 		s.SaveJson = &falseValue
 	}
-	if s.SaveData == nil {
-		s.SaveData = &falseValue
+	if s.SaveOutput == nil {
+		s.SaveOutput = &falseValue
 	}
 	if s.AbortOnError == nil {
 		s.AbortOnError = &falseValue
@@ -111,8 +111,8 @@ func (s *Stage) propagateStates() {
 		if nextStage.OnQueryCompletion == nil {
 			nextStage.OnQueryCompletion = s.OnQueryCompletion
 		}
-		if nextStage.SaveData == nil {
-			nextStage.SaveData = s.SaveData
+		if nextStage.SaveOutput == nil {
+			nextStage.SaveOutput = s.SaveOutput
 		}
 		if nextStage.SaveJson == nil {
 			nextStage.SaveJson = s.SaveJson
@@ -143,6 +143,6 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.AbortOnError = other.AbortOnError
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
-	s.SaveData = other.SaveData
+	s.SaveOutput = other.SaveOutput
 	return s
 }
