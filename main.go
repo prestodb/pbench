@@ -2,13 +2,47 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
+	"presto-benchmark/presto"
 	"presto-benchmark/stage"
 	"strings"
 )
+
+func main() {
+	argLen := len(os.Args)
+	if argLen < 2 {
+		log.Fatal().Msg("expecting directory paths or file paths.")
+	}
+	startingStage := new(stage.Stage)
+
+	for i := 1; i < argLen; i++ {
+		if st, err := processPath(os.Args[i]); err == nil {
+			startingStage.MergeWith(st)
+		}
+	}
+	_, _, err := stage.ParseStageGraph(startingStage)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to parse benchmark")
+	}
+
+	results := make([]stage.BenchMarkQueryResult, 0, 100)
+	startingStage.OnQueryCompletion = func(qr *presto.QueryResults, rowCount int) {
+		results = append(results, stage.BenchMarkQueryResult{
+			StageContext: &qr.StageContext,
+			RowCount:     rowCount,
+		})
+	}
+	errs := startingStage.Run(context.Background())
+	if len(errs) > 0 {
+		log.Error().Array("errors", log.NewMarshaller(errs)).Send()
+	}
+	byt, _ := json.Marshal(results)
+	os.WriteFile(startingStage.Id+".result.json", byt, 0644)
+}
 
 func processPath(path string) (st *stage.Stage, err error) {
 	defer func() {
@@ -42,28 +76,5 @@ func processPath(path string) (st *stage.Stage, err error) {
 			return nil, fmt.Errorf("%s is not a %s file", path, stage.DefaultStageFileExt)
 		}
 		return stage.ReadStageFromFile(path)
-	}
-}
-
-func main() {
-	argLen := len(os.Args)
-	if argLen < 2 {
-		log.Fatal().Msg("expecting directory paths or file paths.")
-	}
-	startingStage := new(stage.Stage)
-
-	for i := 1; i < argLen; i++ {
-		path := os.Args[i]
-		if st, err := processPath(path); err == nil {
-			startingStage.MergeWith(st)
-		}
-	}
-	_, _, err := stage.ParseStageGraph(startingStage)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to parse benchmark")
-	}
-	errs := startingStage.Run(context.Background())
-	if len(errs) > 0 {
-		log.Error().Array("errors", log.NewMarshaller(errs)).Send()
 	}
 }
