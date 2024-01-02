@@ -69,6 +69,9 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 }
 
 func (s *Stage) attachAdditionalInfoToQueryResults(qr *presto.QueryResults, query string, filePath *string, queryIndex int) {
+	if qr == nil {
+		return
+	}
 	qr.StageId = s.Id
 	if filePath == nil {
 		qr.Query = &query

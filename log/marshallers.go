@@ -3,7 +3,6 @@ package log
 import (
 	"fmt"
 	"github.com/rs/zerolog"
-	"log"
 	"reflect"
 	"sort"
 	"strings"
@@ -58,9 +57,6 @@ func NewMarshaller(obj any, other ...*Marshaller) *Marshaller {
 	for k == reflect.Pointer || k == reflect.Interface {
 		v = v.Elem()
 		k = v.Kind()
-	}
-	if k != reflect.Struct && k != reflect.Array && k != reflect.Slice && k != reflect.Map {
-		log.Panicf("the supplied arr parameter is %v, not a struct, array, slice, or map.", k)
 	}
 	if len(other) > 0 {
 		return &Marshaller{
