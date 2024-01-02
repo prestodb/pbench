@@ -140,9 +140,16 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.Queries = append(s.Queries, other.Queries...)
 	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
 	s.StartOnNewClient = other.StartOnNewClient
-	s.AbortOnError = other.AbortOnError
+	if other.AbortOnError != nil {
+		s.AbortOnError = other.AbortOnError
+	}
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
-	s.SaveOutput = other.SaveOutput
+	if other.SaveOutput != nil {
+		s.SaveOutput = other.SaveOutput
+	}
+	if other.SaveJson != nil {
+		s.SaveJson = other.SaveJson
+	}
 	return s
 }
