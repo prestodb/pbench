@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
+	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -90,8 +93,6 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	s.resultChan = make(chan *QueryResult)
 	s.wgExitMainStage = &sync.WaitGroup{}
 	s.wgExitMainStage.Add(1)
-	ctx, s.AbortAll = context.WithCancelCause(ctx)
-	log.Debug().EmbedObject(s).Msg("created cancellable context")
 
 	// create output directory
 	if s.OutputPath == "" {
@@ -106,12 +107,24 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			Msg("output will be saved in this path")
 	}
 
+	logPath := filepath.Join(s.OutputPath, s.Id+".log")
+	if logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644); err != nil {
+		log.Error().Str("log_path", logPath).
+			Err(err).Msg("failed to create log file")
+	} else {
+		bufWriter := bufio.NewWriterSize(logFile, 8192)
+		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stdout, bufWriter)).With().Timestamp().Stack().Logger())
+	}
+
 	timeToExit := make(chan os.Signal, 1)
 	signal.Notify(timeToExit, os.Interrupt, os.Kill)
 	go func() {
 		s.wgExitMainStage.Wait()
 		close(timeToExit)
 	}()
+
+	ctx, s.AbortAll = context.WithCancelCause(ctx)
+	log.Debug().EmbedObject(s).Msg("created cancellable context")
 	go func() {
 		_ = s.run(ctx)
 	}()
@@ -202,7 +215,7 @@ func (s *Stage) SaveQueryJsonFile(ctx context.Context, result *QueryResult) {
 		return
 	}
 	queryJsonFile, err := os.OpenFile(
-		filepath.Join(s.OutputPath, queryOutputFileName(s, result))+".json",
+		filepath.Join(s.OutputPath, querySource(s, result))+".json",
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err == nil {
 		queryJson := bufio.NewWriterSize(queryJsonFile, 8192)
@@ -246,7 +259,11 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 	default:
 	}
 
-	clientResult, _, err := s.Client.Query(ctx, query)
+	querySourceStr := querySource(s, result)
+	clientResult, _, err := s.Client.Query(ctx, query,
+		func(req *http.Request) {
+			req.Header.Set(presto.SourceHeader, querySourceStr)
+		})
 	if clientResult != nil {
 		result.QueryId = clientResult.Id
 		result.InfoUrl = clientResult.InfoUri
@@ -275,7 +292,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 	)
 	if *s.SaveOutput {
 		queryOutputFile, err = os.OpenFile(
-			filepath.Join(s.OutputPath, queryOutputFileName(s, result))+".output",
+			filepath.Join(s.OutputPath, querySourceStr)+".output",
 			os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 		if err != nil {
 			return result, err

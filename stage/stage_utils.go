@@ -14,7 +14,7 @@ func getNow() *time.Time {
 	return &now
 }
 
-func queryOutputFileName(s *Stage, result *QueryResult) (fileName string) {
+func querySource(s *Stage, result *QueryResult) (fileName string) {
 	if result.QueryFile != nil {
 		fileName = fileNameWithoutPathAndExt(*result.QueryFile)
 	} else {

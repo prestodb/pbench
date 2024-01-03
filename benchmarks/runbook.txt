@@ -8,7 +8,7 @@ cd presto-benchmark
 go build
 cd benchmarks
 benchmark_base='/Users/ezhang/Downloads/benchmark_runs'
-server='https://engethanb339n.ibm.prestodb.dev'
+server='https://'
 
 # Java SF-1K standard
 ../presto-benchmark \
@@ -42,6 +42,14 @@ server='https://engethanb339n.ibm.prestodb.dev'
     java.json \
     tpc-ds/optimizer+.json | tee $benchmark_base/tpc-ds_sf1k_java_optimizer+.log
 
+# Java SF-1K 2 streams
+../presto-benchmark \
+    -s $server \
+    -o $benchmark_base \
+    tpc-ds/tpc-ds_sf1k.json \
+    java.json \
+    tpc-ds/2streams.json | tee $benchmark_base/tpc-ds_sf1k_java_2streams.log
+
 # Native SF-1K standard
 ../presto-benchmark \
     -s $server \
@@ -57,6 +65,30 @@ server='https://engethanb339n.ibm.prestodb.dev'
     tpc-ds/tpc-ds_sf1k.json \
     native.json \
     tpc-ds/ordered.json | tee $benchmark_base/tpc-ds_sf1k_native_ordered.log
+
+# Native SF-1K full
+../presto-benchmark \
+    -s $server \
+    -o $benchmark_base \
+    tpc-ds/tpc-ds_sf1k.json \
+    native.json \
+    tpc-ds/full.json | tee $benchmark_base/tpc-ds_sf1k_native_full.log
+
+# Native SF-1K optimizer+
+../presto-benchmark \
+    -s $server \
+    -o $benchmark_base \
+    tpc-ds/tpc-ds_sf1k.json \
+    native.json \
+    tpc-ds/optimizer+.json | tee $benchmark_base/tpc-ds_sf1k_native_optimizer+.log
+
+# Native SF-1K 2 streams
+../presto-benchmark \
+    -s $server \
+    -o $benchmark_base \
+    tpc-ds/tpc-ds_sf1k.json \
+    native.json \
+    tpc-ds/2streams.json | tee $benchmark_base/tpc-ds_sf1k_native_2streams.log
 
 # Java SF-1 on Hive Query Runner
 ../presto-benchmark \
