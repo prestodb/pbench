@@ -1,8 +1,0 @@
-{
-  "session_params": {
-    "hive.parquet_pushdown_filter_enabled": true,
-    "join_distribution_type": "AUTOMATIC",
-    "join_reordering_strategy": "AUTOMATIC",
-    "query_max_execution_time": "8h"
-  }
-}

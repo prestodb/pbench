@@ -122,7 +122,11 @@ func (s *Stage) propagateStates() {
 }
 
 func (s *Stage) MergeWith(other *Stage) *Stage {
-	s.Id = other.Id
+	if s.Id == "" {
+		s.Id = other.Id
+	} else {
+		s.Id += "_" + other.Id
+	}
 	if other.Catalog != nil {
 		s.Catalog = other.Catalog
 	}

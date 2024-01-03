@@ -1,19 +1,21 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 GO=/usr/local/go/bin/go
 
-if [ ! -f ./presto-benchmark_$(arch) ]; then
+if [ ! -f $SCRIPT_DIR/presto-benchmark_$(arch) ]; then
     if [ ! -f $GO ]; then
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            wget https://go.dev/dl/go1.21.5.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz
+            pkg=go1.21.5.linux-amd64.tar.gz
+            wget https://go.dev/dl/$pkg
+            sudo tar -C /usr/local -xzf $pkg
+            rm $pkg
         elif [[ "$OSTYPE" == "darwin"* ]]; then
             echo "Please install go first: https://go.dev/dl/go1.21.5.darwin-amd64.pkg"
             exit
         fi
     fi
-    env GOOS=linux GOARCH=amd64 $GO build -o presto-benchmark_x86_64
-    env GOOS=darwin GOARCH=arm64 $GO build -o presto-benchmark_arm64
+    env GOOS=linux GOARCH=amd64 $GO build -o $SCRIPT_DIR/presto-benchmark_x86_64 $SCRIPT_DIR
+    env GOOS=darwin GOARCH=arm64 $GO build -o $SCRIPT_DIR/presto-benchmark_arm64 $SCRIPT_DIR
 fi
 
-./presto-benchmark_$(arch) $@
+$SCRIPT_DIR/presto-benchmark_$(arch) $@

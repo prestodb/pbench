@@ -1,0 +1,47 @@
+diff --color standard/query_36.sql ordered/query_36.sql
+22c22,24
+<        , case when lochierarchy = 0 then i_category end
+---
+>        , (case when lochierarchy = 0 then i_category end) desc
+>        , (case when lochierarchy != 0 then i_category end) asc
+>        , i_class
+
+diff --color standard/query_65.sql ordered/query_65.sql
+30c30,35
+< order by s_store_name, i_item_desc
+---
+> order by s_store_name
+>        , i_item_desc
+>        , sc.revenue
+>        , i_current_price
+>        , i_wholesale_cost
+>        , i_brand
+
+diff --color standard/query_71.sql ordered/query_71.sql
+43c43,47
+< order by ext_price desc, i_brand_id
+---
+> order by ext_price desc
+>        , i_brand_id
+>        , i_brand
+>        , t_hour
+>        , t_minute
+
+diff --color standard/query_73.sql ordered/query_73.sql
+32c32,37
+< order by cnt desc, c_last_name asc;
+---
+> order by cnt desc
+>        , c_last_name asc
+>        , c_first_name
+>        , c_salutation
+>        , c_preferred_cust_flag
+>        , ss_ticket_number;
+
+diff --color standard/query_77.sql ordered/query_77.sql
+103a104,106
+>        , sales
+>        , returns
+>        , profit
+105d107
+<

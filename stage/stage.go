@@ -97,7 +97,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	if s.OutputPath == "" {
 		s.OutputPath = s.BaseDir
 	}
-	s.OutputPath = filepath.Join(s.OutputPath, fmt.Sprintf("%s-output-%s", s.Id, time.Now().Format(time.RFC3339)))
+	s.OutputPath = filepath.Join(s.OutputPath, fmt.Sprintf("%s-%s", s.Id, time.Now().Format(time.RFC3339)))
 	if err := os.Mkdir(s.OutputPath, 0755); err != nil {
 		log.Fatal().Str("output_path", s.OutputPath).
 			Err(err).Msg("failed to create output directory")
