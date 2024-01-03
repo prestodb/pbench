@@ -53,6 +53,7 @@ type Stage struct {
 	// If SaveJson is set to true, the query json will be saved to files in its raw form.
 	// Children stages will inherit this value from their parent if it is not set.
 	SaveJson       *bool    `json:"save_json,omitempty"`
+	OutputPath     string   `json:"output_path,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
 	BaseDir        string   `json:"-"`
 	Prerequisites  []*Stage `json:"-"`
@@ -70,7 +71,6 @@ type Stage struct {
 	// started is used to make sure only one goroutine is started to run this stage when there are multiple prerequisites.
 	started    atomic.Bool
 	resultChan chan *QueryResult
-	outputPath string
 }
 
 func (s *Stage) waitForPrerequisites() <-chan struct{} {
@@ -92,12 +92,15 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	log.Debug().EmbedObject(s).Msg("created cancellable context")
 
 	// create output directory
-	s.outputPath = filepath.Join(s.BaseDir, fmt.Sprintf("%s-output-%s", s.Id, time.Now().Format(time.RFC3339)))
-	if err := os.Mkdir(s.outputPath, 0755); err != nil {
-		log.Fatal().Str("output_path", s.outputPath).
+	if s.OutputPath == "" {
+		s.OutputPath = s.BaseDir
+	}
+	s.OutputPath = filepath.Join(s.OutputPath, fmt.Sprintf("%s-output-%s", s.Id, time.Now().Format(time.RFC3339)))
+	if err := os.Mkdir(s.OutputPath, 0755); err != nil {
+		log.Fatal().Str("output_path", s.OutputPath).
 			Err(err).Msg("failed to create output directory")
 	} else {
-		log.Info().Str("output_path", s.outputPath).
+		log.Info().Str("output_path", s.OutputPath).
 			Msg("output will be saved in this path")
 	}
 
@@ -131,7 +134,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			result.QueryIndex, result.InfoUrl, result.QueryError == nil, result.RowCount,
 			result.StartTime.Format(time.RFC3339), result.EndTime.Format(time.RFC3339), *result.Duration))
 	}
-	_ = os.WriteFile(filepath.Join(s.outputPath, "summary.csv"), []byte(b.String()), 0644)
+	_ = os.WriteFile(filepath.Join(s.OutputPath, "summary.csv"), []byte(b.String()), 0644)
 	return results
 }
 
@@ -195,7 +198,7 @@ func (s *Stage) SaveQueryJsonFile(ctx context.Context, result *QueryResult) {
 		return
 	}
 	queryJsonFile, err := os.OpenFile(
-		filepath.Join(s.outputPath, queryOutputFileName(s, result))+".json",
+		filepath.Join(s.OutputPath, queryOutputFileName(s, result))+".json",
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err == nil {
 		queryJson := bufio.NewWriterSize(queryJsonFile, 8192)
@@ -269,7 +272,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 	)
 	if *s.SaveOutput {
 		queryOutputFile, err = os.OpenFile(
-			filepath.Join(s.outputPath, queryOutputFileName(s, result))+".output",
+			filepath.Join(s.OutputPath, queryOutputFileName(s, result))+".output",
 			os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 		if err != nil {
 			return result, err

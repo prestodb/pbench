@@ -118,7 +118,7 @@ func (s *Stage) propagateStates() {
 			nextStage.SaveJson = s.SaveJson
 		}
 		nextStage.resultChan = s.resultChan
-		nextStage.outputPath = s.outputPath
+		nextStage.OutputPath = s.OutputPath
 		nextStage.wgExitMainStage = s.wgExitMainStage
 	}
 }
@@ -150,6 +150,12 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	if other.SaveJson != nil {
 		s.SaveJson = other.SaveJson
+	}
+	if other.GetClient != nil {
+		s.GetClient = other.GetClient
+	}
+	if other.OutputPath != "" {
+		s.OutputPath = other.OutputPath
 	}
 	return s
 }

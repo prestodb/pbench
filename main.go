@@ -2,23 +2,36 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
+	"presto-benchmark/presto"
 	"presto-benchmark/stage"
 	"strings"
 )
 
 func main() {
-	argLen := len(os.Args)
-	if argLen < 2 {
-		log.Fatal().Msg("expecting directory paths or file paths.")
+	serverUrl := flag.String("server", stage.DefaultServerUrl, "Presto server address")
+	wd, _ := os.Getwd()
+	outputPath := flag.String("output-path", wd, "Output path")
+	getClientFn := func() *presto.Client {
+		client, _ := presto.NewClient(*serverUrl)
+		return client
 	}
+	flag.Parse()
 	startingStage := new(stage.Stage)
+	startingStage.GetClient = getClientFn
+	if outputPath != nil {
+		startingStage.OutputPath = *outputPath
+	}
 
-	for i := 1; i < argLen; i++ {
-		if st, err := processPath(os.Args[i]); err == nil {
+	if len(flag.Args()) == 0 {
+		return
+	}
+	for _, path := range flag.Args() {
+		if st, err := processPath(path); err == nil {
 			startingStage.MergeWith(st)
 		}
 	}
