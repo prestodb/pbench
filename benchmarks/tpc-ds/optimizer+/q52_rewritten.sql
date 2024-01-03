@@ -1,0 +1,26 @@
+SELECT
+    A1.D_YEAR "D_YEAR",
+    A2.I_BRAND_ID "BRAND_ID",
+    A2.I_BRAND "BRAND",
+    SUM(A0.SS_EXT_SALES_PRICE) "EXT_PRICE"
+FROM
+    (
+        (
+            STORE_SALES A0
+            INNER JOIN DATE_DIM A1 ON (A1.D_DATE_SK = A0.SS_SOLD_DATE_SK)
+        )
+        INNER JOIN ITEM A2 ON (A0.SS_ITEM_SK = A2.I_ITEM_SK)
+    )
+WHERE
+    (A1.D_MOY = 11)
+    AND (A1.D_YEAR = 2000)
+    AND (A2.I_MANAGER_ID = 1)
+GROUP BY
+    A2.I_BRAND,
+    A2.I_BRAND_ID,
+    A1.D_YEAR
+ORDER BY
+    4 DESC,
+    2 ASC
+limit
+    100;
