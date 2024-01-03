@@ -1,0 +1,4 @@
+{
+  "catalog": "hive",
+  "schema": "tpcds_sf1000_parquet_varchar"
+}
