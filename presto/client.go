@@ -248,10 +248,10 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 						err = decErr
 					}
 				}
-				resp.Body.Close()
+				_ = resp.Body.Close()
 				return resp, err
 			case http.StatusServiceUnavailable:
-				resp.Body.Close()
+				_ = resp.Body.Close()
 				log.Debug().Dur("delay", retryDelay).
 					Msg("retry after getting http Service Unavailable response (503)")
 				timer.Reset(retryDelay)

@@ -3,7 +3,6 @@ package stage
 import (
 	"github.com/rs/zerolog"
 	"presto-benchmark/log"
-	"presto-benchmark/presto"
 	"time"
 )
 
@@ -16,7 +15,6 @@ type QueryResult struct {
 	InfoUrl       string
 	QueryError    error
 	RowCount      int
-	QueryRows     []presto.QueryRow
 	StartTime     time.Time
 	EndTime       *time.Time
 	Duration      *time.Duration
@@ -52,7 +50,7 @@ func (q *QueryResult) MarshalZerologObject(e *zerolog.Event) {
 		e.Time("finish_time", *q.EndTime)
 	}
 	if q.Duration != nil {
-		e.Dur("duration", *q.Duration)
+		e.Float64("duration_in_seconds", q.Duration.Seconds())
 	}
 }
 

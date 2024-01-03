@@ -13,51 +13,57 @@ import (
 )
 
 func main() {
-	serverUrl := flag.String("server", stage.DefaultServerUrl, "Presto server address")
 	wd, _ := os.Getwd()
-	outputPath := flag.String("output-path", wd, "Output path")
-	getClientFn := func() *presto.Client {
+	serverUrl := flag.String("s", stage.DefaultServerUrl, "Presto server address")
+	outputPath := flag.String("o", wd, "Output path")
+	flag.Parse()
+	flag.Usage = func() {
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Println(`Provide a list of root-level benchmark stage JSON files.`)
+	}
+	if flag.NArg() == 0 {
+		flag.Usage()
+		return
+	}
+
+	mainStage := new(stage.Stage)
+	mainStage.GetClient = func() *presto.Client {
 		client, _ := presto.NewClient(*serverUrl)
 		return client
 	}
-	flag.Parse()
-	startingStage := new(stage.Stage)
-	startingStage.GetClient = getClientFn
 	if outputPath != nil {
-		startingStage.OutputPath = *outputPath
+		mainStage.OutputPath = *outputPath
 	}
 
-	if len(flag.Args()) == 0 {
-		return
-	}
 	for _, path := range flag.Args() {
 		if st, err := processPath(path); err == nil {
-			startingStage.MergeWith(st)
+			mainStage.MergeWith(st)
 		}
 	}
-	_, _, err := stage.ParseStageGraph(startingStage)
+	_, _, err := stage.ParseStageGraph(mainStage)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to parse benchmark")
 	}
 
-	startingStage.Run(context.Background())
+	mainStage.Run(context.Background())
 }
 
-func processPath(path string) (st *stage.Stage, err error) {
+func processPath(path string) (st *stage.Stage, returnErr error) {
 	defer func() {
-		if err != nil {
-			log.Error().Err(err).Str("path", path).Send()
+		if returnErr != nil {
+			log.Error().Err(returnErr).Str("path", path).Send()
 		}
 	}()
-	stat, err := os.Stat(path)
-	if err != nil {
-		return nil, err
+	stat, statErr := os.Stat(path)
+	if statErr != nil {
+		return nil, statErr
 	}
 	if stat.IsDir() {
 		st = new(stage.Stage)
-		entries, err := os.ReadDir(path)
-		if err != nil {
-			return nil, err
+		entries, ioErr := os.ReadDir(path)
+		if ioErr != nil {
+			return nil, ioErr
 		}
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(entry.Name(), stage.DefaultStageFileExt) {

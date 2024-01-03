@@ -29,7 +29,7 @@ var DefaultGetClientFn = func() *presto.Client {
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
 	Id string `json:"-"`
-	// Catalog, schema, and session params will be inherited by the children stages unless a new client is created
+	// Catalog, Schema, and SessionParams will be inherited by the children stages unless a new client is created
 	// by setting start_on_new_client = true on children stages.
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
@@ -67,6 +67,8 @@ type Stage struct {
 	OnQueryCompletion OnQueryCompletionFn     `json:"-"`
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
+	// wgExitMainStage blocks the main stage from exiting before it counts down to zero, so we can wait for other
+	// goroutines to finish.
 	wgExitMainStage *sync.WaitGroup
 	// started is used to make sure only one goroutine is started to run this stage when there are multiple prerequisites.
 	started    atomic.Bool
@@ -104,41 +106,43 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			Msg("output will be saved in this path")
 	}
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	go func() {
-		sig := <-sigint
-		s.AbortAll(fmt.Errorf(sig.String()))
-		signal.Stop(sigint)
-	}()
+	timeToExit := make(chan os.Signal, 1)
+	signal.Notify(timeToExit, os.Interrupt, os.Kill)
 	go func() {
 		s.wgExitMainStage.Wait()
-		close(s.resultChan)
+		close(timeToExit)
 	}()
 	go func() {
 		_ = s.run(ctx)
 	}()
 
 	b := strings.Builder{}
-	b.WriteString("stage_id,query_file,query_index,info_url,succeeded,row_count,start_time,end_time,duration\n")
-	for result := range s.resultChan {
-		results = append(results, result)
+	b.WriteString("stage_id,query_file,query_index,info_url,succeeded,row_count,start_time,end_time,duration_in_seconds\n")
+	for {
+		select {
+		case result := <-s.resultChan:
+			results = append(results, result)
 
-		b.WriteString(result.StageId + ",")
-		if result.QueryFile != nil {
-			b.WriteString(*result.QueryFile)
-		} else {
-			b.WriteString("inline")
+			b.WriteString(result.StageId + ",")
+			if result.QueryFile != nil {
+				b.WriteString(*result.QueryFile)
+			} else {
+				b.WriteString("inline")
+			}
+			b.WriteString(fmt.Sprintf(",%d,%s,%t,%d,%s,%s,%f\n",
+				result.QueryIndex, result.InfoUrl, result.QueryError == nil, result.RowCount,
+				result.StartTime.Format(time.RFC3339), result.EndTime.Format(time.RFC3339), result.Duration.Seconds()))
+		case sig := <-timeToExit:
+			if sig != nil {
+				s.AbortAll(fmt.Errorf(sig.String()))
+			}
+			_ = os.WriteFile(filepath.Join(s.OutputPath, "summary.csv"), []byte(b.String()), 0644)
+			return results
 		}
-		b.WriteString(fmt.Sprintf(",%d,%s,%t,%d,%s,%s,%s\n",
-			result.QueryIndex, result.InfoUrl, result.QueryError == nil, result.RowCount,
-			result.StartTime.Format(time.RFC3339), result.EndTime.Format(time.RFC3339), *result.Duration))
 	}
-	_ = os.WriteFile(filepath.Join(s.OutputPath, "summary.csv"), []byte(b.String()), 0644)
-	return results
 }
 
-func (s *Stage) run(ctx context.Context) (err error) {
+func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if !s.started.CompareAndSwap(false, true) {
 		// If other prerequisites finished earlier, then this stage is already called and waiting.
 		s.wgExitMainStage.Done()
@@ -148,11 +152,11 @@ func (s *Stage) run(ctx context.Context) (err error) {
 		for _, nextStage := range s.NextStages {
 			nextStage.wgPrerequisites.Done()
 		}
-		if err != nil {
-			s.logErr(ctx, err)
+		if returnErr != nil {
+			s.logErr(ctx, returnErr)
 			if *s.AbortOnError && s.AbortAll != nil {
 				log.Debug().EmbedObject(s).Msg("canceling the context because abort_on_error is set to true")
-				s.AbortAll(err)
+				s.AbortAll(returnErr)
 			}
 		} else {
 			// Trigger descendant stages.
@@ -173,7 +177,7 @@ func (s *Stage) run(ctx context.Context) (err error) {
 	}
 	s.prepareClient()
 	s.propagateStates()
-	if err = s.runQueries(ctx, s.Queries, nil); err != nil {
+	if err := s.runQueries(ctx, s.Queries, nil); err != nil {
 		return err
 	}
 	for _, filePath := range s.QueryFiles {
@@ -233,7 +237,6 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 		Query:      query,
 		QueryFile:  queryFile,
 		QueryIndex: queryIndex,
-		QueryRows:  make([]presto.QueryRow, 0),
 		StartTime:  time.Now(),
 	}
 

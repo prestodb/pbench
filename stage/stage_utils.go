@@ -96,20 +96,8 @@ func (s *Stage) propagateStates() {
 		s.AbortOnError = &falseValue
 	}
 	for _, nextStage := range s.NextStages {
-		if nextStage.GetClient == nil {
-			nextStage.GetClient = s.GetClient
-		}
-		if nextStage.Client == nil {
-			nextStage.Client = s.Client
-		}
 		if nextStage.AbortOnError == nil {
 			nextStage.AbortOnError = s.AbortOnError
-		}
-		if nextStage.AbortAll == nil {
-			nextStage.AbortAll = s.AbortAll
-		}
-		if nextStage.OnQueryCompletion == nil {
-			nextStage.OnQueryCompletion = s.OnQueryCompletion
 		}
 		if nextStage.SaveOutput == nil {
 			nextStage.SaveOutput = s.SaveOutput
@@ -117,9 +105,19 @@ func (s *Stage) propagateStates() {
 		if nextStage.SaveJson == nil {
 			nextStage.SaveJson = s.SaveJson
 		}
-		nextStage.resultChan = s.resultChan
 		nextStage.OutputPath = s.OutputPath
+		if nextStage.GetClient == nil {
+			nextStage.GetClient = s.GetClient
+			if nextStage.Client == nil {
+				// If the next stage didn't have a getClient function and a client before,
+				// then we just let it use ours.
+				nextStage.Client = s.Client
+			}
+		}
+		nextStage.AbortAll = s.AbortAll
+		nextStage.OnQueryCompletion = s.OnQueryCompletion
 		nextStage.wgExitMainStage = s.wgExitMainStage
+		nextStage.resultChan = s.resultChan
 	}
 }
 
@@ -143,19 +141,16 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	if other.AbortOnError != nil {
 		s.AbortOnError = other.AbortOnError
 	}
-	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
-	s.BaseDir = other.BaseDir
 	if other.SaveOutput != nil {
 		s.SaveOutput = other.SaveOutput
 	}
 	if other.SaveJson != nil {
 		s.SaveJson = other.SaveJson
 	}
-	if other.GetClient != nil {
-		s.GetClient = other.GetClient
-	}
-	if other.OutputPath != "" {
+	if s.OutputPath == "" {
 		s.OutputPath = other.OutputPath
 	}
+	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
+	s.BaseDir = other.BaseDir
 	return s
 }
