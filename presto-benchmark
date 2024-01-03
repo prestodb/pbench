@@ -1,0 +1,19 @@
+#!/bin/bash
+
+GO=/usr/local/go/bin/go
+
+if [ ! -f ./presto-benchmark_$(arch) ]; then
+    if [ ! -f $GO ]; then
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            wget https://go.dev/dl/go1.21.5.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz
+        elif [[ "$OSTYPE" == "darwin"* ]]; then
+            echo "Please install go first: https://go.dev/dl/go1.21.5.darwin-amd64.pkg"
+            exit
+        fi
+    fi
+    env GOOS=linux GOARCH=amd64 $GO build -o presto-benchmark_x86_64
+    env GOOS=darwin GOARCH=arm64 $GO build -o presto-benchmark_arm64
+fi
+
+./presto-benchmark_$(arch) $@
