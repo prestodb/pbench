@@ -1,4 +1,5 @@
 {
+  "description": "Sequentially run query_01 - query_50, its parent task is 2streams.json.",
   "query_files": [
     "queries/query_01.sql",
     "queries/query_02.sql",

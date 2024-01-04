@@ -1,4 +1,5 @@
 {
+  "description": "Specifies the catalog and schema for TPC-DS scale factor 1 TB.",
   "catalog": "hive",
   "schema": "tpcds_sf1000_parquet_varchar"
 }

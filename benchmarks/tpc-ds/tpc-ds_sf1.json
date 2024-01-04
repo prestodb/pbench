@@ -1,4 +1,5 @@
 {
+  "description": "Specifies the catalog and schema for TPC-DS scale factor 1. For this scale factor we use the TPC-DS connector.",
   "catalog": "tpcds",
   "schema": "sf1"
 }

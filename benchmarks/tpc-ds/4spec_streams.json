@@ -1,4 +1,5 @@
 {
+  "description": "Run the first 4 parallel queries streams defined in the TPC-DS spec Appendix D: Query Ordering. See stream_gen_test.go.",
   "next": [
     "streams/stream_01.json",
     "streams/stream_02.json",

@@ -1,4 +1,5 @@
 {
+  "description": "Sequentially run all 99 queries with the 5 queries that needed additional order-bys replaced to make the result row order deterministic.",
   "query_files": [
     "queries/query_01.sql",
     "queries/query_02.sql",

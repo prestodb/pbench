@@ -1,4 +1,5 @@
 {
+  "description": "Split the 99 queries into 2 parallel execution streams: q01-q50 and q51-q99.",
   "next": [
     "stream_1of2.json",
     "stream_2of2.json"
