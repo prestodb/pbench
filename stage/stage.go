@@ -374,6 +374,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(result)
 		}
+		// TODO: make SaveQueryJsonFile asynchronous.
 		s.SaveQueryJsonFile(ctx, result)
 		// Each query should have a query result sent to the channel, no matter
 		// its execution succeeded or not.
