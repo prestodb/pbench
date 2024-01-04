@@ -1,0 +1,7 @@
+{
+  "query_files": [
+    "optimizer+/q14_rewritten.sql",
+    "optimizer+/q67_rewritten.sql",
+    "optimizer+/q70_rewritten.sql"
+  ]
+}
