@@ -1,8 +1,9 @@
 {
-    "next": [
-      "streams/stream_01.json",
-      "streams/stream_02.json",
-      "streams/stream_03.json",
-      "streams/stream_04.json"
-    ]
-  }
+  "next": [
+    "streams/stream_01.json",
+    "streams/stream_02.json",
+    "streams/stream_03.json",
+    "streams/stream_04.json"
+  ],
+  "save_json": true
+}
