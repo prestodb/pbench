@@ -90,9 +90,8 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))
-	s.resultChan = make(chan *QueryResult)
+	s.resultChan = make(chan *QueryResult, 4)
 	s.wgExitMainStage = &sync.WaitGroup{}
-	s.wgExitMainStage.Add(1)
 
 	// create output directory
 	if s.OutputPath == "" {
@@ -127,6 +126,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	ctx, s.AbortAll = context.WithCancelCause(ctx)
 	log.Debug().EmbedObject(s).Msg("created cancellable context")
 	go func() {
+		s.wgExitMainStage.Add(1)
 		_ = s.run(ctx)
 	}()
 
@@ -149,6 +149,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		case sig := <-timeToExit:
 			if sig != nil {
 				s.AbortAll(fmt.Errorf(sig.String()))
+				s.wgExitMainStage.Wait()
 			}
 			_ = os.WriteFile(filepath.Join(s.OutputPath, "summary.csv"), []byte(b.String()), 0644)
 			return results
