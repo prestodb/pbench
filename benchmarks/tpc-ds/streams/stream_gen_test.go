@@ -40,10 +40,11 @@ func TestGenerateStreams(t *testing.T) {
 		file, err := os.OpenFile(fmt.Sprintf("stream_%02d.json", streamId+1), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 		assert.Nil(t, err)
 		st := &stage.Stage{
-			QueryFiles: make([]string, 0, 99),
+			QueryFiles:       make([]string, 0, 99),
+			StartOnNewClient: true,
 		}
 		for _, queryId := range streams[streamId] {
-			st.QueryFiles = append(st.QueryFiles, fmt.Sprintf("queries/query_%02d.sql", queryId))
+			st.QueryFiles = append(st.QueryFiles, fmt.Sprintf("../queries/query_%02d.sql", queryId))
 		}
 		bytes, err := json.MarshalIndent(st, "", "  ")
 		assert.Nil(t, err)
