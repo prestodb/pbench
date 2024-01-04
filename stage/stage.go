@@ -89,10 +89,6 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) []*QueryResult {
-	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))
-	s.resultChan = make(chan *QueryResult, 4)
-	s.wgExitMainStage = &sync.WaitGroup{}
-
 	// create output directory
 	if s.OutputPath == "" {
 		s.OutputPath = s.BaseDir
@@ -106,6 +102,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			Msg("output will be saved in this path")
 	}
 
+	// also start to write logs to the output directory from this point on.
 	logPath := filepath.Join(s.OutputPath, s.Id+".log")
 	if logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644); err != nil {
 		log.Error().Str("log_path", logPath).
@@ -116,42 +113,62 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stdout, bufWriter)).With().Timestamp().Stack().Logger())
 	}
 
+	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))
+	// resultChan has to be a buffered channel because we do a select on both resultChan and the timeToExit channel.
+	// When a SIGINT or SIGKILL signal is captured, we wait on the timeToExit for all the goroutines to finish.
+	// During this time, we will block the reception of query results from the resultChan channel if resultChan is
+	// not buffered. This will cause a deadlock.
+	s.resultChan = make(chan *QueryResult, 4)
 	timeToExit := make(chan os.Signal, 1)
 	signal.Notify(timeToExit, os.Interrupt, os.Kill)
+	// Each goroutine we spawn will increment this wait group (count-down latch). We may start a goroutine for running
+	// a benchmark stage, or write query output to disk asynchronously.
+	s.wgExitMainStage = &sync.WaitGroup{}
+	// Increment the wait group by 1 immediately for this main stage itself, which will also be a goroutine.
+	s.wgExitMainStage.Add(1)
+
 	go func() {
 		s.wgExitMainStage.Wait()
+		// wgExitMainStage goes down to 0 after all the goroutines finish. Then we exit the driver by
+		// closing the timeToExit channel, which will trigger the graceful shutdown process -
+		// (flushing the log file, writing the final time log summary, etc.).
+
+		// When SIGKILL and SIGINT are captured, we trigger this process by canceling the context, which will cause
+		// "context cancelled" errors in goroutines to let them exit.
 		close(timeToExit)
 	}()
 
 	ctx, s.AbortAll = context.WithCancelCause(ctx)
 	log.Debug().EmbedObject(s).Msg("created cancellable context")
+	// Start to run the queries defined in this main stage in a goroutine, which is managed exactly like all other
+	// concurrent stages.
 	go func() {
-		s.wgExitMainStage.Add(1)
 		_ = s.run(ctx)
 	}()
 
-	b := strings.Builder{}
-	b.WriteString("stage_id,query_file,query_index,info_url,succeeded,row_count,start_time,end_time,duration_in_seconds\n")
+	summaryBuilder := strings.Builder{}
+	summaryBuilder.WriteString("stage_id,query_file,query_index,info_url,succeeded,row_count,start_time,end_time,duration_in_seconds\n")
 	for {
 		select {
 		case result := <-s.resultChan:
 			results = append(results, result)
 
-			b.WriteString(result.StageId + ",")
+			summaryBuilder.WriteString(result.StageId + ",")
 			if result.QueryFile != nil {
-				b.WriteString(*result.QueryFile)
+				summaryBuilder.WriteString(*result.QueryFile)
 			} else {
-				b.WriteString("inline")
+				summaryBuilder.WriteString("inline")
 			}
-			b.WriteString(fmt.Sprintf(",%d,%s,%t,%d,%s,%s,%f\n",
+			summaryBuilder.WriteString(fmt.Sprintf(",%d,%s,%t,%d,%s,%s,%f\n",
 				result.QueryIndex, result.InfoUrl, result.QueryError == nil, result.RowCount,
 				result.StartTime.Format(time.RFC3339), result.EndTime.Format(time.RFC3339), result.Duration.Seconds()))
 		case sig := <-timeToExit:
 			if sig != nil {
+				// Cancel the context and wait for the goroutines to exit.
 				s.AbortAll(fmt.Errorf(sig.String()))
 				s.wgExitMainStage.Wait()
 			}
-			_ = os.WriteFile(filepath.Join(s.OutputPath, "summary.csv"), []byte(b.String()), 0644)
+			_ = os.WriteFile(filepath.Join(s.OutputPath, "summary.csv"), []byte(summaryBuilder.String()), 0644)
 			return results
 		}
 	}
