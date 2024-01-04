@@ -193,8 +193,8 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if err := s.runQueries(ctx, s.Queries, nil); err != nil {
 		return err
 	}
-	for _, filePath := range s.QueryFiles {
-		file, err := os.Open(filePath)
+	for i := 0; i < len(s.QueryFiles); i++ {
+		file, err := os.Open(s.QueryFiles[i])
 		if err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		if err != nil {
 			return err
 		}
-		err = s.runQueries(ctx, queries, &filePath)
+		err = s.runQueries(ctx, queries, &s.QueryFiles[i])
 		if err != nil {
 			return err
 		}
