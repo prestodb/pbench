@@ -102,6 +102,9 @@ func (s *Stage) propagateStates() {
 		if nextStage.Schema == nil {
 			nextStage.Schema = s.Schema
 		}
+		if nextStage.SessionParams == nil {
+			nextStage.SessionParams = make(map[string]any)
+		}
 		for k, v := range s.SessionParams {
 			if _, ok := nextStage.SessionParams[k]; !ok {
 				nextStage.SessionParams[k] = v
