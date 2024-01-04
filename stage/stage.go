@@ -99,7 +99,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		s.OutputPath = s.BaseDir
 	}
 	s.OutputPath = filepath.Join(s.OutputPath, fmt.Sprintf("%s-%s", s.Id, time.Now().Format(time.RFC3339)))
-	if err := os.Mkdir(s.OutputPath, 0755); err != nil {
+	if err := os.MkdirAll(s.OutputPath, 0755); err != nil {
 		log.Fatal().Str("output_path", s.OutputPath).
 			Err(err).Msg("failed to create output directory")
 	} else {
@@ -112,7 +112,8 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		log.Error().Str("log_path", logPath).
 			Err(err).Msg("failed to create log file")
 	} else {
-		bufWriter := bufio.NewWriterSize(logFile, 8192)
+		bufWriter := bufio.NewWriter(logFile)
+		defer bufWriter.Flush()
 		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stdout, bufWriter)).With().Timestamp().Stack().Logger())
 	}
 
