@@ -32,8 +32,7 @@ var DefaultGetClientFn = func() *presto.Client {
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
 	Id string `json:"-"`
-	// Catalog, Schema, and SessionParams will be inherited by the children stages unless a new client is created
-	// by setting start_on_new_client = true on children stages.
+	// Catalog, Schema, and SessionParams will be inherited by the children stages.
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`

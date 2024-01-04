@@ -96,6 +96,17 @@ func (s *Stage) propagateStates() {
 		s.AbortOnError = &falseValue
 	}
 	for _, nextStage := range s.NextStages {
+		if nextStage.Catalog == nil {
+			nextStage.Catalog = s.Catalog
+		}
+		if nextStage.Schema == nil {
+			nextStage.Schema = s.Schema
+		}
+		for k, v := range s.SessionParams {
+			if _, ok := nextStage.SessionParams[k]; !ok {
+				nextStage.SessionParams[k] = v
+			}
+		}
 		if nextStage.AbortOnError == nil {
 			nextStage.AbortOnError = s.AbortOnError
 		}

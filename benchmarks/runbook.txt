@@ -10,6 +10,14 @@ cd benchmarks
 benchmark_base='/Users/ezhang/Downloads/benchmark_runs'
 server='https://'
 
+# Native SF-1K 4 streams defined in the spec
+../presto-benchmark \
+    -s $server \
+    -o $benchmark_base \
+    tpc-ds/tpc-ds_sf1k.json \
+    native.json \
+    tpc-ds/4spec_streams.json
+
 # Java SF-1K standard
 ../presto-benchmark \
     -s $server \
