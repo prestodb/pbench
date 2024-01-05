@@ -18,6 +18,8 @@ var (
 	FileFormat     string
 	InPlaceRewrite bool
 	Recursive      bool
+	FileScanned    int
+	FileWritten    int
 )
 
 const InProgressExt = ".InProgress"
@@ -37,12 +39,13 @@ func Args(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func Run(cmd *cobra.Command, args []string) {
+func Run(_ *cobra.Command, args []string) {
 	for _, path := range args {
 		if err := processRoundDecimalPath(path); err != nil {
 			log.Error().Str("path", path).Err(err).Send()
 		}
 	}
+	log.Info().Int("file_scanned", FileScanned).Int("file_written", FileWritten).Send()
 }
 
 func processRoundDecimalPath(path string) error {
@@ -89,20 +92,24 @@ func processRoundDecimalFile(inputPath string) (err error) {
 		ext := filepath.Ext(inputPath) // this includes the dot
 		outputPath = inputPath[0:len(inputPath)-len(ext)] + ".rewrite" + ext
 	}
-
 	var (
 		outputFile *os.File
 		bufWriter  *bufio.Writer
 	)
+
 	defer func() {
 		_ = inputFile.Close()
 		if outputFile == nil {
 			// This means we didn't even find a decimal column.
 			return
 		}
-		if bufWriter != nil {
+		if bufWriter != nil && err == nil {
 			if ioErr := bufWriter.Flush(); ioErr != nil {
-				log.Error().Str("path", outputPath).Err(ioErr).Msg("failed to flush the output file")
+				wrappedErr := fmt.Errorf("failed to flush the output file %s: %w", outputPath, ioErr)
+				if err == nil {
+					err = wrappedErr
+				}
+				log.Error().Err(wrappedErr).Send()
 			}
 		}
 		_ = outputFile.Close()
@@ -114,34 +121,41 @@ func processRoundDecimalFile(inputPath string) (err error) {
 			return
 		}
 		if !InPlaceRewrite {
+			// for in-place rewrite, we do not need to do anything.
+			log.Info().Str("path", outputPath).Msg("file written")
+			FileWritten++
 			return
 		}
 		// need to overwrite the original file, delete the original file first.
 		if ioErr := os.Remove(inputPath); ioErr != nil {
-			log.Error().Str("path", inputPath).Err(ioErr).Msg("failed to remove the original file")
+			err = fmt.Errorf("failed to remove the original file %s: %w", inputPath, ioErr)
 			return
 		}
 		// then rename the .wip file to have the original file's name.
 		if ioErr := os.Rename(outputPath, inputPath); ioErr != nil {
-			log.Error().Str("from", outputPath).Str("to", inputPath).Err(err).Msg("failed to rename file")
+			err = fmt.Errorf("failed to rename file %s to %s: %w", outputPath, inputPath, ioErr)
 			return
 		}
+		FileWritten++
 		log.Info().Str("path", inputPath).Msg("file updated")
 	}()
+
 	scanner, colCount, lineNum := bufio.NewScanner(inputFile), 0, 1
 	var decimalColIndexes []int
+	FileScanned++
 	for ; scanner.Scan(); lineNum++ {
 		rowContent := scanner.Text()
 		if FileFormat == "json" {
 			rowContent = strings.Trim(scanner.Text(), "[]")
 		}
 		colScanner := bufio.NewScanner(strings.NewReader(rowContent))
+		colScanner.Split(scanCommaSeparatedField)
 		cols := make([]string, 0, colCount)
 		for colScanner.Scan() {
 			cols = append(cols, colScanner.Text())
 		}
 		if scanErr := colScanner.Err(); scanErr != nil {
-			return scanErr
+			return fmt.Errorf("%s line %d: %w", inputPath, lineNum, scanErr)
 		}
 		if decimalColIndexes == nil {
 			decimalColIndexes = make([]int, 0, 2)
@@ -152,7 +166,7 @@ func processRoundDecimalFile(inputPath string) (err error) {
 					if FileFormat == "csv" {
 						cols[i] = fmt.Sprintf(`"%s"`, match[1])
 					} else {
-						cols[i] = fmt.Sprintf(`%s`, match[1])
+						cols[i] = match[1]
 					}
 				}
 			}
@@ -177,12 +191,16 @@ func processRoundDecimalFile(inputPath string) (err error) {
 					if FileFormat == "csv" {
 						cols[idx] = fmt.Sprintf(`"%s"`, match[1])
 					} else {
-						cols[idx] = fmt.Sprintf(`%s`, match[1])
+						cols[idx] = match[1]
 					}
 				}
 			}
 		}
-		_, err = bufWriter.WriteString(strings.Join(cols, ",") + "\n")
+		if FileFormat == "json" {
+			_, err = bufWriter.WriteString(fmt.Sprintf("[%s]\n", strings.Join(cols, ",")))
+		} else {
+			_, err = bufWriter.WriteString(strings.Join(cols, ",") + "\n")
+		}
 		if err != nil {
 			return err
 		}

@@ -16,12 +16,12 @@ var roundCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(roundCmd)
-	runCmd.Flags().StringArrayVarP(&round.FileExtensions, "file-extension", "e", []string{".output"},
+	roundCmd.Flags().StringArrayVarP(&round.FileExtensions, "file-extension", "e", []string{".output"},
 		"Specifies the file extensions ton include for processing (including the dot). You can specify multiple file extensions.")
-	runCmd.Flags().StringVarP(&round.FileFormat, "format", "f", "json",
+	roundCmd.Flags().StringVarP(&round.FileFormat, "format", "f", "json",
 		`Specifies the format of the files. Accepted values are: "csv"" or "json" which is the output file from the "run"" command`)
-	rootCmd.Flags().BoolVarP(&round.InPlaceRewrite, "rewrite-in-place", "i", false,
+	roundCmd.Flags().BoolVarP(&round.InPlaceRewrite, "rewrite-in-place", "i", false,
 		"When turned on, we will rewrite the file in-place. Otherwise, we save the rewritten file separately.")
-	rootCmd.Flags().BoolVarP(&round.Recursive, "recursive", "r", false,
+	roundCmd.Flags().BoolVarP(&round.Recursive, "recursive", "r", false,
 		`Recursively walk a path if a directory is provided in the arguments.`)
 }

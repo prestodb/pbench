@@ -23,14 +23,19 @@ func split(in string) ([]string, error) {
 }
 
 func TestColumnSplitter(t *testing.T) {
-	inputs := []string{`"abc,d",1.22332,true,"'def'"def   `, `11,23,'f,f` + "\n  "}
+	inputs := []string{
+		`"abc,d",1.22332,true,"'def'"def   `,
+		`11,23,'f,f` + "\n  ",
+		`1,931,1,354.0,1.071598667572002,1,931,2,201.75,1.11804961109744`}
 	expectedOutput := [][]string{
 		{`"abc,d"`, "1.22332", "true", `"'def'"def`},
 		nil,
+		{"1", "931", "1", "354.0", "1.071598667572002", "1", "931", "2", "201.75", "1.11804961109744"},
 	}
 	expectedError := []error{
 		nil,
 		fmt.Errorf("expecting ' but got EOF"),
+		nil,
 	}
 	for i, input := range inputs {
 		out, err := split(input)
