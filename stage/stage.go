@@ -228,7 +228,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	return nil
 }
 
-func (s *Stage) SaveQueryJsonFile(ctx context.Context, result *QueryResult) {
+func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 	if !*s.SaveJson && result.QueryError == nil {
 		return
 	}
@@ -249,6 +249,28 @@ func (s *Stage) SaveQueryJsonFile(ctx context.Context, result *QueryResult) {
 		}
 		s.wgExitMainStage.Done()
 	}()
+}
+
+func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult) (returnErr error) {
+	defer func() {
+		if returnErr != nil {
+			log.Error().Err(returnErr).EmbedObject(result.SimpleLogging()).
+				Msg("failed to write query column metadata")
+		}
+	}()
+	columnMetadataFile, ioErr := os.OpenFile(
+		filepath.Join(s.OutputPath, querySource(s, result))+".cols.json",
+		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	defer columnMetadataFile.Close()
+	if ioErr != nil {
+		return ioErr
+	}
+	bytes, marshalErr := json.MarshalIndent(qr.Columns, "", "  ")
+	if marshalErr != nil {
+		return marshalErr
+	}
+	_, returnErr = columnMetadataFile.Write(bytes)
+	return
 }
 
 func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, queryFile *string) (result *QueryResult, retErr error) {
@@ -346,6 +368,9 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 				}
 			}
 		}(qr.Data)
+		if qr.NextUri == nil {
+			s.saveColumnMetadataFile(qr, result)
+		}
 		return nil
 	})
 
@@ -374,7 +399,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(result)
 		}
-		s.SaveQueryJsonFile(ctx, result)
+		s.saveQueryJsonFile(ctx, result)
 		// Each query should have a query result sent to the channel, no matter
 		// its execution succeeded or not.
 		s.resultChan <- result
