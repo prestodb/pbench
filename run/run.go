@@ -13,17 +13,7 @@ import (
 
 var OutputPath string
 
-func Args(cmd *cobra.Command, args []string) error {
-	if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
-		return err
-	}
-	return nil
-}
-
 func Run(cmd *cobra.Command, args []string) {
-	if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
-
-	}
 	mainStage := new(stage.Stage)
 	mainStage.OutputPath = OutputPath
 

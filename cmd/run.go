@@ -9,11 +9,14 @@ import (
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Run a benchmark",
-	Long:  `Run a benchmark that is defined by a sequence of JSON configuration files.`,
-	Args:  run.Args,
-	Run:   run.Run,
+	Use: `run 
+	[-s | --server <server address>] [-o | --output-path <output_path>]
+	[<root-level benchmark stage JSON files>...]`,
+	Short:                 "Run a benchmark",
+	Long:                  `Run a benchmark that is defined by a sequence of JSON configuration files.`,
+	DisableFlagsInUseLine: true,
+	Args:                  cobra.MinimumNArgs(1),
+	Run:                   run.Run,
 }
 
 func init() {

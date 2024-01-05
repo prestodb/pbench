@@ -7,11 +7,18 @@ import (
 
 // roundCmd represents the round command
 var roundCmd = &cobra.Command{
-	Use:   "round",
+	Use: `round 
+	[-p | --precision <precision>] [-f | --format <json | csv>]
+	[-i | --rewrite-in-place] [-r | --recursive]
+	[<files or directories to process>...]`,
 	Short: "Round the decimal values in the benchmark query output files for easier comparison.",
-	Long:  `https://github.com/facebookincubator/velox/pull/7944`,
-	Args:  round.Args,
-	Run:   round.Run,
+	Long: `The program will try to match every column in the first row to see which column has matching decimal.
+After processing the first row, it will only look at the matched columns. So if the overly long decimal only appears from the second row, this might not work properly.
+A PR was opened to fix the native/Java decimal precision discrepancy but so far it does not work quite well:
+https://github.com/facebookincubator/velox/pull/7944`,
+	DisableFlagsInUseLine: true,
+	Args:                  round.Args,
+	Run:                   round.Run,
 }
 
 func init() {

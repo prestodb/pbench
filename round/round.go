@@ -28,11 +28,11 @@ const InProgressExt = ".InProgress"
 func Args(cmd *cobra.Command, args []string) error {
 	for _, ext := range FileExtensions {
 		if ext[0] != '.' {
-			return fmt.Errorf("file extension %s not accepted, it should start with a dot (.)", ext)
+			return fmt.Errorf(`file extension "%s" not accepted, it should start with a dot (.)`, ext)
 		}
 	}
 	if FileFormat != "csv" && FileFormat != "json" {
-		return fmt.Errorf(`file format %s is not an accepted value, only "json" or "csv" are accepted`, FileFormat)
+		return fmt.Errorf(`file format "%s" is not an accepted value, only "json" or "csv" is accepted`, FileFormat)
 	}
 	if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
 		return err
@@ -41,7 +41,7 @@ func Args(cmd *cobra.Command, args []string) error {
 }
 
 func Run(_ *cobra.Command, args []string) {
-	DecimalRegExp = regexp.MustCompile(fmt.Sprintf(`"?(\d+\.\d{%d})\d*"?`, DecimalPrecision))
+	DecimalRegExp = regexp.MustCompile(fmt.Sprintf(`"?(\d+\.\d{%d})\d+"?`, DecimalPrecision))
 	for _, path := range args {
 		if err := processRoundDecimalPath(path); err != nil {
 			log.Error().Str("path", path).Err(err).Send()
@@ -82,6 +82,9 @@ func processRoundDecimalPath(path string) error {
 }
 
 func processRoundDecimalFile(inputPath string) (err error) {
+	if !isFileExtAccepted(inputPath) {
+		return nil
+	}
 	inputFile, ioErr := os.Open(inputPath)
 	if ioErr != nil {
 		return ioErr
