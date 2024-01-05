@@ -232,23 +232,23 @@ func (s *Stage) SaveQueryJsonFile(ctx context.Context, result *QueryResult) {
 	if !*s.SaveJson && result.QueryError == nil {
 		return
 	}
-	queryJsonFile, err := os.OpenFile(
-		filepath.Join(s.OutputPath, querySource(s, result))+".json",
-		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-	if err == nil {
-		queryJson := bufio.NewWriterSize(queryJsonFile, 8192)
-		_, err = s.Client.GetQueryInfo(ctx, result.QueryId, queryJson)
+	s.wgExitMainStage.Add(1)
+	go func() {
+		queryJsonFile, err := os.OpenFile(
+			filepath.Join(s.OutputPath, querySource(s, result))+".json",
+			os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 		if err == nil {
-			err = queryJson.Flush()
+			_, err = s.Client.GetQueryInfo(ctx, result.QueryId, queryJsonFile)
 			if err == nil {
 				err = queryJsonFile.Close()
 			}
 		}
-	}
-	if err != nil {
-		log.Error().Err(err).EmbedObject(result.SimpleLogging()).
-			Msg("failed to write query json")
-	}
+		if err != nil {
+			log.Error().Err(err).EmbedObject(result.SimpleLogging()).
+				Msg("failed to write query json")
+		}
+		s.wgExitMainStage.Done()
+	}()
 }
 
 func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, queryFile *string) (result *QueryResult, retErr error) {
@@ -374,7 +374,6 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(result)
 		}
-		// TODO: make SaveQueryJsonFile asynchronous.
 		s.SaveQueryJsonFile(ctx, result)
 		// Each query should have a query result sent to the channel, no matter
 		// its execution succeeded or not.
