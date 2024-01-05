@@ -49,9 +49,13 @@ func (c *Client) CancelQuery(ctx context.Context, nextUri string, opts ...Reques
 	return c.requestQueryResults(ctx, req)
 }
 
-func (c *Client) GetQueryInfo(ctx context.Context, queryId string, writer io.Writer, opts ...RequestOption) (*http.Response, error) {
+func (c *Client) GetQueryInfo(ctx context.Context, queryId string, pretty bool, writer io.Writer, opts ...RequestOption) (*http.Response, error) {
+	urlStr := "v1/query/" + queryId
+	if pretty {
+		urlStr += "?pretty"
+	}
 	req, err := c.NewRequest("GET",
-		"v1/query/"+queryId+"?pretty", nil, opts...)
+		urlStr, nil, opts...)
 	if err != nil {
 		return nil, err
 	}

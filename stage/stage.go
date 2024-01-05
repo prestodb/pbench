@@ -238,7 +238,7 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 			filepath.Join(s.OutputPath, querySource(s, result))+".json",
 			os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 		if err == nil {
-			_, err = s.Client.GetQueryInfo(ctx, result.QueryId, queryJsonFile)
+			_, err = s.Client.GetQueryInfo(ctx, result.QueryId, false, queryJsonFile)
 			if err == nil {
 				err = queryJsonFile.Close()
 			}
@@ -369,7 +369,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 			}
 		}(qr.Data)
 		if qr.NextUri == nil {
-			s.saveColumnMetadataFile(qr, result)
+			_ = s.saveColumnMetadataFile(qr, result)
 		}
 		return nil
 	})

@@ -39,7 +39,7 @@ func TestQuery(t *testing.T) {
 	assert.Equal(t, 150000, rowCount)
 
 	buf := &strings.Builder{}
-	_, err = client.GetQueryInfo(context.Background(), qr.Id, buf)
+	_, err = client.GetQueryInfo(context.Background(), qr.Id, false, buf)
 	assert.Nil(t, err)
 	assert.Greater(t, buf.Len(), 0)
 }

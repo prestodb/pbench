@@ -14,99 +14,87 @@ server='https://'
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    native.json \
-    tpc-ds/4spec_streams.json
+    tpc-ds/ds_sf1k.json \
+    n.json \
+    tpc-ds/4s.json
 
 # Java SF-1K standard
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    java.json \
-    tpc-ds/standard.json
+    tpc-ds/ds_sf1k.json \
+    j.json \
+    tpc-ds/std.json
 
 # Java SF-1K with order_by
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    java.json \
-    tpc-ds/ordered.json
+    tpc-ds/ds_sf1k.json \
+    j.json \
+    tpc-ds/ob.json
 
 # Java SF-1K full
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    java.json \
+    tpc-ds/ds_sf1k.json \
+    j.json \
     tpc-ds/full.json
 
 # Java SF-1K optimizer+
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    java.json \
-    tpc-ds/optimizer+.json
-
-# Java SF-1K 2 streams
-../presto-benchmark run \
-    -s $server \
-    -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    java.json \
-    tpc-ds/2streams.json
+    tpc-ds/ds_sf1k.json \
+    j.json \
+    tpc-ds/o+.json
 
 # Native SF-1K standard
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    native.json \
-    tpc-ds/standard.json
+    tpc-ds/ds_sf1k.json \
+    n.json \
+    tpc-ds/std.json
 
 # Native SF-1K with order_by
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    native.json \
-    tpc-ds/ordered.json
+    tpc-ds/ds_sf1k.json \
+    n.json \
+    tpc-ds/ob.json
 
 # Native SF-1K full
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    native.json \
+    tpc-ds/ds_sf1k.json \
+    n.json \
     tpc-ds/full.json
 
 # Native SF-1K optimizer+
 ../presto-benchmark run \
     -s $server \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    native.json \
-    tpc-ds/optimizer+.json
-
-# Native SF-1K 2 streams
-../presto-benchmark run \
-    -s $server \
-    -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1k.json \
-    native.json \
-    tpc-ds/2streams.json
+    tpc-ds/ds_sf1k.json \
+    n.json \
+    tpc-ds/o+.json
 
 # Java SF-1 on Hive Query Runner
 ../presto-benchmark run \
     -o $benchmark_base \
-    tpc-ds/tpc-ds_sf1.json \
-    java.json \
-    tpc-ds/standard.json
+    tpc-ds/ds_sf1.json \
+    j.json \
+    tpc-ds/std.json
 
 # Very lightweight test stages on Hive Query Runner
 ../presto-benchmark run \
-    -o $benchmark_base \
+    -o $benchmark_base/tmp \
     save_output.json \
+    test/stage_1.json
+
+../presto-benchmark run \
+    -o $benchmark_base/tmp \
     test/stage_1.json
