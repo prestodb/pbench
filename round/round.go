@@ -13,13 +13,14 @@ import (
 )
 
 var (
-	DecimalRegExp  = regexp.MustCompile(`"?(\d+\.\d{11})\d*"?`)
-	FileExtensions []string
-	FileFormat     string
-	InPlaceRewrite bool
-	Recursive      bool
-	FileScanned    int
-	FileWritten    int
+	DecimalRegExp    *regexp.Regexp
+	FileExtensions   []string
+	FileFormat       string
+	InPlaceRewrite   bool
+	Recursive        bool
+	FileScanned      int
+	FileWritten      int
+	DecimalPrecision int
 )
 
 const InProgressExt = ".InProgress"
@@ -40,6 +41,7 @@ func Args(cmd *cobra.Command, args []string) error {
 }
 
 func Run(_ *cobra.Command, args []string) {
+	DecimalRegExp = regexp.MustCompile(fmt.Sprintf(`"?(\d+\.\d{%d})\d*"?`, DecimalPrecision))
 	for _, path := range args {
 		if err := processRoundDecimalPath(path); err != nil {
 			log.Error().Str("path", path).Err(err).Send()

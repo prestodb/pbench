@@ -16,6 +16,7 @@ var roundCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(roundCmd)
+	roundCmd.Flags().IntVarP(&round.DecimalPrecision, "precision", "p", 12, "Decimal precision to preserve.")
 	roundCmd.Flags().StringArrayVarP(&round.FileExtensions, "file-extension", "e", []string{".output"},
 		"Specifies the file extensions ton include for processing (including the dot). You can specify multiple file extensions.")
 	roundCmd.Flags().StringVarP(&round.FileFormat, "format", "f", "json",
