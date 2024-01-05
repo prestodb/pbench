@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var SaveColMetadata bool
+
 func getNow() *time.Time {
 	now := time.Now()
 	return &now
@@ -218,6 +220,9 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 }
 
 func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult) (returnErr error) {
+	if !SaveColMetadata {
+		return
+	}
 	defer func() {
 		if returnErr != nil {
 			log.Error().Err(returnErr).EmbedObject(result.SimpleLogging()).
