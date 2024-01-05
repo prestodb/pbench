@@ -1,5 +1,5 @@
-java_folder=/Users/ezhang/Downloads/benchmark_runs/tpc-ds_sf1k_java_full-2024-01-03T18:44:38-08:00
-native_folder=/Users/ezhang/Downloads/benchmark_runs/tpc-ds_sf1k_native_full-2024-01-03T18:57:26-08:00
+java_folder=/Users/ezhang/Downloads/benchmark_runs/test/tpc-ds_sf1k_java_full-2024-01-03T18:44:38-08:00
+native_folder=/Users/ezhang/Downloads/benchmark_runs/test/tpc-ds_sf1k_native_full-2024-01-03T18:57:26-08:00
 
 echo "query_01"
 diff -A patience $java_folder/tpc-ds_sf1k_java_full_query_01_q0.output $native_folder/tpc-ds_sf1k_native_full_query_01_q0.output

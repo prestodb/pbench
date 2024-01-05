@@ -2,10 +2,14 @@ package stage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog"
+	"os"
+	"path/filepath"
 	"presto-benchmark/log"
+	"presto-benchmark/presto"
 	"time"
 )
 
@@ -171,4 +175,66 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
 	return s
+}
+
+func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
+	if !*s.SaveJson && result.QueryError == nil {
+		return
+	}
+	s.wgExitMainStage.Add(1)
+	go func() {
+		checkErr := func(err error) {
+			if err != nil {
+				log.Error().Err(err).EmbedObject(result.SimpleLogging()).Send()
+			}
+		}
+		{
+			queryJsonFile, err := os.OpenFile(
+				filepath.Join(s.OutputPath, querySource(s, result))+".json",
+				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+			checkErr(err)
+			if err == nil {
+				_, err = s.Client.GetQueryInfo(ctx, result.QueryId, false, queryJsonFile)
+				checkErr(err)
+				checkErr(queryJsonFile.Close())
+			}
+		}
+		if result.QueryError != nil {
+			queryErrorFile, err := os.OpenFile(
+				filepath.Join(s.OutputPath, querySource(s, result))+".error.json",
+				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+			checkErr(err)
+			if err == nil {
+				bytes, e := json.MarshalIndent(result.QueryError, "", "  ")
+				if e == nil {
+					_, e = queryErrorFile.Write(bytes)
+				}
+				checkErr(e)
+				checkErr(queryErrorFile.Close())
+			}
+		}
+		s.wgExitMainStage.Done()
+	}()
+}
+
+func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult) (returnErr error) {
+	defer func() {
+		if returnErr != nil {
+			log.Error().Err(returnErr).EmbedObject(result.SimpleLogging()).
+				Msg("failed to write query column metadata")
+		}
+	}()
+	columnMetadataFile, ioErr := os.OpenFile(
+		filepath.Join(s.OutputPath, querySource(s, result))+".cols.json",
+		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	defer columnMetadataFile.Close()
+	if ioErr != nil {
+		return ioErr
+	}
+	bytes, marshalErr := json.MarshalIndent(qr.Columns, "", "  ")
+	if marshalErr != nil {
+		return marshalErr
+	}
+	_, returnErr = columnMetadataFile.Write(bytes)
+	return
 }

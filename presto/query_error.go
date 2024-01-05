@@ -6,12 +6,11 @@ import (
 )
 
 type QueryError struct {
-	Message   string `json:"message"`
-	ErrorCode int    `json:"errorCode"`
-	ErrorName string `json:"errorName"`
-	ErrorType string `json:"errorType"`
-	// TODO: update this after https://github.com/prestodb/presto/pull/21588 is merged.
-	Retriable     bool           `json:"boolean"`
+	Message       string         `json:"message"`
+	ErrorCode     int            `json:"errorCode"`
+	ErrorName     string         `json:"errorName"`
+	ErrorType     string         `json:"errorType"`
+	Retriable     bool           `json:"retriable"`
 	ErrorLocation *ErrorLocation `json:"errorLocation,omitempty"`
 	FailureInfo   *FailureInfo   `json:"failureInfo,omitempty"`
 }
