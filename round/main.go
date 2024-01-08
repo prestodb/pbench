@@ -13,14 +13,15 @@ import (
 )
 
 var (
-	DecimalRegExp    *regexp.Regexp
+	DecimalPrecision int
 	FileExtensions   []string
 	FileFormat       string
 	InPlaceRewrite   bool
 	Recursive        bool
-	FileScanned      int
-	FileWritten      int
-	DecimalPrecision int
+
+	decimalRegExp *regexp.Regexp
+	fileScanned   int
+	fileWritten   int
 )
 
 const InProgressExt = ".InProgress"
@@ -41,13 +42,13 @@ func Args(cmd *cobra.Command, args []string) error {
 }
 
 func Run(_ *cobra.Command, args []string) {
-	DecimalRegExp = regexp.MustCompile(fmt.Sprintf(`"?(\d+\.\d{%d})\d+"?`, DecimalPrecision))
+	decimalRegExp = regexp.MustCompile(fmt.Sprintf(`"?(\d+\.\d{%d})\d+"?`, DecimalPrecision))
 	for _, path := range args {
 		if err := processRoundDecimalPath(path); err != nil {
 			log.Error().Str("path", path).Err(err).Send()
 		}
 	}
-	log.Info().Int("file_scanned", FileScanned).Int("file_written", FileWritten).Send()
+	log.Info().Int("file_scanned", fileScanned).Int("file_written", fileWritten).Send()
 }
 
 func processRoundDecimalPath(path string) error {
@@ -128,7 +129,7 @@ func processRoundDecimalFile(inputPath string) (err error) {
 		if !InPlaceRewrite {
 			// for in-place rewrite, we do not need to do anything.
 			log.Info().Str("path", outputPath).Msg("file written")
-			FileWritten++
+			fileWritten++
 			return
 		}
 		// need to overwrite the original file, delete the original file first.
@@ -141,13 +142,13 @@ func processRoundDecimalFile(inputPath string) (err error) {
 			err = fmt.Errorf("failed to rename file %s to %s: %w", outputPath, inputPath, ioErr)
 			return
 		}
-		FileWritten++
+		fileWritten++
 		log.Info().Str("path", inputPath).Msg("file updated")
 	}()
 
 	scanner, colCount, lineNum := bufio.NewScanner(inputFile), 0, 1
 	var decimalColIndexes []int
-	FileScanned++
+	fileScanned++
 	for ; scanner.Scan(); lineNum++ {
 		rowContent := scanner.Text()
 		if FileFormat == "json" {
@@ -165,7 +166,7 @@ func processRoundDecimalFile(inputPath string) (err error) {
 		if decimalColIndexes == nil {
 			decimalColIndexes = make([]int, 0, 2)
 			for i, col := range cols {
-				if match := DecimalRegExp.FindStringSubmatch(col); len(match) > 0 {
+				if match := decimalRegExp.FindStringSubmatch(col); len(match) > 0 {
 					log.Info().Msgf("%s column %d seems to be a decimal: %s", inputPath, i, col)
 					decimalColIndexes = append(decimalColIndexes, i)
 					if FileFormat == "csv" {
@@ -192,7 +193,7 @@ func processRoundDecimalFile(inputPath string) (err error) {
 				return fmt.Errorf("%s: the first line had %d columns but line %d had %d columns", inputPath, colCount, lineNum, len(cols))
 			}
 			for _, idx := range decimalColIndexes {
-				if match := DecimalRegExp.FindStringSubmatch(cols[idx]); len(match) > 0 {
+				if match := decimalRegExp.FindStringSubmatch(cols[idx]); len(match) > 0 {
 					if FileFormat == "csv" {
 						cols[idx] = fmt.Sprintf(`"%s"`, match[1])
 					} else {

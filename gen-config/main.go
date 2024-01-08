@@ -16,6 +16,7 @@ var (
 	TemplatePath  = ""
 	TemplateFS    fs.FS
 	ParameterPath = ""
+
 	//go:embed templates/default
 	builtinTemplate embed.FS
 )

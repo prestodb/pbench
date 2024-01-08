@@ -6,7 +6,7 @@ if [ ! -f $SCRIPT_DIR/presto-benchmark_$(arch) ]; then
     if [ ! -f $GO ]; then
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             pkg=go1.21.5.linux-amd64.tar.gz
-            wget https://go.dev/dl/$pkg
+            curl -OL https://go.dev/dl/$pkg
             sudo tar -C /usr/local -xzf $pkg
             rm $pkg
         elif [[ "$OSTYPE" == "darwin"* ]]; then

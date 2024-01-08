@@ -11,7 +11,7 @@ benchmark_base='/Users/ezhang/Downloads/benchmark_runs'
 server='https://'
 
 # Native SF-1K 4 streams defined in the spec
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -19,7 +19,7 @@ server='https://'
     tpc-ds/4s.json
 
 # Java SF-1K standard
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -27,7 +27,7 @@ server='https://'
     tpc-ds/std.json
 
 # Java SF-1K with order_by
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -35,7 +35,7 @@ server='https://'
     tpc-ds/ob.json
 
 # Java SF-1K full
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -43,7 +43,7 @@ server='https://'
     tpc-ds/full.json
 
 # Java SF-1K optimizer+
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -51,7 +51,7 @@ server='https://'
     tpc-ds/o+.json
 
 # Native SF-1K standard
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -59,7 +59,7 @@ server='https://'
     tpc-ds/std.json
 
 # Native SF-1K with order_by
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -67,7 +67,7 @@ server='https://'
     tpc-ds/ob.json
 
 # Native SF-1K full
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -75,7 +75,7 @@ server='https://'
     tpc-ds/full.json
 
 # Native SF-1K optimizer+
-../presto-benchmark run \
+../pbench run \
     -s $server \
     -o $benchmark_base \
     tpc-ds/ds_sf1k.json \
@@ -83,23 +83,23 @@ server='https://'
     tpc-ds/o+.json
 
 # Java SF-1 on Hive Query Runner
-../presto-benchmark run \
+../pbench run \
     -o $benchmark_base \
     tpc-ds/ds_sf1.json \
     j.json \
     tpc-ds/std.json
 
 # Very lightweight test stages on Hive Query Runner
-../presto-benchmark run \
+../pbench run \
     -o $benchmark_base/tmp \
     save_output.json \
     test/stage_1.json
 
-../presto-benchmark run \
+../pbench run \
     -o $benchmark_base/tmp \
     test/stage_1.json
 
 
 # Re-regeenrate cluster configs
-./presto-benchmark gen-config cluster-configs
-./presto-benchmark gen-config -t gen-config/templates/spilling-on cluster-configs/medium-spill
+./pbench gen-config cluster-configs
+./pbench gen-config -t gen-config/templates/spilling-on cluster-configs/medium-spill
