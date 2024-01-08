@@ -98,3 +98,8 @@ server='https://'
 ../presto-benchmark run \
     -o $benchmark_base/tmp \
     test/stage_1.json
+
+
+# Re-regeenrate cluster configs
+./presto-benchmark gen-config cluster-configs
+./presto-benchmark gen-config -t gen-config/templates/spilling-on cluster-configs/medium-spill
