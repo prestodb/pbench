@@ -54,12 +54,13 @@ type Stage struct {
 	SaveOutput *bool `json:"save_output,omitempty"`
 	// If SaveJson is set to true, the query json will be saved to files in its raw form.
 	// Children stages will inherit this value from their parent if it is not set.
-	SaveJson       *bool    `json:"save_json,omitempty"`
-	OutputPath     string   `json:"output_path,omitempty"`
-	NextStagePaths []string `json:"next,omitempty"`
-	BaseDir        string   `json:"-"`
-	Prerequisites  []*Stage `json:"-"`
-	NextStages     []*Stage `json:"-"`
+	SaveJson           *bool    `json:"save_json,omitempty"`
+	SaveColumnMetadata *bool    `json:"save_column_metadata,omitempty"`
+	OutputPath         string   `json:"output_path,omitempty"`
+	NextStagePaths     []string `json:"next,omitempty"`
+	BaseDir            string   `json:"-"`
+	Prerequisites      []*Stage `json:"-"`
+	NextStages         []*Stage `json:"-"`
 	// Client is by default passed down to descendant stages.
 	Client *presto.Client `json:"-"`
 	// GetClient is called when the stage needs to create a new Presto client. This function is passed down to descendant stages by default.
@@ -278,6 +279,9 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 	if *s.SaveOutput {
 		e.Bool("save_output", true)
 	}
+	if *s.SaveColumnMetadata {
+		e.Bool("save_column_metadata", true)
+	}
 	e.Msgf("submitted query")
 
 	var (
@@ -323,7 +327,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 				}
 			}
 		}(qr.Data)
-		if qr.NextUri == nil {
+		if *s.SaveColumnMetadata && qr.NextUri == nil {
 			_ = s.saveColumnMetadataFile(qr, result)
 		}
 		return nil

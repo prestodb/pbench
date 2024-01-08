@@ -98,6 +98,9 @@ func (s *Stage) propagateStates() {
 	if s.SaveOutput == nil {
 		s.SaveOutput = &falseValue
 	}
+	if s.SaveColumnMetadata == nil {
+		s.SaveColumnMetadata = &falseValue
+	}
 	if s.AbortOnError == nil {
 		s.AbortOnError = &falseValue
 	}
@@ -124,6 +127,9 @@ func (s *Stage) propagateStates() {
 		}
 		if nextStage.SaveJson == nil {
 			nextStage.SaveJson = s.SaveJson
+		}
+		if nextStage.SaveColumnMetadata == nil {
+			nextStage.SaveColumnMetadata = s.SaveColumnMetadata
 		}
 		nextStage.OutputPath = s.OutputPath
 		if nextStage.GetClient == nil {
@@ -167,6 +173,9 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	if other.SaveOutput != nil {
 		s.SaveOutput = other.SaveOutput
+	}
+	if other.SaveColumnMetadata != nil {
+		s.SaveColumnMetadata = other.SaveColumnMetadata
 	}
 	if other.SaveJson != nil {
 		s.SaveJson = other.SaveJson
