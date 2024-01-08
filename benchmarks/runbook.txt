@@ -103,3 +103,12 @@ server='https://'
 # Re-regeenrate cluster configs
 ./pbench gen-config cluster-configs
 ./pbench gen-config -t gen-config/templates/spilling-on cluster-configs/medium-spill
+
+# round decimal result
+./pbench round -ir /Users/ezhang/Downloads/benchmark_runs/test
+
+# compare result
+./pbench cmp -r '.*(query_\d{2}.*)_q0\.output' \
+-o /Users/ezhang/Downloads/benchmark_runs/tmp/diff_sf1k \
+/Users/ezhang/Downloads/benchmark_runs/test/tpc-ds_sf1k_java_full-2024-01-03T18:44:38-08:00 \
+/Users/ezhang/Downloads/benchmark_runs/test/tpc-ds_sf1k_native_full-2024-01-03T18:57:26-08:00
