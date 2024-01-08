@@ -23,14 +23,16 @@ func Run(_ *cobra.Command, args []string) {
 	gParams := DefaultGenerationParameters
 	if ParameterPath != "" {
 		if paramsByte, ioErr := os.ReadFile(ParameterPath); ioErr != nil {
-			log.Error().Err(ioErr).Msg("failed to read generation parameter file")
+			log.Error().Err(ioErr).Str("parameter_path", ParameterPath).
+				Msg("failed to read generation parameter file")
 			ParameterPath = ""
 		} else {
 			params := &GenerationParameters{}
 			if unmarshalErr := json.Unmarshal(paramsByte, params); unmarshalErr != nil {
 				gParams = params
 			} else {
-				log.Error().Err(unmarshalErr).Msg("failed to unmarshal generation parameter file")
+				log.Error().Err(unmarshalErr).Str("parameter_path", ParameterPath).
+					Msg("failed to unmarshal generation parameter file")
 			}
 		}
 	}
@@ -60,6 +62,7 @@ func Run(_ *cobra.Command, args []string) {
 			cfg.Calculate()
 			cfg.Path = filepath.Dir(path)
 			configs = append(configs, cfg)
+			log.Info().Str("path", path).Msg("parsed configuration")
 		}
 		return nil
 	})

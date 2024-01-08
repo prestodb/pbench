@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
+	"strings"
 	"text/template"
 )
 
@@ -19,12 +20,20 @@ var fm = template.FuncMap{
 // GenerateFiles For each .tmpl file under the "template" directory, generate the corresponding file with the same
 // directory structure for each config.
 func GenerateFiles(configs []*ClusterConfig) {
+	var fileSystem fs.FS
 	traverseTemplateDir := func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
+		if err != nil {
+			log.Error().Err(err).Str("path", path).Send()
+			return err
+		}
+		if d.IsDir() || strings.HasPrefix(d.Name(), ".") {
 			return nil
 		}
 
-		tmpl, err := template.New(d.Name()).Funcs(fm).ParseFS(builtinTemplate, path)
+		if TemplateDir != "" {
+			path, _ = filepath.Rel(TemplateDir, path)
+		}
+		tmpl, err := template.New(d.Name()).Funcs(fm).ParseFS(fileSystem, path)
 		if err != nil {
 			log.Error().Err(err).Str("path", path).Msg("failed to parse template")
 			return nil
@@ -48,8 +57,10 @@ func GenerateFiles(configs []*ClusterConfig) {
 		return nil
 	}
 	if TemplateDir != "" {
+		fileSystem = os.DirFS(TemplateDir)
 		_ = filepath.WalkDir(TemplateDir, traverseTemplateDir)
 	} else {
+		fileSystem = builtinTemplate
 		_ = fs.WalkDir(builtinTemplate, ".", traverseTemplateDir)
 	}
 }
