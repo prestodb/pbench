@@ -20,6 +20,20 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
+	gParams := DefaultGenerationParameters
+	if ParameterPath != "" {
+		if paramsByte, ioErr := os.ReadFile(ParameterPath); ioErr != nil {
+			log.Error().Err(ioErr).Msg("failed to read generation parameter file")
+			ParameterPath = ""
+		} else {
+			params := &GenerationParameters{}
+			if unmarshalErr := json.Unmarshal(paramsByte, params); unmarshalErr != nil {
+				gParams = params
+			} else {
+				log.Error().Err(unmarshalErr).Msg("failed to unmarshal generation parameter file")
+			}
+		}
+	}
 	configs := make([]*ClusterConfig, 0, 3)
 	configPath, pathErr := filepath.Abs(args[0])
 	if pathErr != nil {
@@ -27,10 +41,6 @@ func Run(_ *cobra.Command, args []string) {
 		return
 	}
 	_ = filepath.Walk(configPath, func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			log.Error().Err(err).Str("path", path).Send()
-			return err
-		}
 		if info.IsDir() || info.Name() != configJson {
 			return nil
 		}
@@ -39,7 +49,9 @@ func Run(_ *cobra.Command, args []string) {
 			log.Error().Err(ioErr).Str("path", path).Msg("failed to read config file.")
 			return nil
 		}
-		cfg := &ClusterConfig{}
+		cfg := &ClusterConfig{
+			GenerationParameters: gParams,
+		}
 		// If there is a config.json file under the subdirectory, parse it.
 		if ioErr = json.Unmarshal(bytes, cfg); ioErr != nil {
 			log.Error().Err(ioErr).Str("path", path).Msg("failed to parse config file.")

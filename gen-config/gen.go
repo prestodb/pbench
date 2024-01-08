@@ -36,21 +36,20 @@ func GenerateFiles(configs []*ClusterConfig) {
 			f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 			if err != nil {
 				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to create file")
-				return nil
+				continue
 			}
 			err = tmpl.Execute(f, cfg)
 			if err != nil {
 				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to evaluate template")
-				return nil
+				continue
 			}
 			log.Info().Msgf("wrote %s", outputPath)
 		}
 		return nil
 	}
 	if TemplateDir != "" {
-		filepath.WalkDir(TemplateDir, traverseTemplateDir)
+		_ = filepath.WalkDir(TemplateDir, traverseTemplateDir)
 	} else {
-		fs.WalkDir(builtinTemplate, ".", traverseTemplateDir)
+		_ = fs.WalkDir(builtinTemplate, ".", traverseTemplateDir)
 	}
-
 }
