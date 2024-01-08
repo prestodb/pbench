@@ -14,8 +14,10 @@ if [ ! -f $SCRIPT_DIR/presto-benchmark_$(arch) ]; then
             exit
         fi
     fi
+    pushd $SCRIPT_DIR
     env GOOS=linux GOARCH=amd64 $GO build -o $SCRIPT_DIR/presto-benchmark_x86_64 $SCRIPT_DIR
     env GOOS=darwin GOARCH=arm64 $GO build -o $SCRIPT_DIR/presto-benchmark_arm64 $SCRIPT_DIR
+    popd
 fi
 
 $SCRIPT_DIR/presto-benchmark_$(arch) $@
