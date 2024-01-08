@@ -16,7 +16,7 @@ var (
 	TemplatePath  = ""
 	TemplateFS    fs.FS
 	ParameterPath = ""
-	//go:embed template
+	//go:embed templates/default
 	builtinTemplate embed.FS
 )
 
@@ -39,7 +39,7 @@ func Run(_ *cobra.Command, args []string) {
 	}
 	if TemplatePath == "" {
 		TemplateFS = builtinTemplate
-		TemplatePath = "template"
+		TemplatePath = "templates/default"
 	} else {
 		TemplateFS = os.DirFS(TemplatePath)
 		TemplatePath = "."
