@@ -45,8 +45,11 @@ func Run(_ *cobra.Command, args []string) {
 		TemplatePath = "."
 	}
 	configs := make([]*ClusterConfig, 0, 3)
-	// We swallow all the errors (file/directory does not exist or parsing error) to continue as much as we can.
 	_ = filepath.Walk(args[0], func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			log.Error().Err(err).Send()
+			return err
+		}
 		if info.IsDir() || info.Name() != configJson {
 			return nil
 		}
