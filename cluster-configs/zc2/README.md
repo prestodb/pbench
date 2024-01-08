@@ -9,9 +9,9 @@ custom (vCPU: 0, Memory: 712 GB) * 28
 * `HeapSize` = `ContainerMemory` (676 GB) * 0.9 = 608 GB (`-Xmx` and `-Xms` in [[coordinator jvm.config](coordinator/jvm.config)] and [[worker jvm.config](workers/jvm.config)])
 * Presto: [[coordinator config.properties](coordinator/config.properties)] and [[worker config.properties](worker/config.properties)]
   * `query.max-total-memory-per-node` = `HeapSize` (608 GB) * 0.8 = 486 GB
-  * `query.max-memory-per-node` = `query.max-total-memory-per-node` (486 GB) * 0.95 = 462 GB
+  * `query.max-memory-per-node` = `query.max-total-memory-per-node` (486 GB) * 0.9 = 437 GB
   * `query.max-total-memory` = `query.max-total-memory-per-node` (486 GB) * `[number of nodes]` (28) = 13608 GB
-  * `query.max-memory` = `query.max-memory-per-node` (462 GB) * `[number of nodes]` (28) = 12936 GB [[documentation](https://prestodb.io/docs/current/admin/properties.html#memory-management-properties)]
+  * `query.max-memory` = `query.max-memory-per-node` (437 GB) * `[number of nodes]` (28) = 12236 GB [[documentation](https://prestodb.io/docs/current/admin/properties.html#memory-management-properties)]
   * `memory.heap-headroom-per-node` = `HeapSize` (608 GB) * 0.2 = 122 GB
 
 **For Prestissimo clusters:**

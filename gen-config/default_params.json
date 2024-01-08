@@ -4,7 +4,7 @@
     "heap_size_percent_of_container_mem": 0.9,
     "headroom_percent_of_heap": 0.2,
     "query_max_total_mem_per_node_percent_of_heap": 0.8,
-    "query_max_mem_per_node_percent_of_total": 0.95,
+    "query_max_mem_per_node_percent_of_total": 0.9,
     "native_sys_mem_percent_of_container_mem": 0.9,
     "native_query_mem_percent_of_sys_mem": 1
   }
