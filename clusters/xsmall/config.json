@@ -1,0 +1,10 @@
+{
+    "name": "xsmall",
+    "coordinator_instance_type": "r5.xlarge",
+    "coordinator_instance_ebs_size": 50,
+    "worker_instance_type": "r5.xlarge",
+    "worker_instance_ebs_size": 50,
+    "number_of_workers": 2,
+    "memory_per_node_gb": 32,
+    "vcpu_per_worker": 4
+}

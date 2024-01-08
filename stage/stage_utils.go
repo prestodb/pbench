@@ -220,7 +220,7 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 }
 
 func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult) (returnErr error) {
-	if !SaveColMetadata {
+	if !SaveColMetadata || len(qr.Columns) == 0 {
 		return
 	}
 	defer func() {

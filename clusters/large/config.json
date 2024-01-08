@@ -1,0 +1,10 @@
+{
+    "name": "large",
+    "coordinator_instance_type": "r5.8xlarge",
+    "coordinator_instance_ebs_size": 512,
+    "worker_instance_type": "r5.8xlarge",
+    "worker_instance_ebs_size": 512,
+    "number_of_workers": 16,
+    "memory_per_node_gb": 256,
+    "vcpu_per_worker": 32
+}

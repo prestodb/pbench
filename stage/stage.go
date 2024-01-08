@@ -167,7 +167,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 				s.AbortAll(fmt.Errorf(sig.String()))
 				s.wgExitMainStage.Wait()
 			}
-			_ = os.WriteFile(filepath.Join(s.OutputPath, "summary.csv"), []byte(summaryBuilder.String()), 0644)
+			_ = os.WriteFile(filepath.Join(s.OutputPath, s.Id+"_summary.csv"), []byte(summaryBuilder.String()), 0644)
 			return results
 		}
 	}
