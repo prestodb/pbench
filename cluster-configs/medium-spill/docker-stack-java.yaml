@@ -1,0 +1,72 @@
+version: '3.8'
+
+networks:
+  presto-swarm:
+
+services:
+  coordinator:
+    image: ${PRESTO_COORDINATOR_IMAGE}
+    deploy:
+      placement:
+        constraints:
+        - node.role == manager
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '15'
+          memory: 122G
+        reservations:
+          cpus: '15'
+          memory: 122G
+    ports:
+    - 80:8080
+    volumes:
+    - /home/centos/presto/catalog/hive.properties:/opt/presto-server/etc/catalog/hive.properties
+    - /home/centos/presto/catalog/jmx.properties:/opt/presto-server/etc/catalog/jmx.properties
+    - /home/centos/presto/catalog/tpcds.properties:/opt/presto-server/etc/catalog/tpcds.properties
+    - /home/centos/presto/catalog/tpch.properties:/opt/presto-server/etc/catalog/tpch.properties
+    - /home/centos/presto/coordinator/config.properties:/opt/presto-server/etc/config.properties
+    - /home/centos/presto/coordinator/jvm.config:/opt/presto-server/etc/jvm.config
+    - /home/centos/presto/coordinator/node.properties:/opt/presto-server/etc/node.properties
+    - /home/centos/presto/coordinator/session-property-config.json:/opt/presto-server/etc/session-property-config.json
+    - /home/centos/presto/coordinator/session-property-config.properties:/opt/presto-server/etc/session-property-config.properties
+    - /home/centos/presto/event-listener.properties:/opt/presto-server/etc/event-listener.properties
+    - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
+    - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
+    - /home/centos/presto/plugin/event-listener/:/opt/presto-server/plugin/event-listener/
+    - /home/centos/presto/plugin/presto-udf-nielsen/:/opt/presto-server/plugin/udfs/
+    networks:
+      presto-swarm:
+
+  workers:
+    image: ${PRESTO_WORKER_IMAGE}
+    depends_on:
+    - coordinator
+    deploy:
+      placement:
+        constraints:
+        - node.role == worker
+      mode: replicated
+      replicas: 8
+      resources:
+        limits:
+          cpus: '15'
+          memory: 122G
+        reservations:
+          cpus: '15'
+          memory: 122G
+    ports:
+    - 8080:8080
+    volumes:
+    - /home/centos/presto/catalog/hive.properties:/opt/presto-server/etc/catalog/hive.properties
+    - /home/centos/presto/catalog/tpcds.properties:/opt/presto-server/etc/catalog/tpcds.properties
+    - /home/centos/presto/catalog/tpch.properties:/opt/presto-server/etc/catalog/tpch.properties
+    - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
+    - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
+    - /home/centos/presto/plugin/presto-udf-nielsen/:/opt/presto-server/plugin/udfs/
+    - /home/centos/presto/workers/config.properties:/opt/presto-server/etc/config.properties
+    - /home/centos/presto/workers/jvm.config:/opt/presto-server/etc/jvm.config
+    - /home/centos/presto/workers/node.properties:/opt/presto-server/etc/node.properties
+    networks:
+      presto-swarm:
