@@ -1,0 +1,9 @@
+{
+    "cluster_size": "zc2",
+    "coordinator_instance_type": "custom",
+    "coordinator_instance_ebs_size": 50,
+    "worker_instance_type": "custom",
+    "worker_instance_ebs_size": 50,
+    "number_of_workers": 28,
+    "memory_per_node_gb": 712
+}
