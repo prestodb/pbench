@@ -1,6 +1,6 @@
 package gen_config
 
-type GenerationParameters struct {
+type GeneratorParameters struct {
 	SysReservedPercent float64 `json:"sys_reserved_percent"`
 	MinSysReservedGb   float64 `json:"min_sys_reserved_gb"`
 	// Container memory = (1 - SysReservedPercent) * Node memory
@@ -12,7 +12,7 @@ type GenerationParameters struct {
 	NativeQueryMemPercentOfSysMem        float64 `json:"native_query_mem_percent_of_sys_mem"`
 }
 
-var DefaultGenerationParameters = &GenerationParameters{
+var DefaultGeneratorParameters = &GeneratorParameters{
 	SysReservedPercent:                   0.03,
 	MinSysReservedGb:                     4,
 	HeapSizePercentOfContainerMem:        0.9,

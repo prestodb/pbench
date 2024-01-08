@@ -20,28 +20,30 @@ var fm = template.FuncMap{
 // GenerateFiles For each .tmpl file under the "template" directory, generate the corresponding file with the same
 // directory structure for each config.
 func GenerateFiles(configs []*ClusterConfig) {
-	var fileSystem fs.FS
 	traverseTemplateDir := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			log.Error().Err(err).Str("path", path).Send()
+			// This is the only place where we return errors, in case the specified path is invalid,
+			// we need to halt the processing.
 			return err
 		}
 		if d.IsDir() || strings.HasPrefix(d.Name(), ".") {
 			return nil
 		}
 
-		if TemplateDir != "" {
-			path, _ = filepath.Rel(TemplateDir, path)
-		}
-		tmpl, err := template.New(d.Name()).Funcs(fm).ParseFS(fileSystem, path)
+		tmpl, err := template.New(d.Name()).Funcs(fm).ParseFS(TemplateFS, path)
 		if err != nil {
 			log.Error().Err(err).Str("path", path).Msg("failed to parse template")
 			return nil
 		}
 
 		for _, cfg := range configs {
-			outputPath, _ := filepath.Rel(filepath.Dir(path), path)
-			outputPath = filepath.Join(cfg.Path, outputPath)
+			outputPath := filepath.Join(cfg.Path, path)
+			err = os.MkdirAll(filepath.Dir(outputPath), 0755)
+			if err != nil {
+				log.Error().Err(err).Str("path", filepath.Dir(path)).Msg("failed to create directory")
+				return nil
+			}
 			f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 			if err != nil {
 				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to create file")
@@ -56,11 +58,5 @@ func GenerateFiles(configs []*ClusterConfig) {
 		}
 		return nil
 	}
-	if TemplateDir != "" {
-		fileSystem = os.DirFS(TemplateDir)
-		_ = filepath.WalkDir(TemplateDir, traverseTemplateDir)
-	} else {
-		fileSystem = builtinTemplate
-		_ = fs.WalkDir(builtinTemplate, ".", traverseTemplateDir)
-	}
+	_ = fs.WalkDir(TemplateFS, TemplatePath, traverseTemplateDir)
 }

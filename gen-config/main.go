@@ -13,36 +13,40 @@ import (
 const configJson = "config.json"
 
 var (
-	TemplateDir   = ""
+	TemplatePath  = ""
+	TemplateFS    fs.FS
 	ParameterPath = ""
 	//go:embed template
 	builtinTemplate embed.FS
 )
 
 func Run(_ *cobra.Command, args []string) {
-	gParams := DefaultGenerationParameters
+	gParams := DefaultGeneratorParameters
 	if ParameterPath != "" {
 		if paramsByte, ioErr := os.ReadFile(ParameterPath); ioErr != nil {
 			log.Error().Err(ioErr).Str("parameter_path", ParameterPath).
-				Msg("failed to read generation parameter file")
+				Msg("failed to read generator parameter file")
 			ParameterPath = ""
 		} else {
-			params := &GenerationParameters{}
+			params := &GeneratorParameters{}
 			if unmarshalErr := json.Unmarshal(paramsByte, params); unmarshalErr != nil {
-				gParams = params
-			} else {
 				log.Error().Err(unmarshalErr).Str("parameter_path", ParameterPath).
-					Msg("failed to unmarshal generation parameter file")
+					Msg("failed to unmarshal generator parameter file")
+			} else {
+				gParams = params
 			}
 		}
 	}
-	configs := make([]*ClusterConfig, 0, 3)
-	configPath, pathErr := filepath.Abs(args[0])
-	if pathErr != nil {
-		log.Error().Err(pathErr).Str("path", args[0]).Send()
-		return
+	if TemplatePath == "" {
+		TemplateFS = builtinTemplate
+		TemplatePath = "template"
+	} else {
+		TemplateFS = os.DirFS(TemplatePath)
+		TemplatePath = "."
 	}
-	_ = filepath.Walk(configPath, func(path string, info fs.FileInfo, err error) error {
+	configs := make([]*ClusterConfig, 0, 3)
+	// We swallow all the errors (file/directory does not exist or parsing error) to continue as much as we can.
+	_ = filepath.Walk(args[0], func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() || info.Name() != configJson {
 			return nil
 		}
@@ -52,17 +56,16 @@ func Run(_ *cobra.Command, args []string) {
 			return nil
 		}
 		cfg := &ClusterConfig{
-			GenerationParameters: gParams,
+			GeneratorParameters: gParams,
 		}
-		// If there is a config.json file under the subdirectory, parse it.
 		if ioErr = json.Unmarshal(bytes, cfg); ioErr != nil {
 			log.Error().Err(ioErr).Str("path", path).Msg("failed to parse config file.")
 		} else {
-			// Calculate the variables based on the spec in the config.json
-			cfg.Calculate()
 			cfg.Path = filepath.Dir(path)
-			configs = append(configs, cfg)
+			// Calculate the variables based on the spec in the config.json
 			log.Info().Str("path", path).Msg("parsed configuration")
+			cfg.Calculate()
+			configs = append(configs, cfg)
 		}
 		return nil
 	})
