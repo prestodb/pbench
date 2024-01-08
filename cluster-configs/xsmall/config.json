@@ -1,5 +1,5 @@
 {
-    "name": "xsmall",
+    "cluster_size": "xsmall",
     "coordinator_instance_type": "r5.xlarge",
     "coordinator_instance_ebs_size": 50,
     "worker_instance_type": "r5.xlarge",

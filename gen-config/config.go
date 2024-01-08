@@ -5,7 +5,7 @@ import (
 )
 
 type ClusterConfig struct {
-	Name                          string               `json:"name"`
+	Name                          string               `json:"cluster_size"`
 	WorkerInstanceType            string               `json:"worker_instance_type"`
 	NumberOfWorkers               uint                 `json:"number_of_workers"`
 	MemoryPerNodeGb               uint                 `json:"memory_per_node_gb"`
