@@ -1,7 +1,7 @@
 # `xsmall` cluster
 r5.xlarge (vCPU: 4, Memory: 32 GB) * 2
 
-**System reserved:** 4 GB (32 GB * 0.03 or 4 GB, whichever is bigger)
+**System reserved:** 4 GB (32 GB * 0.05 or 4 GB, whichever is bigger)
 
 **Allocated to the Docker container:** 32 GB - 4 GB = 28 GB [[docker-stack-java.yaml](docker-stack-java.yaml)] [[docker-stack-native.yaml](docker-stack-native.yaml)]
 

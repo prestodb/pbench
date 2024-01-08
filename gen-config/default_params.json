@@ -1,5 +1,5 @@
 {
-    "sys_reserved_percent": 0.03,
+    "sys_reserved_percent": 0.05,
     "min_sys_reserved_gb": 4,
     "heap_size_percent_of_container_mem": 0.9,
     "headroom_percent_of_heap": 0.2,

@@ -1,5 +1,10 @@
 package gen_config
 
+import (
+	_ "embed"
+	"encoding/json"
+)
+
 type GeneratorParameters struct {
 	SysReservedPercent float64 `json:"sys_reserved_percent"`
 	MinSysReservedGb   float64 `json:"min_sys_reserved_gb"`
@@ -12,13 +17,14 @@ type GeneratorParameters struct {
 	NativeQueryMemPercentOfSysMem        float64 `json:"native_query_mem_percent_of_sys_mem"`
 }
 
-var DefaultGeneratorParameters = &GeneratorParameters{
-	SysReservedPercent:                   0.03,
-	MinSysReservedGb:                     4,
-	HeapSizePercentOfContainerMem:        0.9,
-	HeadroomPercentOfHeap:                0.2,
-	QueryMaxTotalMemPerNodePercentOfHeap: 0.8,
-	QueryMaxMemPerNodePercentOfTotal:     0.95,
-	NativeSysMemPercentOfContainerMem:    0.9,
-	NativeQueryMemPercentOfSysMem:        1,
+var (
+	//go:embed default_params.json
+	DefaultGeneratorParametersBytes []byte
+	DefaultGeneratorParameters      = &GeneratorParameters{}
+)
+
+func init() {
+	if err := json.Unmarshal(DefaultGeneratorParametersBytes, DefaultGeneratorParameters); err != nil {
+		panic(err)
+	}
 }
