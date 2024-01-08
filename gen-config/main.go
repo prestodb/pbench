@@ -14,7 +14,7 @@ const configJson = "config.json"
 
 var (
 	TemplateDir   = ""
-	ParameterPath = "params.json"
+	ParameterPath = ""
 	//go:embed template
 	builtinTemplate embed.FS
 )

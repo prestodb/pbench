@@ -1,0 +1,7 @@
+[
+  {
+    "sessionProperties": {
+      "query_max_execution_time": "8h"
+    }
+  }
+]

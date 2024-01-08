@@ -20,5 +20,5 @@ func init() {
 	genConfigCmd.Flags().StringVarP(&genconfig.TemplateDir, "template-dir",
 		"t", "", "Specifies the template directory. Use built-in template if not specified.")
 	genConfigCmd.Flags().StringVarP(&genconfig.ParameterPath, "parameter-file",
-		"p", "params.json", "Specifies the parameter file.")
+		"p", "", "Specifies the parameter file. Use built-in defaults if not specified.")
 }
