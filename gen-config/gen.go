@@ -38,7 +38,8 @@ func GenerateFiles(configs []*ClusterConfig) {
 		}
 
 		for _, cfg := range configs {
-			outputPath := filepath.Join(cfg.Path, path)
+			outputPath, _ := filepath.Rel(TemplatePath, path)
+			outputPath = filepath.Join(cfg.Path, outputPath)
 			err = os.MkdirAll(filepath.Dir(outputPath), 0755)
 			if err != nil {
 				log.Error().Err(err).Str("path", filepath.Dir(path)).Msg("failed to create directory")
