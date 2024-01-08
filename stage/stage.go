@@ -327,7 +327,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 				}
 			}
 		}(qr.Data)
-		if *s.SaveColumnMetadata && qr.NextUri == nil {
+		if qr.NextUri == nil {
 			_ = s.saveColumnMetadataFile(qr, result)
 		}
 		return nil
