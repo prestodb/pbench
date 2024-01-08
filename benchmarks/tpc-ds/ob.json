@@ -100,5 +100,6 @@
     "queries/query_97.sql",
     "queries/query_98.sql",
     "queries/query_99.sql"
-  ]
+  ],
+  "save_output": true
 }

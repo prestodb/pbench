@@ -6,6 +6,5 @@
     "join_reordering_strategy": "AUTOMATIC",
     "hive.parquet_pushdown_filter_enabled": true,
     "hive.pushdown_filter_enabled": false
-  },
-  "save_output": true
+  }
 }
