@@ -1,7 +1,5 @@
 {
-    "sys_reserved_percent": 0.05,
-    "min_sys_reserved_gb": 4,
-    "max_sys_reserved_gb": 4,
+    "sys_reserved_gb": 1,
     "heap_size_percent_of_container_mem": 0.9,
     "headroom_percent_of_heap": 0.2,
     "query_max_total_mem_per_node_percent_of_heap": 0.8,

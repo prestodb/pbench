@@ -23,11 +23,6 @@ type ClusterConfig struct {
 }
 
 func (c *ClusterConfig) Calculate() {
-	c.SystemReservedGb = uint(
-		math.Min(
-			math.Max(math.Round(float64(c.MemoryPerNodeGb)*c.GeneratorParameters.SysReservedPercent),
-				c.GeneratorParameters.MinSysReservedGb),
-			c.GeneratorParameters.MaxSysReservedGb))
 	c.ContainerMemoryGb = c.MemoryPerNodeGb - c.SystemReservedGb
 	c.HeapSizeGb = uint(math.Round(float64(c.ContainerMemoryGb) * c.GeneratorParameters.HeapSizePercentOfContainerMem))
 	c.HeadroomGb = uint(math.Round(float64(c.HeapSizeGb) * c.GeneratorParameters.HeadroomPercentOfHeap))
