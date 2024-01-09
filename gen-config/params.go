@@ -8,6 +8,7 @@ import (
 type GeneratorParameters struct {
 	SysReservedPercent float64 `json:"sys_reserved_percent"`
 	MinSysReservedGb   float64 `json:"min_sys_reserved_gb"`
+	MaxSysReservedGb   float64 `json:"max_sys_reserved_gb"`
 	// Container memory = (1 - SysReservedPercent) * Node memory
 	HeapSizePercentOfContainerMem        float64 `json:"heap_size_percent_of_container_mem"`
 	HeadroomPercentOfHeap                float64 `json:"headroom_percent_of_heap"`

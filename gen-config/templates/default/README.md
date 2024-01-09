@@ -1,7 +1,8 @@
 # `{{ .Name }}` cluster
 {{ .WorkerInstanceType }} (vCPU: {{ .VCPUPerWorker }}, Memory: {{ .MemoryPerNodeGb }} GB) * {{ .NumberOfWorkers }}
 
-**System reserved:** {{ .SystemReservedGb }} GB ({{ .MemoryPerNodeGb }} GB * {{ .GeneratorParameters.SysReservedPercent }} or {{ .GeneratorParameters.MinSysReservedGb }} GB, whichever is bigger)
+**System reserved:** {{ .SystemReservedGb }} GB ({{ .MemoryPerNodeGb }} GB * {{ .GeneratorParameters.SysReservedPercent }},
+Minimum {{ .GeneratorParameters.MinSysReservedGb }} GB, Maximum {{ .GeneratorParameters.MaxSysReservedGb }} GB)
 
 **Allocated to the Docker container:** {{ .MemoryPerNodeGb }} GB - {{ .SystemReservedGb }} GB = {{ .ContainerMemoryGb }} GB [[docker-stack-java.yaml](docker-stack-java.yaml)] [[docker-stack-native.yaml](docker-stack-native.yaml)]
 

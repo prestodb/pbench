@@ -5,5 +5,6 @@
     "worker_instance_type": "custom",
     "worker_instance_ebs_size": 50,
     "number_of_workers": 28,
-    "memory_per_node_gb": 712
+    "memory_per_node_gb": 712,
+    "vcpu_per_worker": 64
 }
