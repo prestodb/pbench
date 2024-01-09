@@ -21,4 +21,10 @@ func init() {
 		"t", "", "Specifies the template directory. Use built-in template if not specified.")
 	genConfigCmd.Flags().StringVarP(&genconfig.ParameterPath, "parameter-file",
 		"p", "", "Specifies the parameter file. Use built-in defaults if not specified.")
+	genConfigCmd.AddCommand(&cobra.Command{
+		Use:                   "show-params",
+		Short:                 "Print the built-in default generator parameter file.",
+		DisableFlagsInUseLine: true,
+		Run:                   genconfig.PrintDefaultParams,
+	})
 }

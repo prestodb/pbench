@@ -3,6 +3,7 @@ package gen_config
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"github.com/spf13/cobra"
 	"io/fs"
 	"os"
@@ -75,4 +76,8 @@ func Run(_ *cobra.Command, args []string) {
 	})
 	// Generate config files for each config we read.
 	GenerateFiles(configs)
+}
+
+func PrintDefaultParams(_ *cobra.Command, _ []string) {
+	fmt.Print(string(DefaultGeneratorParametersBytes))
 }
