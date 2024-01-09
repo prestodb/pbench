@@ -1,7 +1,8 @@
 # `xsmall` cluster
 r5.xlarge (vCPU: 4, Memory: 32 GB) * 2
 
-**System reserved:** 4 GB (32 GB * 0.05 or 4 GB, whichever is bigger)
+**System reserved:** 4 GB (32 GB * 0.05,
+Minimum 4 GB, Maximum 4 GB)
 
 **Allocated to the Docker container:** 32 GB - 4 GB = 28 GB [[docker-stack-java.yaml](docker-stack-java.yaml)] [[docker-stack-native.yaml](docker-stack-native.yaml)]
 
@@ -16,7 +17,7 @@ r5.xlarge (vCPU: 4, Memory: 32 GB) * 2
 
 **For Prestissimo clusters:**
 * Coordinator heap setting same as Java cluster
-* `system-memory-gb` = `ContainerMemory` (28 GB) * 0.9 = 25 GB
-* `query.max-memory-per-node` = `system-memory-gb` (25 GB) * 1 = 25 GB
-* `query-memory-gb` = `query.max-memory-per-node` = 25 GB
+* `system-memory-gb` = `ContainerMemory` (28 GB) * 1 = 28 GB
+* `query.max-memory-per-node` = `system-memory-gb` (28 GB) * 0.95 = 27 GB
+* `query-memory-gb` = `query.max-memory-per-node` = 27 GB
   * `MemoryForSpillingAndCaching` = `query.max-memory-per-node` - `query-memory-gb`. We don't need this for the benchmarking now so `query-memory-gb` = `query.max-memory-per-node`

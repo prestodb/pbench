@@ -14,11 +14,11 @@ services:
       replicas: 1
       resources:
         limits:
-          cpus: '18446744073709551615'
-          memory: 676G
+          cpus: '63'
+          memory: 708G
         reservations:
-          cpus: '18446744073709551615'
-          memory: 676G
+          cpus: '63'
+          memory: 708G
     ports:
     - 80:8080
     volumes:
@@ -51,11 +51,11 @@ services:
       replicas: 28
       resources:
         limits:
-          cpus: '18446744073709551615'
-          memory: 676G
+          cpus: '63'
+          memory: 708G
         reservations:
-          cpus: '18446744073709551615'
-          memory: 676G
+          cpus: '63'
+          memory: 708G
     ports:
     - 8080:8080
     volumes:

@@ -15,10 +15,10 @@ services:
       resources:
         limits:
           cpus: '15'
-          memory: 122G
+          memory: 124G
         reservations:
           cpus: '15'
-          memory: 122G
+          memory: 124G
     ports:
     - 80:8080
     volumes:
@@ -52,10 +52,10 @@ services:
       resources:
         limits:
           cpus: '15'
-          memory: 122G
+          memory: 124G
         reservations:
           cpus: '15'
-          memory: 122G
+          memory: 124G
     ports:
     - 8080:8080
     volumes:

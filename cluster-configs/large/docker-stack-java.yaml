@@ -15,10 +15,10 @@ services:
       resources:
         limits:
           cpus: '31'
-          memory: 243G
+          memory: 252G
         reservations:
           cpus: '31'
-          memory: 243G
+          memory: 252G
     ports:
     - 80:8080
     volumes:
@@ -52,10 +52,10 @@ services:
       resources:
         limits:
           cpus: '31'
-          memory: 243G
+          memory: 252G
         reservations:
           cpus: '31'
-          memory: 243G
+          memory: 252G
     ports:
     - 8080:8080
     volumes:
