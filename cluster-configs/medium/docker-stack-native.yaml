@@ -21,6 +21,7 @@ services:
           memory: 124G
     ports:
     - 80:8080
+    - 9494:9494
     volumes:
     - /home/centos/presto/catalog/hive-native.properties:/opt/presto-server/etc/catalog/hive.properties
     - /home/centos/presto/catalog/jmx.properties:/opt/presto-server/etc/catalog/jmx.properties
