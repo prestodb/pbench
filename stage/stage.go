@@ -229,7 +229,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	return nil
 }
 
-func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, queryFile *string) (result *QueryResult, retErr error) {
+func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, queryFile *string, totalQueries int) (result *QueryResult, retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
@@ -255,7 +255,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 	default:
 	}
 
-	querySourceStr := querySource(s, result)
+	querySourceStr := querySource(s, result, totalQueries)
 	clientResult, _, err := s.Client.Query(ctx, query,
 		func(req *http.Request) {
 			req.Header.Set(presto.SourceHeader, querySourceStr)
@@ -328,7 +328,7 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 			}
 		}(qr.Data)
 		if qr.NextUri == nil {
-			_ = s.saveColumnMetadataFile(qr, result)
+			_ = s.saveColumnMetadataFile(qr, result, querySourceStr)
 		}
 		return nil
 	})
@@ -352,13 +352,14 @@ func (s *Stage) runQuery(ctx context.Context, queryIndex int, query string, quer
 }
 
 func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (retErr error) {
+	totalQueries := len(queries)
 	for i, query := range queries {
-		result, err := s.runQuery(ctx, i, query, queryFile)
+		result, err := s.runQuery(ctx, i, query, queryFile, totalQueries)
 
 		if s.OnQueryCompletion != nil {
 			s.OnQueryCompletion(result)
 		}
-		s.saveQueryJsonFile(ctx, result)
+		s.saveQueryJsonFile(ctx, result, querySource(s, result, totalQueries))
 		// Each query should have a query result sent to the channel, no matter
 		// its execution succeeded or not.
 		s.resultChan <- result

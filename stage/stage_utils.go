@@ -20,13 +20,17 @@ func getNow() *time.Time {
 	return &now
 }
 
-func querySource(s *Stage, result *QueryResult) (fileName string) {
+func querySource(s *Stage, result *QueryResult, totalQueries int) (fileName string) {
 	if result.QueryFile != nil {
 		fileName = fileNameWithoutPathAndExt(*result.QueryFile)
 	} else {
 		fileName = "inline"
 	}
-	fileName = fmt.Sprintf("%s_%s_q%d", s.Id, fileName, result.QueryIndex)
+	if totalQueries > 1 {
+		fileName = fmt.Sprintf("%s_%s_q%d", s.Id, fileName, result.QueryIndex)
+	} else {
+		fileName = fmt.Sprintf("%s_%s", s.Id, fileName)
+	}
 	return
 }
 
@@ -188,7 +192,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	return s
 }
 
-func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
+func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult, querySourceStr string) {
 	if !*s.SaveJson && result.QueryError == nil {
 		return
 	}
@@ -201,7 +205,7 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 		}
 		{
 			queryJsonFile, err := os.OpenFile(
-				filepath.Join(s.OutputPath, querySource(s, result))+".json",
+				filepath.Join(s.OutputPath, querySourceStr)+".json",
 				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 			checkErr(err)
 			if err == nil {
@@ -212,7 +216,7 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 		}
 		if result.QueryError != nil {
 			queryErrorFile, err := os.OpenFile(
-				filepath.Join(s.OutputPath, querySource(s, result))+".error.json",
+				filepath.Join(s.OutputPath, querySourceStr)+".error.json",
 				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 			checkErr(err)
 			if err == nil {
@@ -228,7 +232,7 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 	}()
 }
 
-func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult) (returnErr error) {
+func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult, querySourceStr string) (returnErr error) {
 	if !(SaveColMetadata || *s.SaveColumnMetadata) || len(qr.Columns) == 0 {
 		return
 	}
@@ -239,7 +243,7 @@ func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryRes
 		}
 	}()
 	columnMetadataFile, ioErr := os.OpenFile(
-		filepath.Join(s.OutputPath, querySource(s, result))+".cols.json",
+		filepath.Join(s.OutputPath, querySourceStr)+".cols.json",
 		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	defer columnMetadataFile.Close()
 	if ioErr != nil {
