@@ -1,0 +1,297 @@
+rules:
+  # Pause Meter
+  # com.facebook.airlift.stats<name=PauseMeter><>10msTo50msPauses
+  # com.facebook.airlift.stats<name=PauseMeter><>10sTo1mPauses
+  # com.facebook.airlift.stats<name=PauseMeter><>1sTo10sPauses
+  # com.facebook.airlift.stats<name=PauseMeter><>500msTo1sPauses
+  # com.facebook.airlift.stats<name=PauseMeter><>50msTo500msPauses
+  # com.facebook.airlift.stats<name=PauseMeter><>GreaterThan1mPauses
+  # com.facebook.airlift.stats<name=PauseMeter><>LessThan10msPauses
+  # com.facebook.airlift.stats<name=PauseMeter><>TotalPauseSeconds
+  - pattern: "com.facebook.airlift.stats<name=PauseMeter><>(.+_[a-z]+)([0-9]+m?s?)_pauses:"
+    name: watsonx_data_presto_pause_meter_$1_$2_pauses
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "com.facebook.airlift.stats<name=PauseMeter><>(.+_pause.+):"
+    name: watsonx_data_presto_pause_meter_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  # Alluxio
+  # com.facebook.alluxio<name=Client.CacheBytesReadCache.presto, type=meters><>Count
+  # com.facebook.alluxio<name=Client.CacheBytesReadCache.presto, type=meters><>FifteenMinuteRate
+  # com.facebook.alluxio<name=Client.CacheBytesRequestedExternal.presto, type=meters><>Count
+  # com.facebook.alluxio<name=Client.CacheBytesRequestedExternal.presto, type=meters><>FifteenMinuteRate
+  # com.facebook.alluxio<name=Client.CacheBytesWrittenCache.presto, type=meters><>Count
+  # com.facebook.alluxio<name=Client.CacheBytesWrittenCache.presto, type=meters><>FifteenMinuteRate
+  # com.facebook.alluxio<name=Client.CacheGetErrors.presto, type=counters><>Count
+  # com.facebook.alluxio<name=Client.CacheHitRate.presto, type=gauges><>Value
+  # com.facebook.alluxio<name=Client.CachePages, type=counters><>Value
+  # com.facebook.alluxio<name=Client.CachePagesEvicted.presto, type=meters><>Count
+  # com.facebook.alluxio<name=Client.CachePagesEvicted.presto, type=meters><>FifteenMinuteRate
+  # com.facebook.alluxio<name=Client.CachePutErrors.presto, type=counters><>Count
+  # com.facebook.alluxio<name=Client.CacheSpaceAvailable.presto, type=gauges><>Value
+  # com.facebook.alluxio<name=Client.CacheSpaceUsed.presto, type=gauges><>Value
+  - pattern: "alluxio<name=Client.Cache(BytesReadCache|BytesRequestedExternal|BytesWrittenCache|PagesEvicted).presto, type=meters><>(count|fifteen_minute_rate):"
+    name: watsonx_data_presto_alluxio_Cache$1_$2
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "alluxio<name=Client.Cache(GetErrors|PutErrors).presto, type=counters><>count:"
+    name: watsonx_data_presto_alluxio_Cache$1_count
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "alluxio<name=Client.Cache(HitRate|SpaceAvailable|SpaceUsed).presto, type=gauges><>value:"
+    name: watsonx_data_presto_alluxio_Cache$1_value
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "alluxio<name=Client.CachePages, type=gauges><>value:"
+    name: watsonx_data_presto_alluxio_CachePages_value
+    attrNameSnakeCase: true
+    cache: true
+
+  # Presto Cache
+  # com.facebook.presto.cache<name=CacheStats><>CacheHit
+  # com.facebook.presto.cache<name=CacheStats><>CacheMiss
+  # com.facebook.presto.cache<name=CacheStats><>InMemoryRetainedBytes
+  # com.facebook.presto.cache<name=CacheStats><>QuotaExceed
+  - pattern: "presto.cache<name=CacheStats><>(.+):"
+    name: watsonx_data_presto_cache_stats_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  # Task Executor
+  # com.facebook.presto.execution.executor<name=TaskExecutor><>BlockedSplits
+  # com.facebook.presto.execution.executor<name=TaskExecutor><>RunnerThreads
+  # com.facebook.presto.execution.executor<name=TaskExecutor><>RunningSplits
+  # com.facebook.presto.execution.executor<name=TaskExecutor><>Tasks
+  # com.facebook.presto.execution.executor<name=TaskExecutor><>TotalSplits
+  # com.facebook.presto.execution.executor<name=TaskExecutor><>WaitingSplits
+  - pattern: "presto.execution.executor<name=TaskExecutor><>(blocked_splits|runner_threads|running_splits|tasks|total_splits|waiting_splits):"
+    name: watsonx_data_presto_task_executor_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  # Node Selection
+  # com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>NonPreferredNodeSelectedCount.TotalCount
+  # com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>NonPrimaryPreferredNodeSelectedCount.TotalCount
+  # com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>PrimaryPreferredNodeSelectedCount.FiveMinute.Rate
+  # com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>PrimaryPreferredNodeSelectedCount.TotalCount
+  - pattern: "com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>(non_preferred_node_selected_count|non_primary_preferred_node_selected_count|primary_preferred_node_selected_count)._total_count:"
+    name: watsonx_data_presto_node_selection_stats_$1_total_count
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>primary_preferred_node_selected_count._five_minute._rate:"
+    name: watsonx_data_presto_node_selection_stats_primary_preferred_node_selected_count_five_minute_rate
+    attrNameSnakeCase: true
+    cache: true
+
+  # Split Scheduler
+  # com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>GetSplitTime.FiveMinutes.P(\w+)
+  # com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>MixedSplitQueuesFullAndWaitingForSource.FiveMinute.Count
+  # com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>SleepTime.FiveMinutes.P(\w+)
+  # com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>SplitQueuesFull.FiveMinute.Count
+  # com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>WaitingForSource.FiveMinute.Count
+  - pattern: "com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>(get_split_time|sleep_time)._five_minutes._p(.+):"
+    name: watsonx_data_presto_split_scheduler_stats_$1_five_minutes_p$2
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>(split_queues_full|waiting_for_source|mixed_split_queues_full_and_waiting_for_source)._five_minute._count:"
+    name: watsonx_data_presto_split_scheduler_stats_$1_five_minute_count
+    attrNameSnakeCase: true
+    cache: true
+
+  # Query Manager
+  # com.facebook.presto.execution<name=QueryManager><>AbandonedQueries.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>CanceledQueries.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>CompletedQueries.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>ConsumedCpuTimeSecs.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>ConsumedInputBytes.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>ConsumedInputRows.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>CpuInputByteRate.FiveMinutes.P(\w+)
+  # com.facebook.presto.execution<name=QueryManager><>ExecutionTime.FiveMinutes.P(\w+)
+  # com.facebook.presto.execution<name=QueryManager><>ExternalFailures.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>FailedQueries.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>InsufficientResourcesFailures.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>InternalFailures.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>QueuedQueries
+  # com.facebook.presto.execution<name=QueryManager><>QueuedTime.FiveMinutes.P(\w+)
+  # com.facebook.presto.execution<name=QueryManager><>RunningQueries
+  # com.facebook.presto.execution<name=QueryManager><>StartedQueries.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>SubmittedQueries.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>UserErrorFailures.FiveMinute.Count
+  # com.facebook.presto.execution<name=QueryManager><>WallInputBytesRate.FiveMinutes.P(\w+)
+  - pattern: "presto.execution<name=QueryManager><>(.+)._five_minute._count:"
+    name: watsonx_data_presto_query_manager_$1_five_minute_count
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "presto.execution<name=QueryManager><>(.+)._five_minutes._p(.+):"
+    name: watsonx_data_presto_query_manager_$1_five_minutes_p$2
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "presto.execution<name=QueryManager><>(queued_queries|running_queries):"
+    name: watsonx_data_presto_query_manager_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  # Task Manager
+  # com.facebook.presto.execution<name=TaskManager><>FailedTasks.FiveMinute.Count
+  # com.facebook.presto.execution<name=TaskManager><>InputDataSize.FiveMinute.Count
+  # com.facebook.presto.execution<name=TaskManager><>InputPositions.FiveMinute.Count
+  # com.facebook.presto.execution<name=TaskManager><>OutputDataSize.FiveMinute.Count
+  # com.facebook.presto.execution<name=TaskManager><>OutputPositions.FiveMinute.Count
+  - pattern: "presto.execution<name=TaskManager><>(.+)._five_minute._count:"
+    name: watsonx_data_presto_task_manager_$1_five_minute_count
+    attrNameSnakeCase: true
+    cache: true
+
+  # Hive Cache
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_OrcFileTail><>HitRate
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_OrcFileTail><>Size
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_ParquetMetadata><>HitRate
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_ParquetMetadata><>Size
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_StripeFooter><>HitRate
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_StripeFooter><>Size
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_StripeStream><>HitRate
+  # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_StripeStream><>Size
+  - pattern: "presto.hive<type=CacheStatsMBean, name=(.+)_(.+)><>(hit_rate|size):"
+    name: watsonx_data_presto_hive_cache_stats_mbean_$2_$3
+    attrNameSnakeCase: true
+    cache: true
+    labels:
+      catalog_name: $1
+
+  # Cluster Memory Manager
+  # com.facebook.presto.memory<name=ClusterMemoryManager><>QueriesKilledDueToOutOfMemory
+  - pattern: "presto.memory<name=ClusterMemoryManager><>queries_killed_due_to_out_of_memory:"
+    name: watsonx_data_presto_cluster_memory_manager_queries_killed_due_to_out_of_memory
+    attrNameSnakeCase: true
+    cache: true
+
+  # Cluster Memory Pool and Memory Pool
+  # com.facebook.presto.memory<type=ClusterMemoryPool, name=general><>AssignedQueries
+  # com.facebook.presto.memory<type=ClusterMemoryPool, name=general><>BlockedNodes
+  # com.facebook.presto.memory<type=ClusterMemoryPool, name=general><>FreeDistributedBytes
+  # com.facebook.presto.memory<type=ClusterMemoryPool, name=general><>TotalDistributedBytes
+  # com.facebook.presto.memory<type=MemoryPool, name=general><>FreeBytes
+  # com.facebook.presto.memory<type=MemoryPool, name=general><>MaxBytes
+  # com.facebook.presto.memory<type=MemoryPool, name=general><>ReservedBytes
+  # com.facebook.presto.memory<type=MemoryPool, name=general><>ReservedRevocableBytes
+  - pattern: "presto.memory<type=ClusterMemoryPool, name=general><>(.+):"
+    name: watsonx_data_presto_cluster_memory_pool_general_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "presto.memory<type=MemoryPool, name=general><>(.+):"
+    name: watsonx_data_presto_memory_pool_general_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  # Fragment Cache Stats
+  # com.facebook.presto.operator<name=FragmentCacheStats><>CacheEntries
+  # com.facebook.presto.operator<name=FragmentCacheStats><>CacheHit
+  # com.facebook.presto.operator<name=FragmentCacheStats><>CacheRemoval
+  # com.facebook.presto.operator<name=FragmentCacheStats><>CacheSizeInBytes
+  # com.facebook.presto.operator<name=FragmentCacheStats><>InFlightBytes
+  - pattern: "presto.operator<name=FragmentCacheStats><>(.+):"
+    name: watsonx_data_presto_fragment_cache_stats_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  # Java Memory
+  # java.lang<type=Memory><HeapMemoryUsage>committed
+  # java.lang<type=Memory><HeapMemoryUsage>init
+  # java.lang<type=Memory><HeapMemoryUsage>max
+  # java.lang<type=Memory><HeapMemoryUsage>used
+  # java.lang<type=Memory><NonHeapMemoryUsage>committed
+  # java.lang<type=Memory><NonHeapMemoryUsage>init
+  # java.lang<type=Memory><NonHeapMemoryUsage>max
+  # java.lang<type=Memory><NonHeapMemoryUsage>used
+  - pattern: "java.lang<type=Memory><HeapMemoryUsage>(.+):"
+    name: watsonx_data_presto_memory_heap_memory_usage_$1_bytes
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "java.lang<type=Memory><NonHeapMemoryUsage>(.+):"
+    name: watsonx_data_presto_memory_non_heap_memory_usage_$1_bytes
+    attrNameSnakeCase: true
+    cache: true
+
+  # Java Runtime
+  # java.lang<type=Runtime><>Uptime
+  - pattern: "java.lang<type=Runtime><>uptime:"
+    name: watsonx_data_presto_runtime_up_time
+    attrNameSnakeCase: true
+    cache: true
+
+  # G1 Memory Pool - Note IBM Java may not contain these metrics
+  # java.lang<name=G1 Eden Space, type=MemoryPool><Usage>committed
+  # java.lang<name=G1 Eden Space, type=MemoryPool><Usage>init
+  # java.lang<name=G1 Eden Space, type=MemoryPool><Usage>max
+  # java.lang<name=G1 Eden Space, type=MemoryPool><Usage>used
+  # java.lang<name=G1 Old Gen, type=MemoryPool><Usage>committed
+  # java.lang<name=G1 Old Gen, type=MemoryPool><Usage>init
+  # java.lang<name=G1 Old Gen, type=MemoryPool><Usage>max
+  # java.lang<name=G1 Old Gen, type=MemoryPool><Usage>used
+  # java.lang<name=G1 Survivor Space, type=MemoryPool><Usage>committed
+  # java.lang<name=G1 Survivor Space, type=MemoryPool><Usage>init
+  # java.lang<name=G1 Survivor Space, type=MemoryPool><Usage>max
+  # java.lang<name=G1 Survivor Space, type=MemoryPool><Usage>used
+  - pattern: "java.lang<name=G1 (.+), type=MemoryPool><Usage>(.+):"
+    name: watsonx_data_presto_memory_pool_g1_$1_usage_$2_bytes
+    attrNameSnakeCase: true
+    cache: true
+
+  # G1 Garbage Collector - Note IBM Java may not contain these metrics
+  # java.lang<name=G1 Old Generation, type=GarbageCollector><>CollectionCount
+  # java.lang<name=G1 Old Generation, type=GarbageCollector><>CollectionTime
+  # java.lang<name=G1 Young Generation, type=GarbageCollector><>CollectionCount
+  # java.lang<name=G1 Young Generation, type=GarbageCollector><>CollectionTime
+  - pattern: "java.lang<name=(.+), type=GarbageCollector><>collection_(.+):"
+    name: watsonx_data_presto_garbage_collector_$1_collection_$2
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>collection_(.+):"
+    name: watsonx_data_presto_garbage_collector_$1_collection_$2
+    attrNameSnakeCase: true
+    cache: true
+
+  # extra configs
+  - pattern: "presto.hive<type=CachingDirectoryLister, name=(.+)><>(.+):"
+    name: watsonx_data_presto_hive_caching_directory_lister_$2
+    attrNameSnakeCase: true
+    cache: true
+    labels:
+      catalog_name: $1
+
+  - pattern: "presto.hive.s3<type=PrestoS3FileSystem, name=(.+)><>(.+)._one_minute._(rate|count):"
+    name: watsonx_data_presto_hive_s3_presto_s3_file_system_$2_one_minute_$3
+    attrNameSnakeCase: true
+    cache: true
+    labels:
+      catalog_name: $1
+
+  - pattern: "presto.hive.s3<type=PrestoS3FileSystem, name=(.+)><>(.+)._total_count:"
+    name: watsonx_data_presto_hive_s3_presto_s3_file_system_$2_total_count
+    attrNameSnakeCase: true
+    cache: true
+    labels:
+      catalog_name: $1
+
+  - pattern: "java.nio<name=direct, type=BufferPool><>(.+):"
+    name: watsonx_data_presto_java_nio_buffer_pool_direct_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: "presto.memory<name=ClusterMemoryManager><>cluster_(.+):"
+    name: watsonx_data_presto_memory_cluster_memory_manager_cluster_$1
+    attrNameSnakeCase: true
+    cache: true

@@ -32,6 +32,7 @@ services:
     - /home/centos/presto/coordinator/session-property-config.json:/opt/presto-server/etc/session-property-config.json
     - /home/centos/presto/coordinator/session-property-config.properties:/opt/presto-server/etc/session-property-config.properties
     - /home/centos/presto/event-listener.properties:/opt/presto-server/etc/event-listener.properties
+    - /home/centos/presto/jmx-exporter-config.yaml:/opt/presto-server/etc/jmx-exporter-config.yaml
     - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
     - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
     - /home/centos/presto/plugin/event-listener/:/opt/presto-server/plugin/event-listener/
