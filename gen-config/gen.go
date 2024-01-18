@@ -15,6 +15,16 @@ var fm = template.FuncMap{
 		return i - 1
 	},
 	"mul": func(a uint, b uint) uint { return a * b },
+	"seq": func(start, end uint) (stream chan uint) {
+		stream = make(chan uint)
+		go func() {
+			for i := start; i <= end; i++ {
+				stream <- i
+			}
+			close(stream)
+		}()
+		return
+	},
 }
 
 // GenerateFiles For each .tmpl file under the "template" directory, generate the corresponding file with the same
