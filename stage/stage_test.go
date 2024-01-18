@@ -3,11 +3,12 @@ package stage
 import (
 	"context"
 	"errors"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"presto-benchmark/presto"
 	"syscall"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func assertStage(t *testing.T, stage *Stage, prerequisites, next []*Stage, queries, queryFiles int) {
@@ -72,7 +73,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 
 func TestParseStageGraph(t *testing.T) {
 	t.Run("abortOnError = true", func(t *testing.T) {
-		testParseAndExecute(t, true, 10, 16, []string{"Table tpch.sf1.foo does not exist"})
+		testParseAndExecute(t, true, 9, 16, []string{"Table tpch.sf1.foo does not exist"})
 	})
 	t.Run("abortOnError = false", func(t *testing.T) {
 		testParseAndExecute(t, false, 15, 24, []string{

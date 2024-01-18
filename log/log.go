@@ -13,8 +13,8 @@ import (
 var OverrideFatal bool
 
 func init() {
-	// Initialize logger to omit the timestamp and print directly to stdout.
-	log.Logger = zerolog.New(os.Stdout).With().Timestamp().Stack().Logger()
+	// Initialize logger to omit the timestamp and print directly to stderr.
+	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Stack().Logger()
 	zerolog.DurationFieldInteger = true
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 }

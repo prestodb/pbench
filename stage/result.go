@@ -8,9 +8,7 @@ import (
 
 type QueryResult struct {
 	StageId       string
-	Query         string
-	QueryFile     *string
-	QueryIndex    int
+	Query         *Query
 	QueryId       string
 	InfoUrl       string
 	QueryError    error
@@ -28,12 +26,14 @@ func (q *QueryResult) SimpleLogging() *QueryResult {
 
 func (q *QueryResult) MarshalZerologObject(e *zerolog.Event) {
 	e.Str("benchmark_stage_id", q.StageId)
-	if q.QueryFile != nil {
-		e.Str("query_file", *q.QueryFile)
+	if q.Query.File != nil {
+		e.Str("query_file", *q.Query.File)
 	} else if !q.simpleLogging {
-		e.Str("query", q.Query)
+		e.Str("query", q.Query.Text)
 	}
-	e.Int("query_index", q.QueryIndex)
+	e.Int("query_index", q.Query.Index)
+	e.Bool("cold_run", q.Query.ColdRun)
+	e.Int("run_index", q.Query.RunIndex)
 	e.Str("info_url", q.InfoUrl)
 	if q.simpleLogging {
 		q.simpleLogging = false

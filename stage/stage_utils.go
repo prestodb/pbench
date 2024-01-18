@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"presto-benchmark/log"
 	"presto-benchmark/presto"
+	"strconv"
 	"time"
 )
 
@@ -20,16 +21,24 @@ func getNow() *time.Time {
 	return &now
 }
 
-func querySource(s *Stage, result *QueryResult, totalQueries int) (fileName string) {
-	if result.QueryFile != nil {
-		fileName = fileNameWithoutPathAndExt(*result.QueryFile)
+func (s *Stage) querySourceString(result *QueryResult) (sourceStr string) {
+	if result.Query.File != nil {
+		sourceStr = fileNameWithoutPathAndExt(*result.Query.File)
 	} else {
-		fileName = "inline"
+		sourceStr = "inline"
 	}
-	if totalQueries > 1 {
-		fileName = fmt.Sprintf("%s_%s_q%d", s.Id, fileName, result.QueryIndex)
+	if result.Query.BatchSize > 1 {
+		sourceStr = fmt.Sprintf("%s_%s_q%d", s.Id, sourceStr, result.Query.Index)
 	} else {
-		fileName = fmt.Sprintf("%s_%s", s.Id, fileName)
+		sourceStr = fmt.Sprintf("%s_%s", s.Id, sourceStr)
+	}
+	if s.ColdRuns+s.WarmRuns > 1 {
+		if result.Query.ColdRun {
+			sourceStr += "c"
+		} else {
+			sourceStr += "w"
+		}
+		sourceStr += strconv.Itoa(result.Query.RunIndex)
 	}
 	return
 }
@@ -94,7 +103,7 @@ func (s *Stage) prepareClient() {
 	s.Client.AppendClientTag(s.Id)
 }
 
-func (s *Stage) propagateStates() {
+func (s *Stage) setDefaults() {
 	falseValue := false
 	if s.SaveJson == nil {
 		s.SaveJson = &falseValue
@@ -108,20 +117,18 @@ func (s *Stage) propagateStates() {
 	if s.AbortOnError == nil {
 		s.AbortOnError = &falseValue
 	}
+	if s.WarmRuns == 0 {
+		s.WarmRuns = 1
+	}
+}
+
+func (s *Stage) propagateStates() {
 	for _, nextStage := range s.NextStages {
-		if nextStage.Catalog == nil {
-			nextStage.Catalog = s.Catalog
+		if nextStage.ColdRuns == 0 {
+			nextStage.ColdRuns = s.ColdRuns
 		}
-		if nextStage.Schema == nil {
-			nextStage.Schema = s.Schema
-		}
-		if nextStage.SessionParams == nil {
-			nextStage.SessionParams = make(map[string]any)
-		}
-		for k, v := range s.SessionParams {
-			if _, ok := nextStage.SessionParams[k]; !ok {
-				nextStage.SessionParams[k] = v
-			}
+		if nextStage.WarmRuns == 0 {
+			nextStage.WarmRuns = s.WarmRuns
 		}
 		if nextStage.AbortOnError == nil {
 			nextStage.AbortOnError = s.AbortOnError
@@ -171,6 +178,12 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	s.Queries = append(s.Queries, other.Queries...)
 	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
+	if other.ColdRuns > 0 {
+		s.ColdRuns = other.ColdRuns
+	}
+	if other.WarmRuns > 0 {
+		s.WarmRuns = other.WarmRuns
+	}
 	s.StartOnNewClient = other.StartOnNewClient
 	if other.AbortOnError != nil {
 		s.AbortOnError = other.AbortOnError
@@ -192,21 +205,23 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	return s
 }
 
-func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult, querySourceStr string) {
-	if !*s.SaveJson && result.QueryError == nil {
+func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
+	// We do not save json file for the cold run
+	if result.Query.ColdRun || (!*s.SaveJson && result.QueryError == nil) {
 		return
 	}
 	s.wgExitMainStage.Add(1)
 	go func() {
 		checkErr := func(err error) {
 			if err != nil {
-				log.Error().Err(err).EmbedObject(result.SimpleLogging()).Send()
+				log.Error().Err(err).EmbedObject(result.SimpleLogging()).Msg("error when saving query json file")
 			}
 		}
+		querySourceStr := s.querySourceString(result)
 		{
 			queryJsonFile, err := os.OpenFile(
 				filepath.Join(s.OutputPath, querySourceStr)+".json",
-				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+				OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
 				_, err = s.Client.GetQueryInfo(ctx, result.QueryId, false, queryJsonFile)
@@ -217,12 +232,15 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult, quer
 		if result.QueryError != nil {
 			queryErrorFile, err := os.OpenFile(
 				filepath.Join(s.OutputPath, querySourceStr)+".error.json",
-				os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+				OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
 				bytes, e := json.MarshalIndent(result.QueryError, "", "  ")
 				if e == nil {
 					_, e = queryErrorFile.Write(bytes)
+				} else {
+					checkErr(e)
+					_, e = queryErrorFile.WriteString(e.Error())
 				}
 				checkErr(e)
 				checkErr(queryErrorFile.Close())
@@ -244,11 +262,11 @@ func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryRes
 	}()
 	columnMetadataFile, ioErr := os.OpenFile(
 		filepath.Join(s.OutputPath, querySourceStr)+".cols.json",
-		os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-	defer columnMetadataFile.Close()
+		OpenNewFileFlags, 0644)
 	if ioErr != nil {
 		return ioErr
 	}
+	defer columnMetadataFile.Close()
 	bytes, marshalErr := json.MarshalIndent(qr.Columns, "", "  ")
 	if marshalErr != nil {
 		return marshalErr
