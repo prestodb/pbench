@@ -34,9 +34,9 @@ func (s *Stage) querySourceString(result *QueryResult) (sourceStr string) {
 	}
 	if s.ColdRuns+s.WarmRuns > 1 {
 		if result.Query.ColdRun {
-			sourceStr += "c"
+			sourceStr += "_c"
 		} else {
-			sourceStr += "w"
+			sourceStr += "_w"
 		}
 		sourceStr += strconv.Itoa(result.Query.RunIndex)
 	}
