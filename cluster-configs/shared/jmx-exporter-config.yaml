@@ -9,12 +9,12 @@ rules:
   # com.facebook.airlift.stats<name=PauseMeter><>LessThan10msPauses
   # com.facebook.airlift.stats<name=PauseMeter><>TotalPauseSeconds
   - pattern: "com.facebook.airlift.stats<name=PauseMeter><>(.+_[a-z]+)([0-9]+m?s?)_pauses:"
-    name: watsonx_data_presto_pause_meter_$1_$2_pauses
+    name: presto_pause_meter_$1_$2_pauses
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "com.facebook.airlift.stats<name=PauseMeter><>(.+_pause.+):"
-    name: watsonx_data_presto_pause_meter_$1
+    name: presto_pause_meter_$1
     attrNameSnakeCase: true
     cache: true
 
@@ -34,22 +34,22 @@ rules:
   # com.facebook.alluxio<name=Client.CacheSpaceAvailable.presto, type=gauges><>Value
   # com.facebook.alluxio<name=Client.CacheSpaceUsed.presto, type=gauges><>Value
   - pattern: "alluxio<name=Client.Cache(BytesReadCache|BytesRequestedExternal|BytesWrittenCache|PagesEvicted).presto, type=meters><>(count|fifteen_minute_rate):"
-    name: watsonx_data_presto_alluxio_Cache$1_$2
+    name: presto_alluxio_Cache$1_$2
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "alluxio<name=Client.Cache(GetErrors|PutErrors).presto, type=counters><>count:"
-    name: watsonx_data_presto_alluxio_Cache$1_count
+    name: presto_alluxio_Cache$1_count
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "alluxio<name=Client.Cache(HitRate|SpaceAvailable|SpaceUsed).presto, type=gauges><>value:"
-    name: watsonx_data_presto_alluxio_Cache$1_value
+    name: presto_alluxio_Cache$1_value
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "alluxio<name=Client.CachePages, type=gauges><>value:"
-    name: watsonx_data_presto_alluxio_CachePages_value
+    name: presto_alluxio_CachePages_value
     attrNameSnakeCase: true
     cache: true
 
@@ -59,7 +59,7 @@ rules:
   # com.facebook.presto.cache<name=CacheStats><>InMemoryRetainedBytes
   # com.facebook.presto.cache<name=CacheStats><>QuotaExceed
   - pattern: "presto.cache<name=CacheStats><>(.+):"
-    name: watsonx_data_presto_cache_stats_$1
+    name: presto_cache_stats_$1
     attrNameSnakeCase: true
     cache: true
 
@@ -71,7 +71,7 @@ rules:
   # com.facebook.presto.execution.executor<name=TaskExecutor><>TotalSplits
   # com.facebook.presto.execution.executor<name=TaskExecutor><>WaitingSplits
   - pattern: "presto.execution.executor<name=TaskExecutor><>(blocked_splits|runner_threads|running_splits|tasks|total_splits|waiting_splits):"
-    name: watsonx_data_presto_task_executor_$1
+    name: presto_task_executor_$1
     attrNameSnakeCase: true
     cache: true
 
@@ -81,12 +81,12 @@ rules:
   # com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>PrimaryPreferredNodeSelectedCount.FiveMinute.Rate
   # com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>PrimaryPreferredNodeSelectedCount.TotalCount
   - pattern: "com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>(non_preferred_node_selected_count|non_primary_preferred_node_selected_count|primary_preferred_node_selected_count)._total_count:"
-    name: watsonx_data_presto_node_selection_stats_$1_total_count
+    name: presto_node_selection_stats_$1_total_count
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "com.facebook.presto.execution.scheduler.nodeSelection<name=NodeSelectionStats><>primary_preferred_node_selected_count._five_minute._rate:"
-    name: watsonx_data_presto_node_selection_stats_primary_preferred_node_selected_count_five_minute_rate
+    name: presto_node_selection_stats_primary_preferred_node_selected_count_five_minute_rate
     attrNameSnakeCase: true
     cache: true
 
@@ -97,12 +97,12 @@ rules:
   # com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>SplitQueuesFull.FiveMinute.Count
   # com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>WaitingForSource.FiveMinute.Count
   - pattern: "com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>(get_split_time|sleep_time)._five_minutes._p(.+):"
-    name: watsonx_data_presto_split_scheduler_stats_$1_five_minutes_p$2
+    name: presto_split_scheduler_stats_$1_five_minutes_p$2
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "com.facebook.presto.execution.scheduler<name=SplitSchedulerStats><>(split_queues_full|waiting_for_source|mixed_split_queues_full_and_waiting_for_source)._five_minute._count:"
-    name: watsonx_data_presto_split_scheduler_stats_$1_five_minute_count
+    name: presto_split_scheduler_stats_$1_five_minute_count
     attrNameSnakeCase: true
     cache: true
 
@@ -127,17 +127,17 @@ rules:
   # com.facebook.presto.execution<name=QueryManager><>UserErrorFailures.FiveMinute.Count
   # com.facebook.presto.execution<name=QueryManager><>WallInputBytesRate.FiveMinutes.P(\w+)
   - pattern: "presto.execution<name=QueryManager><>(.+)._five_minute._count:"
-    name: watsonx_data_presto_query_manager_$1_five_minute_count
+    name: presto_query_manager_$1_five_minute_count
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "presto.execution<name=QueryManager><>(.+)._five_minutes._p(.+):"
-    name: watsonx_data_presto_query_manager_$1_five_minutes_p$2
+    name: presto_query_manager_$1_five_minutes_p$2
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "presto.execution<name=QueryManager><>(queued_queries|running_queries):"
-    name: watsonx_data_presto_query_manager_$1
+    name: presto_query_manager_$1
     attrNameSnakeCase: true
     cache: true
 
@@ -148,7 +148,7 @@ rules:
   # com.facebook.presto.execution<name=TaskManager><>OutputDataSize.FiveMinute.Count
   # com.facebook.presto.execution<name=TaskManager><>OutputPositions.FiveMinute.Count
   - pattern: "presto.execution<name=TaskManager><>(.+)._five_minute._count:"
-    name: watsonx_data_presto_task_manager_$1_five_minute_count
+    name: presto_task_manager_$1_five_minute_count
     attrNameSnakeCase: true
     cache: true
 
@@ -162,7 +162,7 @@ rules:
   # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_StripeStream><>HitRate
   # com.facebook.presto.hive<type=CacheStatsMBean, name=(\w+)_StripeStream><>Size
   - pattern: "presto.hive<type=CacheStatsMBean, name=(.+)_(.+)><>(hit_rate|size):"
-    name: watsonx_data_presto_hive_cache_stats_mbean_$2_$3
+    name: presto_hive_cache_stats_mbean_$2_$3
     attrNameSnakeCase: true
     cache: true
     labels:
@@ -171,7 +171,7 @@ rules:
   # Cluster Memory Manager
   # com.facebook.presto.memory<name=ClusterMemoryManager><>QueriesKilledDueToOutOfMemory
   - pattern: "presto.memory<name=ClusterMemoryManager><>queries_killed_due_to_out_of_memory:"
-    name: watsonx_data_presto_cluster_memory_manager_queries_killed_due_to_out_of_memory
+    name: presto_cluster_memory_manager_queries_killed_due_to_out_of_memory
     attrNameSnakeCase: true
     cache: true
 
@@ -185,12 +185,12 @@ rules:
   # com.facebook.presto.memory<type=MemoryPool, name=general><>ReservedBytes
   # com.facebook.presto.memory<type=MemoryPool, name=general><>ReservedRevocableBytes
   - pattern: "presto.memory<type=ClusterMemoryPool, name=general><>(.+):"
-    name: watsonx_data_presto_cluster_memory_pool_general_$1
+    name: presto_cluster_memory_pool_general_$1
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "presto.memory<type=MemoryPool, name=general><>(.+):"
-    name: watsonx_data_presto_memory_pool_general_$1
+    name: presto_memory_pool_general_$1
     attrNameSnakeCase: true
     cache: true
 
@@ -201,7 +201,7 @@ rules:
   # com.facebook.presto.operator<name=FragmentCacheStats><>CacheSizeInBytes
   # com.facebook.presto.operator<name=FragmentCacheStats><>InFlightBytes
   - pattern: "presto.operator<name=FragmentCacheStats><>(.+):"
-    name: watsonx_data_presto_fragment_cache_stats_$1
+    name: presto_fragment_cache_stats_$1
     attrNameSnakeCase: true
     cache: true
 
@@ -215,19 +215,19 @@ rules:
   # java.lang<type=Memory><NonHeapMemoryUsage>max
   # java.lang<type=Memory><NonHeapMemoryUsage>used
   - pattern: "java.lang<type=Memory><HeapMemoryUsage>(.+):"
-    name: watsonx_data_presto_memory_heap_memory_usage_$1_bytes
+    name: presto_memory_heap_memory_usage_$1_bytes
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "java.lang<type=Memory><NonHeapMemoryUsage>(.+):"
-    name: watsonx_data_presto_memory_non_heap_memory_usage_$1_bytes
+    name: presto_memory_non_heap_memory_usage_$1_bytes
     attrNameSnakeCase: true
     cache: true
 
   # Java Runtime
   # java.lang<type=Runtime><>Uptime
   - pattern: "java.lang<type=Runtime><>uptime:"
-    name: watsonx_data_presto_runtime_up_time
+    name: presto_runtime_up_time
     attrNameSnakeCase: true
     cache: true
 
@@ -245,7 +245,7 @@ rules:
   # java.lang<name=G1 Survivor Space, type=MemoryPool><Usage>max
   # java.lang<name=G1 Survivor Space, type=MemoryPool><Usage>used
   - pattern: "java.lang<name=G1 (.+), type=MemoryPool><Usage>(.+):"
-    name: watsonx_data_presto_memory_pool_g1_$1_usage_$2_bytes
+    name: presto_memory_pool_g1_$1_usage_$2_bytes
     attrNameSnakeCase: true
     cache: true
 
@@ -255,43 +255,43 @@ rules:
   # java.lang<name=G1 Young Generation, type=GarbageCollector><>CollectionCount
   # java.lang<name=G1 Young Generation, type=GarbageCollector><>CollectionTime
   - pattern: "java.lang<name=(.+), type=GarbageCollector><>collection_(.+):"
-    name: watsonx_data_presto_garbage_collector_$1_collection_$2
+    name: presto_garbage_collector_$1_collection_$2
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "java.lang<type=GarbageCollector, name=(.+)><>collection_(.+):"
-    name: watsonx_data_presto_garbage_collector_$1_collection_$2
+    name: presto_garbage_collector_$1_collection_$2
     attrNameSnakeCase: true
     cache: true
 
   # extra configs
   - pattern: "presto.hive<type=CachingDirectoryLister, name=(.+)><>(.+):"
-    name: watsonx_data_presto_hive_caching_directory_lister_$2
+    name: presto_hive_caching_directory_lister_$2
     attrNameSnakeCase: true
     cache: true
     labels:
       catalog_name: $1
 
   - pattern: "presto.hive.s3<type=PrestoS3FileSystem, name=(.+)><>(.+)._one_minute._(rate|count):"
-    name: watsonx_data_presto_hive_s3_presto_s3_file_system_$2_one_minute_$3
+    name: presto_hive_s3_presto_s3_file_system_$2_one_minute_$3
     attrNameSnakeCase: true
     cache: true
     labels:
       catalog_name: $1
 
   - pattern: "presto.hive.s3<type=PrestoS3FileSystem, name=(.+)><>(.+)._total_count:"
-    name: watsonx_data_presto_hive_s3_presto_s3_file_system_$2_total_count
+    name: presto_hive_s3_presto_s3_file_system_$2_total_count
     attrNameSnakeCase: true
     cache: true
     labels:
       catalog_name: $1
 
   - pattern: "java.nio<name=direct, type=BufferPool><>(.+):"
-    name: watsonx_data_presto_java_nio_buffer_pool_direct_$1
+    name: presto_java_nio_buffer_pool_direct_$1
     attrNameSnakeCase: true
     cache: true
 
   - pattern: "presto.memory<name=ClusterMemoryManager><>cluster_(.+):"
-    name: watsonx_data_presto_memory_cluster_memory_manager_cluster_$1
+    name: presto_memory_cluster_memory_manager_cluster_$1
     attrNameSnakeCase: true
     cache: true
