@@ -267,6 +267,49 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	return nil
 }
 
+func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (retErr error) {
+	batchSize := len(queries)
+	for i, queryText := range queries {
+		for j := 0; j < s.ColdRuns+s.WarmRuns; j++ {
+			query := &Query{
+				Text:      queryText,
+				File:      queryFile,
+				Index:     i,
+				BatchSize: batchSize,
+				ColdRun:   j < s.ColdRuns,
+				RunIndex:  j,
+			}
+			if !query.ColdRun {
+				query.RunIndex -= s.ColdRuns
+			}
+
+			result, err := s.runQuery(ctx, query)
+			// err is already attached to the result, if not nil.
+			if s.OnQueryCompletion != nil {
+				s.OnQueryCompletion(result)
+			}
+			// Flags and options are checked within.
+			s.saveQueryJsonFile(ctx, result)
+			// Each query should have a query result sent to the channel, no matter
+			// its execution succeeded or not.
+			s.resultChan <- result
+			if err != nil {
+				if *s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					// If AbortOnError is set, we skip the rest queries in the same batch.
+					// Logging etc. will be handled in the parent stack.
+					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
+					return result
+				}
+				// Log the error information and continue running
+				s.logErr(ctx, result)
+				continue
+			}
+			log.Info().EmbedObject(result).Msgf("query finished")
+		}
+	}
+	return nil
+}
+
 func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult, retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -385,47 +428,4 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		}()
 	}
 	return result, err
-}
-
-func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (retErr error) {
-	batchSize := len(queries)
-	for i, queryText := range queries {
-		for j := 0; j < s.ColdRuns+s.WarmRuns; j++ {
-			query := &Query{
-				Text:      queryText,
-				File:      queryFile,
-				Index:     i,
-				BatchSize: batchSize,
-				ColdRun:   j < s.ColdRuns,
-				RunIndex:  j,
-			}
-			if !query.ColdRun {
-				query.RunIndex -= s.ColdRuns
-			}
-
-			result, err := s.runQuery(ctx, query)
-			// err is already attached to the result, if not nil.
-			if s.OnQueryCompletion != nil {
-				s.OnQueryCompletion(result)
-			}
-			// Flags and options are checked within.
-			s.saveQueryJsonFile(ctx, result)
-			// Each query should have a query result sent to the channel, no matter
-			// its execution succeeded or not.
-			s.resultChan <- result
-			if err != nil {
-				if *s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					// If AbortOnError is set, we skip the rest queries in the same batch.
-					// Logging etc. will be handled in the parent stack.
-					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
-					return result
-				}
-				// Log the error information and continue running
-				s.logErr(ctx, result)
-				continue
-			}
-			log.Info().EmbedObject(result).Msgf("query finished")
-		}
-	}
-	return nil
 }

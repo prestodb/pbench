@@ -206,8 +206,8 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 }
 
 func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
-	// We do not save json file for the cold run
-	if result.Query.ColdRun || (!*s.SaveJson && result.QueryError == nil) {
+	// We do not save json file for the cold run or when saveJson is false. But when there is an error, we always save the json file.
+	if (result.Query.ColdRun || !*s.SaveJson) && result.QueryError == nil {
 		return
 	}
 	s.wgExitMainStage.Add(1)
@@ -251,7 +251,7 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 }
 
 func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult, querySourceStr string) (returnErr error) {
-	if !(SaveColMetadata || *s.SaveColumnMetadata) || len(qr.Columns) == 0 {
+	if result.Query.ColdRun || !(SaveColMetadata || *s.SaveColumnMetadata) || len(qr.Columns) == 0 {
 		return
 	}
 	defer func() {
