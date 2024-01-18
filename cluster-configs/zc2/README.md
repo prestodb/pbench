@@ -2,10 +2,10 @@
 custom (vCPU: 64, Memory: 712 GB) * 28
 
 * Global
-  * `SysReservedGb = 1`
-  * `ContainerMemoryGb = MemoryPerNodeGb - ceil(SysReservedGb) = 712 - ceil(1) = 711` [[docker-stack-java.yaml](docker-stack-java.yaml)] and [[docker-stack-native.yaml](docker-stack-native.yaml)]
+  * `SysReservedGb = 2`
+  * `ContainerMemoryGb = MemoryPerNodeGb - ceil(SysReservedGb) = 712 - ceil(2) = 710` [[docker-stack-java.yaml](docker-stack-java.yaml)] and [[docker-stack-native.yaml](docker-stack-native.yaml)]
 * For Java clusters:
-  * `HeapSizeGb = floor(ContainerMemory * HeapSizePercentOfContainerMem) = floor(711 * 0.9) = 639` (`-Xmx` and `-Xms` in [[coordinator jvm.config](coordinator/jvm.config)] and [[worker jvm.config](workers/jvm.config)])
+  * `HeapSizeGb = floor(ContainerMemory * HeapSizePercentOfContainerMem) = floor(710 * 0.9) = 639` (`-Xmx` and `-Xms` in [[coordinator jvm.config](coordinator/jvm.config)] and [[worker jvm.config](workers/jvm.config)])
   * [[coordinator config.properties](coordinator/config.properties)] and [[worker config.properties](worker/config.properties)]
     * `memory.heap-headroom-per-node = ceil(HeapSizeGb * HeadroomPercentOfHeap) = ceil(639 * 0.2) = 128`
     * `query.max-total-memory-per-node = floor(HeapSizeGb * QueryMaxTotalMemPerNodePercentOfHeap) = floor(639 * 0.8) = 511`
@@ -16,5 +16,5 @@ custom (vCPU: 64, Memory: 712 GB) * 28
   * Coordinator heap setting same as Java cluster
   * `NativeProxygenMemGb = ceil(min(ProxygenMemPerWorkerGb * NumberOfWorkers, ProxygenMemCapGb)) = ceil(min(0.125 * 28, 2)) = 2`
   * `NonVeloxBufferMemGb = 2`
-  * `system-memory-gb = ContainerMemory - NativeProxygenMemGb - ceil(NonVeloxBufferMemGb) = 711 - 2 - ceil(2) = 707`
-  * `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(707 * 0.95) = 671`
+  * `system-memory-gb = ContainerMemory - NativeProxygenMemGb - ceil(NonVeloxBufferMemGb) = 710 - 2 - ceil(2) = 706`
+  * `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(706 * 0.95) = 670`

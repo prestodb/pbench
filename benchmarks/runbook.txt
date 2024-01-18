@@ -114,8 +114,8 @@ server='https://'
 
 
 # Re-regeenrate cluster configs
-./pbench gen-config cluster-configs
-./pbench gen-config -t gen-config/templates/spilling-on cluster-configs/medium-spill
+./pbench gen-config -t gen-config/templates/default -p gen-config/default_params.json cluster-configs
+./pbench gen-config -t gen-config/templates/spilling-on -p gen-config/default_params.json cluster-configs/medium-spill
 
 # round decimal result
 ./pbench round -ir /Users/ezhang/Downloads/benchmark_runs/test

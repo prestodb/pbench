@@ -15,10 +15,10 @@ services:
       resources:
         limits:
           cpus: '31'
-          memory: 247G
+          memory: 246G
         reservations:
           cpus: '31'
-          memory: 247G
+          memory: 246G
     ports:
     - 80:8080
     - 9404:9404
@@ -54,10 +54,10 @@ services:
       resources:
         limits:
           cpus: '31'
-          memory: 247G
+          memory: 246G
         reservations:
           cpus: '31'
-          memory: 247G
+          memory: 246G
     ports:
     - 8080:8080
     volumes:
