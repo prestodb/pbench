@@ -1,5 +1,5 @@
 {
-  "description": "Java engine Glue configurations",
+  "description": "Java engine Glue configurations (for Ahana Cloud oss_glue)",
   "session_params": {
     "query_max_execution_time": "8h",
     "join_distribution_type": "AUTOMATIC",

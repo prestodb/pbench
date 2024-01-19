@@ -1,5 +1,6 @@
 {
   "description": "Java engine configurations",
+  "catalog": "hive",
   "session_params": {
     "query_max_execution_time": "8h",
     "join_distribution_type": "AUTOMATIC",

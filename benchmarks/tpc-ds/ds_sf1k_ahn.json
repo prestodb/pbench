@@ -1,6 +1,0 @@
-{
-  "description": "Specifies the catalog and schema for TPC-DS scale factor 1 TB on Glue (Ahana).",
-  "catalog": "oss_glue",
-  "schema": "tpcds_sf1000_parquet",
-  "save_json": true
-}
