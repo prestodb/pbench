@@ -7,11 +7,16 @@ import (
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
+	"presto-benchmark/presto"
 	"presto-benchmark/stage"
 	"strings"
 )
 
-var OutputPath string
+var (
+	OutputPath string
+	UserName   string
+	Password   string
+)
 
 func Run(cmd *cobra.Command, args []string) {
 	mainStage := new(stage.Stage)
@@ -27,6 +32,21 @@ func Run(cmd *cobra.Command, args []string) {
 		log.Fatal().Err(err).Msg("failed to parse benchmark")
 	}
 
+	if UserName != "" {
+		if Password != "" {
+			mainStage.GetClient = func() *presto.Client {
+				client, _ := presto.NewClient(stage.DefaultServerUrl)
+				client.UserPassword(UserName, Password)
+				return client
+			}
+		} else {
+			mainStage.GetClient = func() *presto.Client {
+				client, _ := presto.NewClient(stage.DefaultServerUrl)
+				client.User(UserName)
+				return client
+			}
+		}
+	}
 	mainStage.Run(context.Background())
 }
 
