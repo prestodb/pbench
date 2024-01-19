@@ -36,6 +36,10 @@ services:
     - /home/centos/presto/jmx-exporter-config.yaml:/opt/presto-server/etc/jmx-exporter-config.yaml
     - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
     - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
+    - /home/centos/presto/entrypoint-java.sh:/opt/entrypoint.sh
+    - /usr/bin/telegraf:/usr/bin/telegraf
+    - /etc/telegraf:/etc/telegraf
+    - /var/run/docker.sock:/var/run/docker.sock
     - /home/centos/presto/plugin/event-listener/:/opt/presto-server/plugin/event-listener/
     - /home/centos/presto/plugin/presto-udf-nielsen/:/opt/presto-server/plugin/udfs/
     networks:
@@ -66,6 +70,10 @@ services:
     - /home/centos/presto/catalog/tpch.properties:/opt/presto-server/etc/catalog/tpch.properties
     - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
     - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
+    - /home/centos/presto/entrypoint-java.sh:/opt/entrypoint.sh
+    - /usr/bin/telegraf:/usr/bin/telegraf
+    - /etc/telegraf:/etc/telegraf
+    - /var/run/docker.sock:/var/run/docker.sock
     - /home/centos/presto/plugin/presto-udf-nielsen/:/opt/presto-server/plugin/udfs/
     - /home/centos/presto/workers/config.properties:/opt/presto-server/etc/config.properties
     - /home/centos/presto/workers/jvm.config:/opt/presto-server/etc/jvm.config

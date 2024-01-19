@@ -36,6 +36,10 @@ services:
     - /home/centos/presto/jmx-exporter-config.yaml:/opt/presto-server/etc/jmx-exporter-config.yaml
     - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
     - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
+    - /home/centos/presto/entrypoint-java.sh:/opt/entrypoint.sh
+    - /usr/bin/telegraf:/usr/bin/telegraf
+    - /etc/telegraf:/etc/telegraf
+    - /var/run/docker.sock:/var/run/docker.sock
     - /home/centos/presto/plugin/event-listener/:/opt/presto-server/plugin/event-listener/
     networks:
       presto-swarm:
@@ -65,5 +69,9 @@ services:
     - /home/centos/presto/workers/config-native.properties:/opt/presto-server/etc/config.properties
     - /home/centos/presto/workers/node.properties:/opt/presto-server/etc/node.properties
     - /home/centos/presto/workers/velox.properties:/opt/presto-server/etc/velox.properties
+    - /home/centos/presto/entrypoint-native.sh:/opt/entrypoint.sh
+    - /usr/bin/telegraf:/usr/bin/telegraf
+    - /etc/telegraf:/etc/telegraf
+    - /var/run/docker.sock:/var/run/docker.sock
     networks:
       presto-swarm:
