@@ -1,0 +1,4 @@
+{
+  "description": "Specifies the schema for TPC-DS scale factor 1 TB, using char.",
+  "schema": "tpcds_sf1000_parquet"
+}
