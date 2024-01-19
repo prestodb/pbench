@@ -22,6 +22,9 @@ services:
     ports:
     - 80:8080
     - 9404:9404
+    entrypoint:
+    - /bin/bash
+    - /opt/entrypoint-java.sh
     volumes:
     - /home/centos/presto/catalog/hive-native.properties:/opt/presto-server/etc/catalog/hive.properties
     - /home/centos/presto/catalog/jmx.properties:/opt/presto-server/etc/catalog/jmx.properties
@@ -36,7 +39,7 @@ services:
     - /home/centos/presto/jmx-exporter-config.yaml:/opt/presto-server/etc/jmx-exporter-config.yaml
     - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
     - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
-    - /home/centos/presto/entrypoint-java.sh:/opt/entrypoint.sh
+    - /home/centos/presto/entrypoint-java.sh:/opt/entrypoint-java.sh
     - /usr/bin/telegraf:/usr/bin/telegraf
     - /etc/telegraf:/etc/telegraf
     - /var/run/docker.sock:/var/run/docker.sock
@@ -63,13 +66,16 @@ services:
           memory: 28G
     ports:
     - 8080:8080
+    entrypoint:
+    - /bin/bash
+    - /opt/entrypoint-native.sh
     volumes:
     - /home/centos/presto/catalog/hive-native.properties:/opt/presto-server/etc/catalog/hive.properties
     - /home/centos/presto/catalog/tpch-standard.properties:/opt/presto-server/etc/catalog/tpch.properties
     - /home/centos/presto/workers/config-native.properties:/opt/presto-server/etc/config.properties
     - /home/centos/presto/workers/node.properties:/opt/presto-server/etc/node.properties
     - /home/centos/presto/workers/velox.properties:/opt/presto-server/etc/velox.properties
-    - /home/centos/presto/entrypoint-native.sh:/opt/entrypoint.sh
+    - /home/centos/presto/entrypoint-native.sh:/opt/entrypoint-native.sh
     - /usr/bin/telegraf:/usr/bin/telegraf
     - /etc/telegraf:/etc/telegraf
     - /var/run/docker.sock:/var/run/docker.sock
