@@ -1,9 +1,8 @@
 {
   "description": "Java engine Glue configurations (for Ahana Cloud oss_glue)",
   "session_params": {
-    "query_max_execution_time": "8h",
-    "join_distribution_type": "AUTOMATIC",
-    "join_reordering_strategy": "AUTOMATIC",
+    "hive.parquet_pushdown_filter_enabled": null,
+    "hive.pushdown_filter_enabled": null,
     "oss_glue.parquet_pushdown_filter_enabled": true,
     "oss_glue.pushdown_filter_enabled": false
   }

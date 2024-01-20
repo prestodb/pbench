@@ -5,7 +5,7 @@ sudo yum install -y git
 git clone https://github.com/yzhang1991/presto-benchmark.git
 
 cd presto-benchmark
-go build
+./pbench
 cd benchmarks
 benchmark_base='/Users/ezhang/Downloads/benchmark_runs'
 server='https://'
@@ -14,87 +14,79 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    native.json \
     tpc-ds/ds_sf10.json \
-    n.json \
     tpc-ds/std.json
 
 # Native SF-1K 4 streams defined in the spec
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    native.json \
     tpc-ds/ds_sf1k.json \
-    n.json \
     tpc-ds/4s.json
 
 # Java SF-1K standard
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    java.json \
     tpc-ds/ds_sf1k.json \
-    j.json \
     tpc-ds/std.json
 
 # Java SF-1K with order_by
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    java.json \
     tpc-ds/ds_sf1k.json \
-    j.json \
     tpc-ds/ob.json
 
 # Java SF-1K full
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    java.json \
     tpc-ds/ds_sf1k.json \
-    j.json \
     tpc-ds/full.json
-
-# Java SF-1K optimizer+
-../pbench run \
-    -s $server \
-    -o $benchmark_base \
-    tpc-ds/ds_sf1k.json \
-    j.json \
-    tpc-ds/o+.json
 
 # Native SF-1K standard
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    native.json \
     tpc-ds/ds_sf1k.json \
-    n.json \
     tpc-ds/std.json
 
 # Native SF-1K with order_by
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    native.json \
     tpc-ds/ds_sf1k.json \
-    n.json \
     tpc-ds/ob.json
 
 # Native SF-1K full
 ../pbench run \
     -s $server \
     -o $benchmark_base \
+    -d ../influxdb.json \
+    native.json \
     tpc-ds/ds_sf1k.json \
-    n.json \
     tpc-ds/full.json
-
-# Native SF-1K optimizer+
-../pbench run \
-    -s $server \
-    -o $benchmark_base \
-    tpc-ds/ds_sf1k.json \
-    n.json \
-    tpc-ds/o+.json
 
 # Java SF-1 on Hive Query Runner
 ../pbench run \
     -o $benchmark_base \
     -d ../influxdb.json \
-    j.json \
+    java.json \
     tpc-ds/ds_sf1.json \
     tpc-ds/std.json
 

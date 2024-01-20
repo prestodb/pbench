@@ -69,7 +69,11 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 		s.SessionParams = make(map[string]any)
 	}
 	for k, v := range other.SessionParams {
-		s.SessionParams[k] = v
+		if v != nil {
+			s.SessionParams[k] = v
+		} else {
+			delete(s.SessionParams, k)
+		}
 	}
 	s.Queries = append(s.Queries, other.Queries...)
 	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
