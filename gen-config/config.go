@@ -10,6 +10,7 @@ type ClusterConfig struct {
 	NumberOfWorkers               uint                 `json:"number_of_workers"`
 	MemoryPerNodeGb               uint                 `json:"memory_per_node_gb"`
 	VCPUPerWorker                 uint                 `json:"vcpu_per_worker"`
+	SpillEnabled                  bool                 `json:"spill_enabled,omitempty"`
 	GeneratorParameters           *GeneratorParameters `json:"generator_parameters,omitempty"`
 	ContainerMemoryGb             uint                 `json:"-"`
 	HeadroomGb                    uint                 `json:"-"`

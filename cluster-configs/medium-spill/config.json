@@ -6,5 +6,6 @@
     "worker_instance_ebs_size": 256,
     "number_of_workers": 8,
     "memory_per_node_gb": 124,
-    "vcpu_per_worker": 16
+    "vcpu_per_worker": 16,
+    "spill_enabled": true
 }

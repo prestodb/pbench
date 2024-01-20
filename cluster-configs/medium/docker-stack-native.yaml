@@ -75,6 +75,7 @@ services:
     - /home/centos/presto/workers/config-native.properties:/opt/presto-server/etc/config.properties
     - /home/centos/presto/workers/node.properties:/opt/presto-server/etc/node.properties
     - /home/centos/presto/workers/velox.properties:/opt/presto-server/etc/velox.properties
+    - /home/centos/presto/async_data_cache:/opt/presto-server/async_data_cache
     - /home/centos/presto/entrypoint-native.sh:/opt/entrypoint-native.sh
     - /usr/bin/telegraf:/usr/bin/telegraf
     - /etc/telegraf:/etc/telegraf

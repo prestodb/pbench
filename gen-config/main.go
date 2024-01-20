@@ -4,11 +4,12 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
+
+	"github.com/spf13/cobra"
 )
 
 const configJson = "config.json"
@@ -18,7 +19,7 @@ var (
 	TemplateFS    fs.FS
 	ParameterPath = ""
 
-	//go:embed templates/default
+	//go:embed templates
 	builtinTemplate embed.FS
 )
 
