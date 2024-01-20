@@ -42,7 +42,7 @@ func Run(_ *cobra.Command, args []string) {
 	}
 	if TemplatePath == "" {
 		TemplateFS = builtinTemplate
-		TemplatePath = "templates/default"
+		TemplatePath = "templates"
 	} else {
 		TemplateFS = os.DirFS(TemplatePath)
 		TemplatePath = "."
