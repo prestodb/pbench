@@ -58,9 +58,7 @@ func (s *Stage) InitInfluxDB(InfluxCfgPath string) {
 }
 
 func (s *Stage) MergeWith(other *Stage) *Stage {
-	if s.Id == "" {
-		s.Id = other.Id
-	}
+	s.Id = other.Id
 	if other.Catalog != nil {
 		s.Catalog = other.Catalog
 	}

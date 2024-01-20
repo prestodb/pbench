@@ -93,8 +93,9 @@ server='https://'
 # Java SF-1 on Hive Query Runner
 ../pbench run \
     -o $benchmark_base \
-    tpc-ds/ds_sf1.json \
+    -d ../influxdb.json \
     j.json \
+    tpc-ds/ds_sf1.json \
     tpc-ds/std.json
 
 # Very lightweight test stages on Hive Query Runner
