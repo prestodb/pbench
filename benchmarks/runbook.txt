@@ -26,7 +26,7 @@ server='https://'
     -d ../influxdb.json \
     native.json \
     tpc-ds/ds_sf1k.json \
-    tpc-ds/4s.json
+    tpc-ds/4streams.json
 
 # Java SF-1K standard
 ../pbench run \

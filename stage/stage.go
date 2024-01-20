@@ -117,12 +117,6 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 
 	// This initial size is just a good start, might not be enough.
 	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))
-	// resultChan has to be a buffered channel because we do a select on both resultChan and the timeToExit channel.
-	// When a SIGINT or SIGKILL signal is captured, we wait on the timeToExit for all the goroutines to finish.
-	// During this time, we will block the reception of query results from the resultChan channel if resultChan is
-	// not buffered. This will cause a deadlock.
-	// This also means that when the program is in graceful shutdown mode, the inflight queries are not included in the
-	// final summary file.
 	s.States.resultChan = make(chan *QueryResult, 16)
 	timeToExit := make(chan os.Signal, 1)
 	signal.Notify(timeToExit, os.Interrupt, os.Kill)
@@ -164,7 +158,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			if sig != nil {
 				// Cancel the context and wait for the goroutines to exit.
 				s.States.AbortAll(fmt.Errorf(sig.String()))
-				s.States.wgExitMainStage.Wait()
+				continue
 			}
 			_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), []byte(summaryBuilder.String()), 0644)
 			return results
