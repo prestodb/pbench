@@ -8,8 +8,6 @@ import (
 	"presto-benchmark/log"
 )
 
-const DefaultStageFileExt = ".json"
-
 type Map map[string]*Stage
 
 func (m *Map) Get(stageId string) *Stage {
@@ -82,10 +80,9 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 		log.Debug().Msgf("%s already parsed, returned", stage.Id)
 		return stageFound, nil
 	}
-	for i, queryFile := range stage.QueryFiles {
+	for _, queryFile := range stage.QueryFiles {
 		if !filepath.IsAbs(queryFile) {
 			queryFile = filepath.Join(stage.BaseDir, queryFile)
-			stage.QueryFiles[i] = queryFile
 		}
 		if _, err := os.Stat(queryFile); err != nil {
 			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stage.Id, queryFile, err)
@@ -106,7 +103,6 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 			return nil, err
 		} else {
 			stage.NextStages = append(stage.NextStages, nextStage)
-			nextStage.Prerequisites = append(nextStage.Prerequisites, stage)
 			nextStage.wgPrerequisites.Add(1)
 		}
 	}
@@ -138,20 +134,6 @@ func checkStageLinks(stage *Stage) error {
 			return fmt.Errorf("stage %s got duplicated next stages %s", stage.Id, nextStage.Id)
 		}
 		nextStageMap[nextStage.Id] = true
-		foundMyselfInNextStage := false
-		prerequisiteMap := make(map[string]bool)
-		for _, prerequisite := range nextStage.Prerequisites {
-			if prerequisite == stage {
-				foundMyselfInNextStage = true
-			}
-			if prerequisiteMap[prerequisite.Id] {
-				return fmt.Errorf("stage %s got duplicated prerequisite stages %s", nextStage.Id, prerequisite.Id)
-			}
-			prerequisiteMap[prerequisite.Id] = true
-		}
-		if !foundMyselfInNextStage {
-			return fmt.Errorf("stage %s is not found in its next stage %s's prerequisites", stage.Id, nextStage.Id)
-		}
 		if err := checkStageLinks(nextStage); err != nil {
 			return err
 		}

@@ -20,21 +20,12 @@ import (
 	"time"
 )
 
-type GetClientFn func() *presto.Client
-type OnQueryCompletionFn func(result *QueryResult)
-
-var DefaultServerUrl = "http://127.0.0.1:8080"
-var DefaultGetClientFn = func() *presto.Client {
-	client, _ := presto.NewClient(DefaultServerUrl)
-	return client
-}
-
-const OpenNewFileFlags = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
-
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
 	Id string `json:"-"`
-	// Catalog, Schema, and SessionParams will be inherited by the children stages.
+	// The values in Catalog, Schema, and SessionParams are not inherited by the descendant stages. Instead, their values
+	// are applied tn the Presto client and carried across stages via the inheritance of the Presto client until a stage
+	// creates its own client by setting StartOnNewClient = true.
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`
@@ -46,90 +37,73 @@ type Stage struct {
 	ColdRuns int `json:"cold_runs,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
 	WarmRuns int `json:"warm_runs,omitempty"`
-	// If StartOnNewClient is set to true, this stage will create a new client to execute itself.\
+	// If StartOnNewClient is set to true, this stage will create a new client to execute itself.
 	// This new client will be passed down to its descendant stages unless those stages also set StartOnNewClient to true.
 	// Each client can carry their own set of client information, tags, session properties, user credentials, etc.
-	// Descendant stages will **NOT** inherit this value from their predecessors.
+	// Descendant stages will **NOT** inherit this value from their parents so this is declared as a value not a pointer.
 	StartOnNewClient bool `json:"start_on_new_client,omitempty"`
 	// If AbortOnError is set to true, the context associated with this stage will be canceled if an error occurs.
 	// Depending on when the cancellable context was created, this may abort some or all other running stages and all future stages.
-	// Children stages will inherit this value from their parent if it is not set.
+	// Children stages will inherit this value from their parent if it is not set (nil).
 	AbortOnError *bool `json:"abort_on_error,omitempty"`
 	// If SaveOutput is set to true, the query result will be saved to files in its raw form.
 	// Children stages will inherit this value from their parent if it is not set.
+	// Cold runs will ignore this setting.
 	SaveOutput *bool `json:"save_output,omitempty"`
-	// If SaveJson is set to true, the query json will be saved to files in its raw form.
+	// If SaveColumnMetadata is set to true, we will save a json file of the query result's column metadata.
+	// See the "columns" field in Presto's query API response.
+	// Children stages will inherit this value from their parent if it is not set.
+	// Cold runs will ignore this setting.
+	SaveColumnMetadata *bool `json:"save_column_metadata,omitempty"`
+	// If SaveJson is set to true, the query json will be saved to files in its raw form after the query is executed.
 	// Children stages will inherit this value from their parent if it is not set.
 	// When a query failed to execute for whatever reason, a query json file will be automatically saved even if this
 	// knob was not set to true.
-	SaveJson *bool `json:"save_json,omitempty"`
-	// If SaveColumnMetadata is set to true, we will save a json file of the query result's column metadata.
-	// See the "columns" field in Presto's query API response.
-	// There is also a command-line argument that can turn this on for the whole execution altogether.
-	SaveColumnMetadata *bool    `json:"save_column_metadata,omitempty"`
-	NextStagePaths     []string `json:"next,omitempty"`
-	// OutputPath is where we store the logs, query results, query json files, query column metadata files, etc.
-	// It should be set by the --output/-o command-line argument. Once set there, its value gets propagated to all the stages.
-	OutputPath string `json:"-"`
+	SaveJson       *bool    `json:"save_json,omitempty"`
+	NextStagePaths []string `json:"next,omitempty"`
+
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
+	// See ReadStageFromFile() - where BaseDir is set.
 	BaseDir string `json:"-"`
-	// Prerequisites and NextStages are populated via ParseStage.
-	Prerequisites []*Stage `json:"-"`
-	NextStages    []*Stage `json:"-"`
+	// States is a collection of **immutable** stage states that is shared by all stages linked in the main stage.
+	// Some fields are inherited by the children stages but since they can be overwritten by the children stages too, so
+	// they are not included here.
+	States *SharedStageStates `json:"-"`
+	// NextStages are populated via ParseStage.
+	NextStages []*Stage `json:"-"`
 	// Client is by default passed down to descendant stages.
 	Client *presto.Client `json:"-"`
-	// GetClient is called when the stage needs to create a new Presto client. This function is passed down to descendant stages by default.
-	GetClient GetClientFn `json:"-"`
-	// AbortAll is passed down to descendant stages by default and will be used to cancel the current context.
-	AbortAll context.CancelCauseFunc `json:"-"`
-	// OnQueryCompletion is called after a query's result is drained. You cannot access query result in this function.
-	// If you need to access the query result, pass in a ResultBatchHandler when calling Drain() on a query result object.
-	OnQueryCompletion OnQueryCompletionFn `json:"-"`
+
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
-	// wgExitMainStage blocks the main stage from exiting before it counts down to zero, so we can wait for other
-	// goroutines to finish.
-	// All descendant stages of the main stage and the goroutines that are responsible for persisting the benchmark result
-	// will increase the value of this latch.
-	wgExitMainStage *sync.WaitGroup
+
 	// When a stage has multiple prerequisites, it will be called when each prerequisite stage finishes. started is here
 	// to make sure this stage only starts once. When the stage is started by its first completed prerequisite, it waits
 	// until wgPrerequisites counts down to zero then starts execution.
 	started atomic.Bool
-	// Stages use resultChan to send the query result back to the main stage.
-	resultChan chan *QueryResult
-}
-
-func (s *Stage) waitForPrerequisites() <-chan struct{} {
-	ch := make(chan struct{}, 1)
-	go func() {
-		s.wgPrerequisites.Wait()
-		close(ch)
-	}()
-	return ch
 }
 
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) []*QueryResult {
-	// If output path was not specified, use the current directory as a fallback.
-	if s.OutputPath == "" {
-		s.OutputPath = s.BaseDir
+	if s.States.RunName == "" {
+		s.States.RunName = s.Id
 	}
-	s.OutputPath = filepath.Join(s.OutputPath, fmt.Sprintf("%s-%s", s.Id, time.Now().Format(time.RFC3339)))
-	if err := os.MkdirAll(s.OutputPath, 0755); err != nil {
-		log.Fatal().Str("output_path", s.OutputPath).
-			Err(err).Msg("failed to create output directory")
+	// If output path was not specified, use the current directory as a fallback.
+	if s.States.OutputPath == "" {
+		s.States.OutputPath = s.BaseDir
+	}
+	s.States.OutputPath = filepath.Join(s.States.OutputPath, s.States.RunName)
+	if err := os.MkdirAll(s.States.OutputPath, 0755); err != nil {
+		log.Fatal().Str("output_path", s.States.OutputPath).Err(err).Msg("failed to create output directory")
 	} else {
-		log.Info().Str("output_path", s.OutputPath).
-			Msg("output will be saved in this path")
+		log.Info().Str("output_path", s.States.OutputPath).Msg("output will be saved to this path")
 	}
 
 	// also start to write logs to the output directory from this point on.
-	logPath := filepath.Join(s.OutputPath, s.Id+".log")
+	logPath := filepath.Join(s.States.OutputPath, s.States.RunName+".log")
 	if logFile, err := os.OpenFile(logPath, OpenNewFileFlags, 0644); err != nil {
-		log.Error().Str("log_path", logPath).
-			Err(err).Msg("failed to create the log file")
+		log.Error().Str("log_path", logPath).Err(err).Msg("failed to create the log file")
 		// In this case, the global logger is not changed. Log messages are still printed to stderr.
 	} else {
 		bufWriter := bufio.NewWriter(logFile)
@@ -137,7 +111,8 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			_ = bufWriter.Flush()
 			_ = logFile.Close()
 		}()
-		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stdout, bufWriter)).With().Timestamp().Stack().Logger())
+		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stderr, bufWriter)).With().Timestamp().Stack().Logger())
+		log.Info().Str("log_path", logPath).Msg("log file will be saved to this path")
 	}
 
 	// This initial size is just a good start, might not be enough.
@@ -148,18 +123,18 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	// not buffered. This will cause a deadlock.
 	// This also means that when the program is in graceful shutdown mode, the inflight queries are not included in the
 	// final summary file.
-	s.resultChan = make(chan *QueryResult, 16)
+	s.States.resultChan = make(chan *QueryResult, 16)
 	timeToExit := make(chan os.Signal, 1)
 	signal.Notify(timeToExit, os.Interrupt, os.Kill)
 	// Each goroutine we spawn will increment this wait group (count-down latch). We may start a goroutine for running
 	// a benchmark stage, or write query output to disk asynchronously.
 	// This wait group is propagated to the descendant stages.
-	s.wgExitMainStage = &sync.WaitGroup{}
+	s.States.wgExitMainStage = &sync.WaitGroup{}
 	// Increment the wait group by 1 immediately for this main stage itself, which will also be a goroutine.
-	s.wgExitMainStage.Add(1)
+	s.States.wgExitMainStage.Add(1)
 
 	go func() {
-		s.wgExitMainStage.Wait()
+		s.States.wgExitMainStage.Wait()
 		// wgExitMainStage goes down to 0 after all the goroutines finish. Then we exit the driver by
 		// closing the timeToExit channel, which will trigger the graceful shutdown process -
 		// (flushing the log file, writing the final time log summary, etc.).
@@ -169,7 +144,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		close(timeToExit)
 	}()
 
-	ctx, s.AbortAll = context.WithCancelCause(ctx)
+	ctx, s.States.AbortAll = context.WithCancelCause(ctx)
 	log.Debug().EmbedObject(s).Msg("created cancellable context")
 	// Start to run the queries defined in this main stage in a goroutine, which is managed exactly like all other
 	// concurrent stages.
@@ -177,30 +152,21 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		_ = s.run(ctx)
 	}()
 
-	summaryBuilder := strings.Builder{}
+	summaryBuilder := &strings.Builder{}
 	summaryBuilder.WriteString("stage_id,query_file,query_index,cold_run,run_index,info_url,succeeded,row_count,start_time,end_time,duration_in_seconds\n")
 	for {
 		select {
-		case result := <-s.resultChan:
+		case result := <-s.States.resultChan:
 			results = append(results, result)
-
-			summaryBuilder.WriteString(result.StageId + ",")
-			if result.Query.File != nil {
-				summaryBuilder.WriteString(*result.Query.File)
-			} else {
-				summaryBuilder.WriteString("inline")
-			}
-			summaryBuilder.WriteString(fmt.Sprintf(",%d,%t,%d,%s,%t,%d,%s,%s,%f\n",
-				result.Query.Index, result.Query.ColdRun, result.Query.RunIndex, result.InfoUrl,
-				result.QueryError == nil, result.RowCount, result.StartTime.Format(time.RFC3339),
-				result.EndTime.Format(time.RFC3339), result.Duration.Seconds()))
+			s.appendQuerySummary(summaryBuilder, result)
+			s.sendQuerySummaryToInfluxDB(ctx, result)
 		case sig := <-timeToExit:
 			if sig != nil {
 				// Cancel the context and wait for the goroutines to exit.
-				s.AbortAll(fmt.Errorf(sig.String()))
-				s.wgExitMainStage.Wait()
+				s.States.AbortAll(fmt.Errorf(sig.String()))
+				s.States.wgExitMainStage.Wait()
 			}
-			_ = os.WriteFile(filepath.Join(s.OutputPath, s.Id+"_summary.csv"), []byte(summaryBuilder.String()), 0644)
+			_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), []byte(summaryBuilder.String()), 0644)
 			return results
 		}
 	}
@@ -211,7 +177,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if !s.started.CompareAndSwap(false, true) {
 		// If other prerequisites finished earlier, then this stage is already called and waiting.
-		s.wgExitMainStage.Done()
+		s.States.wgExitMainStage.Done()
 		return nil
 	}
 	defer func() {
@@ -223,18 +189,18 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 			s.logErr(ctx, returnErr)
 			if *s.AbortOnError {
 				log.Debug().EmbedObject(s).Msg("canceling the context because abort_on_error is set to true")
-				s.AbortAll(returnErr)
+				s.States.AbortAll(returnErr)
 			}
 		} else {
 			// Trigger descendant stages.
-			s.wgExitMainStage.Add(len(s.NextStages))
+			s.States.wgExitMainStage.Add(len(s.NextStages))
 			for _, nextStage := range s.NextStages {
 				go func(nextStage *Stage) {
 					_ = nextStage.run(ctx)
 				}(nextStage)
 			}
 		}
-		s.wgExitMainStage.Done()
+		s.States.wgExitMainStage.Done()
 	}()
 	select {
 	case <-ctx.Done():
@@ -251,7 +217,11 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	// Using range loop variable may cause some problems here because the file names can be propagated to some other
 	// goroutines that may use this query file path string.
 	for i := 0; i < len(s.QueryFiles); i++ {
-		file, err := os.Open(s.QueryFiles[i])
+		queryFileAbsPath := s.QueryFiles[i]
+		if !filepath.IsAbs(queryFileAbsPath) {
+			queryFileAbsPath = filepath.Join(s.BaseDir, queryFileAbsPath)
+		}
+		file, err := os.Open(queryFileAbsPath)
 		if err != nil {
 			return err
 		}
@@ -285,14 +255,14 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 
 			result, err := s.runQuery(ctx, query)
 			// err is already attached to the result, if not nil.
-			if s.OnQueryCompletion != nil {
-				s.OnQueryCompletion(result)
+			if s.States.OnQueryCompletion != nil {
+				s.States.OnQueryCompletion(result)
 			}
 			// Flags and options are checked within.
 			s.saveQueryJsonFile(ctx, result)
 			// Each query should have a query result sent to the channel, no matter
 			// its execution succeeded or not.
-			s.resultChan <- result
+			s.States.resultChan <- result
 			if err != nil {
 				if *s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 					// If AbortOnError is set, we skip the rest queries in the same batch.
@@ -358,7 +328,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	if *s.SaveOutput {
 		e.Bool("save_output", true)
 	}
-	if SaveColMetadata || *s.SaveColumnMetadata {
+	if *s.SaveColumnMetadata {
 		e.Bool("save_column_metadata", true)
 	}
 	e.Msgf("submitted query")
@@ -370,7 +340,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	)
 	if *s.SaveOutput {
 		queryOutputFile, err = os.OpenFile(
-			filepath.Join(s.OutputPath, querySourceStr)+".output",
+			filepath.Join(s.States.OutputPath, querySourceStr)+".output",
 			OpenNewFileFlags, 0644)
 		if err != nil {
 			return result, err
@@ -386,13 +356,13 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		}
 		// Write output asynchronously. wgExitMainStage prevents the program from exiting if there is still
 		// output data to write after all the queries finish running.
-		s.wgExitMainStage.Add(1)
+		s.States.wgExitMainStage.Add(1)
 		// wgQueryOutput waits for all the writes to complete then flush and close the file.
 		wgQueryOutput.Add(1)
 		go func(data []json.RawMessage) {
 			defer func() {
 				wgQueryOutput.Done()
-				s.wgExitMainStage.Done()
+				s.States.wgExitMainStage.Done()
 			}()
 			for _, row := range data {
 				_, ioErr := queryOutput.Write(row)
@@ -414,7 +384,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 
 	// Now all the data for this query is being written
 	if queryOutput != nil {
-		s.wgExitMainStage.Add(1)
+		s.States.wgExitMainStage.Add(1)
 		go func() {
 			wgQueryOutput.Wait()
 			if ioErr := queryOutput.Flush(); ioErr != nil {
@@ -424,7 +394,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 				log.Debug().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
 			}
 			_ = queryOutputFile.Close()
-			s.wgExitMainStage.Done()
+			s.States.wgExitMainStage.Done()
 		}()
 	}
 	return result, err

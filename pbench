@@ -20,4 +20,4 @@ if [ ! -f $SCRIPT_DIR/presto-benchmark_$(arch) ]; then
     popd > /dev/null
 fi
 
-$SCRIPT_DIR/presto-benchmark_$(arch) $@
+$SCRIPT_DIR/presto-benchmark_$(arch) "$@"

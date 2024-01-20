@@ -4,14 +4,15 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"presto-benchmark/run"
-	"presto-benchmark/stage"
 )
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use: `run 
+	[-n | --name <run name>]
 	[-s | --server <server address>] [-o | --output-path <output_path>]
-	[-m | --save-metadata] [-u | --user <username>] [-p | --password <password>]
+	[-u | --user <username>] [-p | --password <password>]
+	[-d | --database <InfluxDB connection config>]
 	[<root-level benchmark stage JSON files>...]`,
 	Short:                 "Run a benchmark",
 	Long:                  `Run a benchmark that is defined by a sequence of JSON configuration files.`,
@@ -23,9 +24,10 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 	wd, _ := os.Getwd()
-	runCmd.Flags().StringVarP(&stage.DefaultServerUrl, "server", "s", stage.DefaultServerUrl, "Presto server address")
+	runCmd.Flags().StringVarP(&run.Name, "name", "n", "", "Assign a name to this run. Default: <main stage name>-<current time>")
+	runCmd.Flags().StringVarP(&run.ServerUrl, "server", "s", run.ServerUrl, "Presto server address")
 	runCmd.Flags().StringVarP(&run.OutputPath, "output-path", "o", wd, "Output directory path")
 	runCmd.Flags().StringVarP(&run.UserName, "user", "u", "", "Presto user name")
 	runCmd.Flags().StringVarP(&run.Password, "password", "p", "", "Presto user password")
-	runCmd.Flags().BoolVarP(&stage.SaveColMetadata, "save-metadata", "m", false, "Save column metadata when query output is saved.")
+	runCmd.Flags().StringVarP(&run.InfluxCfgPath, "database", "d", run.InfluxCfgPath, "InfluxDB connection configuration file path")
 }

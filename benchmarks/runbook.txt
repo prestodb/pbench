@@ -110,6 +110,13 @@ server='https://'
 
 ../pbench run \
     -o $benchmark_base/tmp \
+    -d ../influxdb.json \
+    -n "a name with space" \
+    warmup.json \
+    test/stage_1.json
+
+../pbench run \
+    -o $benchmark_base/tmp \
     test/stage_1.json
 
 

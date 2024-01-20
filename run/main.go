@@ -10,50 +10,82 @@ import (
 	"presto-benchmark/presto"
 	"presto-benchmark/stage"
 	"strings"
+	"time"
 )
 
 var (
-	OutputPath string
-	UserName   string
-	Password   string
+	Name          string
+	ServerUrl     = stage.DefaultServerUrl
+	OutputPath    string
+	UserName      string
+	Password      string
+	InfluxCfgPath = "influxdb.json"
 )
 
-func Run(cmd *cobra.Command, args []string) {
-	mainStage := new(stage.Stage)
-	mainStage.OutputPath = OutputPath
+func Run(_ *cobra.Command, args []string) {
+	mainStage := &stage.Stage{
+		States: &stage.SharedStageStates{
+			RunName:      Name,
+			RunStartTime: time.Now(),
+			OutputPath:   OutputPath,
+		},
+	}
 
+	var defaultRunNameBuilder *strings.Builder
+	if mainStage.States.RunName == "" {
+		defaultRunNameBuilder = &strings.Builder{}
+	}
 	for _, path := range args {
 		if st, err := processStagePath(path); err == nil {
 			mainStage.MergeWith(st)
+			if defaultRunNameBuilder != nil {
+				if defaultRunNameBuilder.Len() > 0 {
+					defaultRunNameBuilder.WriteByte('_')
+				}
+				defaultRunNameBuilder.WriteString(st.Id)
+			}
 		}
 	}
+	if defaultRunNameBuilder != nil {
+		defaultRunNameBuilder.WriteByte('_')
+		defaultRunNameBuilder.WriteString(mainStage.States.RunStartTime.Format(stage.RunNameTimeFormat))
+		mainStage.States.RunName = defaultRunNameBuilder.String()
+	}
+	log.Info().Str("run_name", mainStage.States.RunName).Send()
+
 	_, _, err := stage.ParseStageGraph(mainStage)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to parse benchmark")
+		log.Fatal().Err(err).Msg("failed to parse benchmark stage graph")
 	}
 
 	if UserName != "" {
 		if Password != "" {
-			mainStage.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(stage.DefaultServerUrl)
+			mainStage.States.GetClient = func() *presto.Client {
+				client, _ := presto.NewClient(ServerUrl)
 				client.UserPassword(UserName, Password)
 				return client
 			}
 		} else {
-			mainStage.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(stage.DefaultServerUrl)
+			mainStage.States.GetClient = func() *presto.Client {
+				client, _ := presto.NewClient(ServerUrl)
 				client.User(UserName)
 				return client
 			}
 		}
+	} else {
+		mainStage.States.GetClient = func() *presto.Client {
+			client, _ := presto.NewClient(ServerUrl)
+			return client
+		}
 	}
+	mainStage.InitInfluxDB(InfluxCfgPath)
 	mainStage.Run(context.Background())
 }
 
 func processStagePath(path string) (st *stage.Stage, returnErr error) {
 	defer func() {
 		if returnErr != nil {
-			log.Error().Err(returnErr).Str("path", path).Send()
+			log.Error().Err(returnErr).Str("path", path).Msg("failed to process stage path")
 		}
 	}()
 	stat, statErr := os.Stat(path)
