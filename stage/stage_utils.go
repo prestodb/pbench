@@ -142,14 +142,15 @@ func (s *Stage) logErr(ctx context.Context, err error) {
 }
 
 func (s *Stage) prepareClient() {
-	if s.Client == nil || s.StartOnNewClient {
-		if s.States.GetClient == nil {
-			s.States.GetClient = DefaultGetClientFn
-			log.Debug().Msg("using DefaultGetClientFn")
-		}
-		s.Client = s.States.GetClient()
-		log.Info().EmbedObject(s).Msg("created new client")
+	if s.Client != nil && !s.StartOnNewClient {
+		return
 	}
+	if s.States.GetClient == nil {
+		s.States.GetClient = DefaultGetClientFn
+		log.Debug().Msg("using DefaultGetClientFn")
+	}
+	s.Client = s.States.GetClient()
+	log.Info().EmbedObject(s).Msg("created new client")
 	if s.Catalog != nil {
 		s.Client.Catalog(*s.Catalog)
 		log.Info().EmbedObject(s).Str("catalog", *s.Catalog).Msg("set catalog")
@@ -163,9 +164,8 @@ func (s *Stage) prepareClient() {
 	}
 	if len(s.SessionParams) > 0 {
 		log.Info().EmbedObject(s).
-			Object("delta", log.NewMarshaller(s.SessionParams)).
-			Str("final", s.Client.GetSessionParams()).
-			Msg("added session params")
+			Str("values", s.Client.GetSessionParams()).
+			Msg("set session params")
 	}
 	s.Client.AppendClientTag(s.Id)
 }
@@ -191,6 +191,20 @@ func (s *Stage) setDefaults() {
 
 func (s *Stage) propagateStates() {
 	for _, nextStage := range s.NextStages {
+		if nextStage.Catalog == nil {
+			nextStage.Catalog = s.Catalog
+		}
+		if nextStage.Schema == nil {
+			nextStage.Schema = s.Schema
+		}
+		if nextStage.SessionParams == nil {
+			nextStage.SessionParams = make(map[string]any)
+		}
+		for k, v := range s.SessionParams {
+			if _, ok := nextStage.SessionParams[k]; !ok {
+				nextStage.SessionParams[k] = v
+			}
+		}
 		if nextStage.ColdRuns == 0 {
 			nextStage.ColdRuns = s.ColdRuns
 		}
