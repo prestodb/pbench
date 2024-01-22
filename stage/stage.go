@@ -161,6 +161,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 				continue
 			}
 			_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), []byte(summaryBuilder.String()), 0644)
+			s.sendRunSummaryToInfluxDB(ctx, results)
 			return results
 		}
 	}
