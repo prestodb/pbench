@@ -79,7 +79,6 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	}
 	mainStage.InitInfluxDB(InfluxCfgPath)
-	mainStage.Id = mainStage.States.RunName + "_main"
 	mainStage.Run(context.Background())
 }
 

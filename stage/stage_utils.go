@@ -369,17 +369,19 @@ func (s *Stage) sendQuerySummaryToInfluxDB(ctx context.Context, result *QueryRes
 }
 
 func (s *Stage) sendRunSummaryToInfluxDB(ctx context.Context, results []*QueryResult) {
-	//if s.States.influxWriter == nil {
-	//	return
-	//}
-	//tags := map[string]string{
-	//	"run_name":       s.States.RunName,
-	//}
-	//fields := map[string]interface{}{
-	//	"run_start_time": s.States.RunStartTime.UnixNano(),
-	//}
-	//point := write.NewPoint("runs", tags, fields, s.States.RunStartTime)
-	//if err := s.States.influxWriter.WritePoint(ctx, point); err != nil {
-	//	log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to influxdb")
-	//}
+	if s.States.influxWriter == nil {
+		return
+	}
+	tags := map[string]string{
+		"run_name": s.States.RunName,
+	}
+	fields := map[string]interface{}{
+		"start_time":  s.States.RunStartTime.UnixNano(),
+		"queries_ran": len(results),
+		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
+	}
+	point := write.NewPoint("runs", tags, fields, s.States.RunFinishTime)
+	if err := s.States.influxWriter.WritePoint(ctx, point); err != nil {
+		log.Error().Str("run_name", s.States.RunName).Err(err).Msg("failed to send run summary to influxdb")
+	}
 }
