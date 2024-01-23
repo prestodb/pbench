@@ -245,9 +245,6 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				ColdRun:   j < s.ColdRuns,
 				RunIndex:  j,
 			}
-			if !query.ColdRun {
-				query.RunIndex -= s.ColdRuns
-			}
 
 			result, err := s.runQuery(ctx, query)
 			// err is already attached to the result, if not nil.
