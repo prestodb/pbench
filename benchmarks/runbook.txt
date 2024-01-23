@@ -17,7 +17,7 @@ server='https://'
     -d ../influxdb.json \
     native.json \
     tpc-ds/ds_sf10.json \
-    tpc-ds/std.json
+    tpc-ds/power.json
 
 # Native SF-1K 4 streams defined in the spec
 ../pbench run \
@@ -35,7 +35,7 @@ server='https://'
     -d ../influxdb.json \
     java.json \
     tpc-ds/ds_sf1k.json \
-    tpc-ds/std.json
+    tpc-ds/power.json
 
 # Java SF-1K with order_by
 ../pbench run \
@@ -62,7 +62,7 @@ server='https://'
     -d ../influxdb.json \
     native.json \
     tpc-ds/ds_sf1k.json \
-    tpc-ds/std.json
+    tpc-ds/power.json
 
 # Native SF-1K with order_by
 ../pbench run \
@@ -88,7 +88,7 @@ server='https://'
     -d ../influxdb.json \
     java.json \
     tpc-ds/ds_sf1.json \
-    tpc-ds/std.json
+    tpc-ds/power.json
 
 # Very lightweight test stages on Hive Query Runner
 ../pbench run \
