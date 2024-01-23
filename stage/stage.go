@@ -162,7 +162,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			}
 			s.States.RunFinishTime = time.Now()
 			_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), []byte(summaryBuilder.String()), 0644)
-			s.sendRunSummaryToInfluxDB(ctx, results)
+			s.sendRunSummaryToInfluxDB(context.Background(), results)
 			return results
 		}
 	}
