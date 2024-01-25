@@ -44,6 +44,7 @@ services:
     - /etc/telegraf:/etc/telegraf
     - /var/run/docker.sock:/var/run/docker.sock
     - /home/centos/presto/plugin/event-listener/:/opt/presto-server/plugin/event-listener/
+    - /home/centos/presto/log/presto-server/:/var/log/presto-server/
     networks:
       presto-swarm:
 
@@ -80,6 +81,7 @@ services:
     - /usr/bin/telegraf:/usr/bin/telegraf
     - /etc/telegraf:/etc/telegraf
     - /var/run/docker.sock:/var/run/docker.sock
+    - /home/centos/presto/log/presto-server/:/var/log/presto-server/
     # spilling is on
     - /home/centos/presto/spilled_data:/opt/presto-server/spilled_data
     networks:
