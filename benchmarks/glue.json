@@ -1,9 +1,0 @@
-{
-  "description": "Java engine Glue configurations (for BlueRay)",
-  "session_params": {
-    "hive.parquet_pushdown_filter_enabled": null,
-    "hive.pushdown_filter_enabled": null,
-    "glue.parquet_pushdown_filter_enabled": true,
-    "glue.pushdown_filter_enabled": false
-  }
-}
