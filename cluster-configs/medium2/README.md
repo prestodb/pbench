@@ -15,6 +15,6 @@ r5.4xlarge (vCPU: 16, Memory: 128 GB) * 16
 ### For Prestissimo clusters:
 * Coordinator heap setting same as Java cluster
 * `NativeProxygenMemGb = ceil(min(ProxygenMemPerWorkerGb * NumberOfWorkers, ProxygenMemCapGb)) = ceil(min(0.125 * 16, 2)) = 2`
-* `NonVeloxBufferMemGb = 2`
-* `system-memory-gb = ContainerMemory - NativeProxygenMemGb - ceil(NonVeloxBufferMemGb) = 126 - 2 - ceil(2) = 122`
-* `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(122 * 0.95) = 115`
+* `NonVeloxBufferMemGb = 8`
+* `system-memory-gb = ContainerMemory - NativeProxygenMemGb - ceil(NonVeloxBufferMemGb) = 126 - 2 - ceil(8) = 116`
+* `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(116 * 0.95) = 110`
