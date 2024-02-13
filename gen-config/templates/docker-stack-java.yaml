@@ -58,7 +58,7 @@ services:
         constraints:
         - node.role == worker
       mode: replicated
-      replicas: {{ .NumberOfWorkers }}
+      replicas: ${NUMBER_OF_WORKERS}
       resources:
         limits:
           cpus: '{{ dec .VCPUPerWorker }}'

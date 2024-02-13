@@ -58,7 +58,7 @@ services:
         constraints:
         - node.role == worker
       mode: replicated
-      replicas: 28
+      replicas: ${NUMBER_OF_WORKERS}
       resources:
         limits:
           cpus: '63'
