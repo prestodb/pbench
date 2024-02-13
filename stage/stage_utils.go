@@ -247,7 +247,7 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 				OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
-				_, err = s.Client.GetQueryInfo(ctx, result.QueryId, false, queryJsonFile)
+				_, err = s.Client.GetQueryInfo(context.Background(), result.QueryId, false, queryJsonFile)
 				checkErr(err)
 				checkErr(queryJsonFile.Close())
 			}

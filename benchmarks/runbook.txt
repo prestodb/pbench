@@ -33,7 +33,7 @@ server='https://'
     -s $server \
     -o $benchmark_base \
     -d ../influxdb.json \
-    java.json \
+    java_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/power.json
 
@@ -42,7 +42,7 @@ server='https://'
     -s $server \
     -o $benchmark_base \
     -d ../influxdb.json \
-    java.json \
+    java_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/ob.json
 
@@ -51,7 +51,7 @@ server='https://'
     -s $server \
     -o $benchmark_base \
     -d ../influxdb.json \
-    java.json \
+    java_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/full.json
 
@@ -86,7 +86,7 @@ server='https://'
 ../pbench run \
     -o $benchmark_base \
     -d ../influxdb.json \
-    java.json \
+    java_oss.json \
     tpc-ds/ds_sf1.json \
     tpc-ds/power.json
 
