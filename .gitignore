@@ -21,3 +21,6 @@
 go.work
 .DS_Store
 influxdb.json
+
+# binaries
+presto-benchmark_*
