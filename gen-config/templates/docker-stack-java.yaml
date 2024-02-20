@@ -27,6 +27,7 @@ services:
     - /opt/entrypoint-java.sh
     volumes:
     - /home/centos/presto/catalog/hive.properties:/opt/presto-server/etc/catalog/hive.properties
+    - /home/centos/presto/catalog/iceberg.properties:/opt/presto-server/etc/catalog/iceberg.properties
     - /home/centos/presto/catalog/jmx.properties:/opt/presto-server/etc/catalog/jmx.properties
     - /home/centos/presto/catalog/tpcds.properties:/opt/presto-server/etc/catalog/tpcds.properties
     - /home/centos/presto/catalog/tpch.properties:/opt/presto-server/etc/catalog/tpch.properties
@@ -73,8 +74,11 @@ services:
     - /opt/entrypoint-java.sh
     volumes:
     - /home/centos/presto/catalog/hive.properties:/opt/presto-server/etc/catalog/hive.properties
+    - /home/centos/presto/catalog/iceberg.properties:/opt/presto-server/etc/catalog/iceberg.properties
+    - /home/centos/presto/catalog/jmx.properties:/opt/presto-server/etc/catalog/jmx.properties
     - /home/centos/presto/catalog/tpcds.properties:/opt/presto-server/etc/catalog/tpcds.properties
     - /home/centos/presto/catalog/tpch.properties:/opt/presto-server/etc/catalog/tpch.properties
+    - /home/centos/presto/jmx-exporter-config.yaml:/opt/presto-server/etc/jmx-exporter-config.yaml
     - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
     - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
     - /home/centos/presto/entrypoint-java.sh:/opt/entrypoint-java.sh
