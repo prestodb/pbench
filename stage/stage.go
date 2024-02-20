@@ -152,8 +152,9 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		select {
 		case result := <-s.States.resultChan:
 			results = append(results, result)
-			s.appendQuerySummary(summaryBuilder, result)
-			s.sendQuerySummaryToInfluxDB(ctx, result)
+			for _, recorder := range s.States.runRecorders {
+				recorder.RecordQuery(ctx, s, result)
+			}
 		case sig := <-timeToExit:
 			if sig != nil {
 				// Cancel the context and wait for the goroutines to exit.
@@ -161,8 +162,9 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 				continue
 			}
 			s.States.RunFinishTime = time.Now()
-			_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), []byte(summaryBuilder.String()), 0644)
-			s.sendRunSummaryToInfluxDB(context.Background(), results)
+			for _, recorder := range s.States.runRecorders {
+				recorder.RecordRun(ctx, s, results)
+			}
 			return results
 		}
 	}

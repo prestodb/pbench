@@ -2,8 +2,6 @@ package stage
 
 import (
 	"context"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
-	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"sync"
 	"time"
 )
@@ -29,6 +27,12 @@ type SharedStageStates struct {
 	wgExitMainStage *sync.WaitGroup
 	// Stages use resultChan to send the query result back to the main stage.
 	resultChan   chan *QueryResult
-	influxClient influxdb2.Client
-	influxWriter influxapi.WriteAPIBlocking
+	runRecorders []RunRecorder
+}
+
+func (states *SharedStageStates) RegisterRunRecorder(r RunRecorder) {
+	if r == nil {
+		return
+	}
+	states.runRecorders = append(states.runRecorders, r)
 }

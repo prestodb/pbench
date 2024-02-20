@@ -5,15 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
-	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"github.com/rs/zerolog"
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
 	"presto-benchmark/presto"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -33,29 +30,6 @@ var (
 		return client
 	}
 )
-
-func (s *Stage) InitInfluxDB(InfluxCfgPath string) {
-	if bytes, err := os.ReadFile(InfluxCfgPath); err != nil {
-		log.Info().Err(err).Msg("InfluxDB client was not initialized, results won't be written to the database.")
-		return
-	} else {
-		influxCfg := &struct {
-			Url    string `json:"url"`
-			Org    string `json:"org"`
-			Bucket string `json:"bucket"`
-			Token  string `json:"token"`
-		}{}
-		err = json.Unmarshal(bytes, influxCfg)
-		if err != nil {
-			log.Info().Err(err).Msg("InfluxDB client was not initialized, results won't be written to the database.")
-			return
-		}
-		s.States.influxClient = influxdb2.NewClient(influxCfg.Url, influxCfg.Token)
-		s.States.influxWriter = s.States.influxClient.WriteAPIBlocking(influxCfg.Org, influxCfg.Bucket)
-		log.Info().Str("url", influxCfg.Url).Str("org", influxCfg.Org).Str("bucket", influxCfg.Bucket).
-			Msg("InfluxDB client initialized, benchmark result summary will be sent to this database.")
-	}
-}
 
 func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.Id = other.Id
@@ -323,65 +297,4 @@ func (s *Stage) querySourceString(result *QueryResult) (sourceStr string) {
 		sourceStr += strconv.Itoa(result.Query.RunIndex)
 	}
 	return
-}
-
-func (s *Stage) appendQuerySummary(summaryBuilder *strings.Builder, result *QueryResult) {
-	summaryBuilder.WriteString(result.StageId + ",")
-	if result.Query.File != nil {
-		summaryBuilder.WriteString(*result.Query.File)
-	} else {
-		summaryBuilder.WriteString("inline")
-	}
-	summaryBuilder.WriteString(fmt.Sprintf(",%d,%t,%d,%s,%t,%d,%s,%s,%f\n",
-		result.Query.Index, result.Query.ColdRun, result.Query.RunIndex, result.InfoUrl,
-		result.QueryError == nil, result.RowCount, result.StartTime.Format(time.RFC3339),
-		result.EndTime.Format(time.RFC3339), result.Duration.Seconds()))
-}
-
-func (s *Stage) sendQuerySummaryToInfluxDB(ctx context.Context, result *QueryResult) {
-	if s.States.influxWriter == nil {
-		return
-	}
-	tags := map[string]string{
-		"run_name": s.States.RunName,
-		"stage_id": result.StageId,
-		"query_id": result.QueryId,
-	}
-	fields := map[string]interface{}{
-		"query_index": result.Query.Index,
-		"cold_run":    result.Query.ColdRun,
-		"run_index":   result.Query.RunIndex,
-		"info_url":    result.InfoUrl,
-		"succeeded":   result.QueryError == nil,
-		"row_count":   result.RowCount,
-		"start_time":  result.StartTime.UnixNano(),
-		"duration_ms": result.Duration.Milliseconds(),
-	}
-	if result.Query.File != nil {
-		fields["query_file"] = *result.Query.File
-	} else {
-		fields["query_file"] = "inline"
-	}
-	point := write.NewPoint("queries", tags, fields, *result.EndTime)
-	if err := s.States.influxWriter.WritePoint(ctx, point); err != nil {
-		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to influxdb")
-	}
-}
-
-func (s *Stage) sendRunSummaryToInfluxDB(ctx context.Context, results []*QueryResult) {
-	if s.States.influxWriter == nil {
-		return
-	}
-	tags := map[string]string{
-		"run_name": s.States.RunName,
-	}
-	fields := map[string]interface{}{
-		"start_time":  s.States.RunStartTime.UnixNano(),
-		"queries_ran": len(results),
-		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
-	}
-	point := write.NewPoint("runs", tags, fields, s.States.RunFinishTime)
-	if err := s.States.influxWriter.WritePoint(ctx, point); err != nil {
-		log.Error().Str("run_name", s.States.RunName).Err(err).Msg("failed to send run summary to influxdb")
-	}
 }

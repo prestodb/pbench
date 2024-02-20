@@ -78,7 +78,8 @@ func Run(_ *cobra.Command, args []string) {
 			return client
 		}
 	}
-	mainStage.InitInfluxDB(InfluxCfgPath)
+	mainStage.States.RegisterRunRecorder(&stage.FileBasedRunRecorder{})
+	mainStage.States.RegisterRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
 	mainStage.Run(context.Background())
 }
 
