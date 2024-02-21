@@ -14,8 +14,8 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
-    native.json \
+    --influx ../influxdb.json \
+    native_oss.json \
     tpc-ds/ds_sf10.json \
     tpc-ds/power.json
 
@@ -23,8 +23,8 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
-    native.json \
+    --influx ../influxdb.json \
+    native_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/4streams.json
 
@@ -32,7 +32,7 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
+    --influx ../influxdb.json \
     java_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/power.json
@@ -41,7 +41,7 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
+    --influx ../influxdb.json \
     java_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/ob.json
@@ -50,7 +50,7 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
+    --influx ../influxdb.json \
     java_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/full.json
@@ -59,8 +59,8 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
-    native.json \
+    --influx ../influxdb.json \
+    native_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/power.json
 
@@ -68,8 +68,8 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
-    native.json \
+    --influx ../influxdb.json \
+    native_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/ob.json
 
@@ -77,17 +77,20 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
-    native.json \
+    --influx ../influxdb.json \
+    native_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/full.json
 
-# Java SF-1 on Hive Query Runner
+# Native SF-10 power
 ../pbench run \
+    -s $server \
     -o $benchmark_base \
-    -d ../influxdb.json \
-    java_oss.json \
-    tpc-ds/ds_sf1.json \
+    --influx ../influxdb.json \
+    --mysql ../mysql.json \
+    -n "test mysql run recorder sf10" \
+    native_oss.json \
+    tpc-ds/ds_sf10.json \
     tpc-ds/power.json
 
 # Very lightweight test stages on Hive Query Runner
@@ -103,7 +106,7 @@ server='https://'
 
 ../pbench run \
     -o $benchmark_base/tmp \
-    -d ../influxdb.json \
+    --influx ../influxdb.json \
     -n "a name with space" \
     warmup.json \
     test/stage_1.json
@@ -124,3 +127,10 @@ server='https://'
 -o /Users/ezhang/Downloads/benchmark_runs/tmp/diff_sf1k \
 /Users/ezhang/Downloads/benchmark_runs/test/ds_sf1k_j_full-2024-01-03T18:44:38-08:00 \
 /Users/ezhang/Downloads/benchmark_runs/test/ds_sf1k_n_full-2024-01-03T18:57:26-08:00
+
+# delete a run from influxdb
+influx delete \
+  --bucket benchmark_runs \
+  --start 2024-01-23T01:39:15Z \
+  --stop 2024-02-22T20:39:15Z \
+  --predicate 'run_name="test mysql run recorder sf1"'
