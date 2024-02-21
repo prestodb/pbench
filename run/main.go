@@ -19,7 +19,8 @@ var (
 	OutputPath    string
 	UserName      string
 	Password      string
-	InfluxCfgPath = "influxdb.json"
+	InfluxCfgPath string
+	MySQLCfgPath  string
 )
 
 func Run(_ *cobra.Command, args []string) {
@@ -79,6 +80,7 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	}
 	mainStage.States.RegisterRunRecorder(&stage.FileBasedRunRecorder{})
+	mainStage.States.RegisterRunRecorder(stage.NewMySQLRunRecorder(MySQLCfgPath))
 	mainStage.States.RegisterRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
 	mainStage.Run(context.Background())
 }

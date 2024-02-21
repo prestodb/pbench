@@ -84,6 +84,11 @@ type Stage struct {
 	started atomic.Bool
 }
 
+func getCtxWithTimeout(timeout time.Duration) context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
+	return ctx
+}
+
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) []*QueryResult {
 	if s.States.RunName == "" {
@@ -153,7 +158,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		case result := <-s.States.resultChan:
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordQuery(ctx, s, result)
+				recorder.RecordQuery(getCtxWithTimeout(time.Second*5), s, result)
 			}
 		case sig := <-timeToExit:
 			if sig != nil {
@@ -163,7 +168,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			}
 			s.States.RunFinishTime = time.Now()
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordRun(ctx, s, results)
+				recorder.RecordRun(getCtxWithTimeout(time.Second*5), s, results)
 			}
 			return results
 		}
@@ -254,7 +259,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				s.States.OnQueryCompletion(result)
 			}
 			// Flags and options are checked within.
-			s.saveQueryJsonFile(ctx, result)
+			s.saveQueryJsonFile(result)
 			// Each query should have a query result sent to the channel, no matter
 			// its execution succeeded or not.
 			s.States.resultChan <- result

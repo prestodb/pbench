@@ -202,7 +202,7 @@ func (s *Stage) propagateStates() {
 	}
 }
 
-func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
+func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 	// We do not save json file for the cold run or when saveJson is false. But when there is an error, we always save the json file.
 	if (result.Query.ColdRun || !*s.SaveJson) && result.QueryError == nil {
 		return
@@ -221,7 +221,8 @@ func (s *Stage) saveQueryJsonFile(ctx context.Context, result *QueryResult) {
 				OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
-				_, err = s.Client.GetQueryInfo(context.Background(), result.QueryId, false, queryJsonFile)
+				// We need to save the query json file even if the stage context is canceled.
+				_, err = s.Client.GetQueryInfo(getCtxWithTimeout(time.Second*5), result.QueryId, false, queryJsonFile)
 				checkErr(err)
 				checkErr(queryJsonFile.Close())
 			}

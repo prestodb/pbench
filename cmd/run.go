@@ -12,7 +12,8 @@ var runCmd = &cobra.Command{
 	[-n | --name <run name>]
 	[-s | --server <server address>] [-o | --output-path <output_path>]
 	[-u | --user <username>] [-p | --password <password>]
-	[-d | --database <InfluxDB connection config>]
+	[--influx <InfluxDB connection config for run recorder>]
+	[--mysql <MySQL connection config for run recorder>]
 	[<root-level benchmark stage JSON files>...]`,
 	Short:                 "Run a benchmark",
 	Long:                  `Run a benchmark that is defined by a sequence of JSON configuration files.`,
@@ -29,5 +30,6 @@ func init() {
 	runCmd.Flags().StringVarP(&run.OutputPath, "output-path", "o", wd, "Output directory path")
 	runCmd.Flags().StringVarP(&run.UserName, "user", "u", "", "Presto user name")
 	runCmd.Flags().StringVarP(&run.Password, "password", "p", "", "Presto user password")
-	runCmd.Flags().StringVarP(&run.InfluxCfgPath, "database", "d", run.InfluxCfgPath, "InfluxDB connection configuration file path")
+	runCmd.Flags().StringVar(&run.InfluxCfgPath, "influx", "", "InfluxDB connection config for run recorder")
+	runCmd.Flags().StringVar(&run.MySQLCfgPath, "mysql", "", "MySQL connection config for run recorder")
 }

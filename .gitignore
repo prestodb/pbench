@@ -20,7 +20,9 @@
 # Go workspace file
 go.work
 .DS_Store
+
 influxdb.json
+mysql.json
 
 # binaries
 presto-benchmark_*

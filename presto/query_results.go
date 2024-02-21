@@ -35,6 +35,7 @@ func (qr *QueryResults) FetchNextBatch(ctx context.Context) error {
 		newQr, _, err := qr.client.FetchNextBatch(ctx, *qr.NextUri)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				// ctx cannot be used now because it is canceled. Supply a new context without deadline.
 				_, _, _ = qr.client.CancelQuery(context.Background(), *qr.NextUri)
 				log.Debug().Str("query_id", qr.Id).Msg("canceling query because the context is cancelled")
 			}
