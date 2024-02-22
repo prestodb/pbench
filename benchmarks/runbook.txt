@@ -88,10 +88,23 @@ server='https://'
     -o $benchmark_base \
     --influx ../influxdb.json \
     --mysql ../mysql.json \
-    -n "test mysql run recorder sf10" \
+    --pulumi ../pulumi.json \
+    -n "test pulumi run recorder sf10" \
     native_oss.json \
     tpc-ds/ds_sf10.json \
     tpc-ds/power.json
+
+# Native SF-10 subset
+../pbench run \
+    -s $server \
+    -o $benchmark_base \
+    --influx ../influxdb.json \
+    --mysql ../mysql.json \
+    --pulumi ../pulumi.json \
+    -n "test pulumi run recorder sf10" \
+    java_oss.json \
+    tpc-ds/ds_sf10.json \
+    tpc-ds/subset.json
 
 # Very lightweight test stages on Hive Query Runner
 ../pbench run \

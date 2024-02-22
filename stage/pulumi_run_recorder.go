@@ -18,7 +18,7 @@ import (
 const PulumiAPIEndpoint = "https://api.pulumi.com"
 const PulumiResourceTypeStack = "pulumi:pulumi:Stack"
 
-//go:embed pbench_clusters.sql
+//go:embed pbench_clusters_ddl.sql
 var pbenchClustersDDL string
 
 // PulumiMySQLRunRecorder will record the cluster information from Pulumi to MySQL for correlative analysis in Grafana
@@ -153,7 +153,7 @@ func (p *PulumiMySQLRunRecorder) findPulumiStackFromClusterFQDN(ctx context.Cont
 				if resource.Type != PulumiResourceTypeStack {
 					continue
 				}
-				if resource.Outputs["cluster_fqdn"] == clusterFQDN {
+				if resource.Outputs.ClusterFQDN == clusterFQDN {
 					return &resource
 				}
 			}
@@ -170,8 +170,8 @@ func (p *PulumiMySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, result
 		log.Info().Msgf("did not find a matching Pulumi stack for %s", s.States.ServerFQDN)
 		return
 	}
-	recordCluster := `INSERT INTO pbench_clusters (cluster_name, cluster_fqdn, created) VALUES (?, ?, ?)`
-	_, err := p.db.Exec(recordCluster, stack.Outputs["cluster_name"], s.States.ServerFQDN, stack.Created)
+	recordCluster := `INSERT IGNORE INTO pbench_clusters (cluster_name, cluster_fqdn, created) VALUES (?, ?, ?)`
+	_, err := p.db.Exec(recordCluster, stack.Outputs.ClusterName, s.States.ServerFQDN, stack.Created)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Str("cluster_fqdn", s.States.ServerFQDN).
 			Msg("failed to record cluster info")
@@ -191,9 +191,12 @@ type PulumiStacks struct {
 }
 
 type PulumiResource struct {
-	Type    string            `json:"type"`
-	Outputs map[string]string `json:"outputs"`
-	Created time.Time         `json:"created"`
+	Type    string `json:"type"`
+	Outputs struct {
+		ClusterFQDN string `json:"cluster_fqdn"`
+		ClusterName string `json:"cluster_name"`
+	} `json:"outputs"`
+	Created time.Time `json:"created"`
 }
 
 type PulumiStackExport struct {

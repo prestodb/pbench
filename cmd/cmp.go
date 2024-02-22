@@ -6,10 +6,7 @@ import (
 )
 
 var cmpCmd = &cobra.Command{
-	Use: `cmp 
-	[--id-regex | -r <regex to extract result id from file names in two directories to find matching files to compare>]
-	[--output-path | -o <diff output path>]
-	<directory 1> <directory 2>`,
+	Use:                   `cmp [flags] [directory 1] [directory 2]`,
 	DisableFlagsInUseLine: true,
 	Run:                   cmp.Run,
 	Args:                  cobra.ExactArgs(2),

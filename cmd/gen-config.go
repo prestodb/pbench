@@ -6,9 +6,7 @@ import (
 )
 
 var genConfigCmd = &cobra.Command{
-	Use: `gen-config 
-	[--template-dir | -t <template directory>]
-	[--parameter-file | -p <parameter file>] <directory to search recursively for config.json'>`,
+	Use:                   `gen-config [flags] [directory to search recursively for config.json]`,
 	DisableFlagsInUseLine: true,
 	Run:                   genconfig.Run,
 	Args:                  cobra.ExactArgs(1),
