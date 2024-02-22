@@ -1,8 +1,8 @@
-CREATE SCHEMA IF NOT EXISTS dml_hms.tpcds_sf1000_parquet_varchar_opt0222 WITH (location='s3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/');
+CREATE SCHEMA IF NOT EXISTS dml_hms.tpcds_sf1000_parquet_varchar_opt0222 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/';
 
 USE dml_hms.tpcds_sf1000_parquet_varchar_opt0222;
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.call_center (
+CREATE TABLE IF NOT EXISTS call_center (
   cc_call_center_sk BIGINT,
   cc_call_center_id VARCHAR(16),
   cc_rec_start_date DATE,
@@ -37,7 +37,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.call_center (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/call_center';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_page (
+CREATE TABLE IF NOT EXISTS catalog_page (
   cp_catalog_page_sk BIGINT,
   cp_catalog_page_id VARCHAR(16),
   cp_start_date_sk INT,
@@ -50,7 +50,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_page (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/catalog_page';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_returns (
+CREATE TABLE IF NOT EXISTS catalog_returns (
   cr_returned_date_sk BIGINT,
   cr_returned_time_sk BIGINT,
   cr_item_sk BIGINT,
@@ -81,7 +81,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_returns (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/catalog_returns';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_sales (
+CREATE TABLE IF NOT EXISTS catalog_sales (
   cs_sold_time_sk BIGINT,
   cs_ship_date_sk BIGINT,
   cs_bill_customer_sk BIGINT,
@@ -114,13 +114,13 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_sales (
   cs_net_paid_inc_tax DECIMAL(7,2),
   cs_net_paid_inc_ship DECIMAL(7,2),
   cs_net_paid_inc_ship_tax DECIMAL(7,2),
-  cs_net_profit DECIMAL(7,2)),
-  cs_sold_date_sk BIGINT
+  cs_net_profit DECIMAL(7,2),
+  cs_sold_date_sk BIGINT)
 USING iceberg
 PARTITIONED BY (cs_sold_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/catalog_sales';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.customer (
+CREATE TABLE IF NOT EXISTS customer (
   c_customer_sk BIGINT,
   c_customer_id VARCHAR(16),
   c_current_cdemo_sk BIGINT,
@@ -142,7 +142,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.customer (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/customer';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.customer_address (
+CREATE TABLE IF NOT EXISTS customer_address (
   ca_address_sk BIGINT,
   ca_address_id VARCHAR(16),
   ca_street_number VARCHAR(10),
@@ -159,7 +159,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.customer_address (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/customer_address';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.customer_demographics (
+CREATE TABLE IF NOT EXISTS customer_demographics (
   cd_demo_sk BIGINT,
   cd_gender VARCHAR(1),
   cd_marital_status VARCHAR(1),
@@ -172,7 +172,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.customer_demographics (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/customer_demographics';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.date_dim (
+CREATE TABLE IF NOT EXISTS date_dim (
   d_date_sk BIGINT,
   d_date_id VARCHAR(16),
   d_date DATE,
@@ -204,7 +204,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.date_dim (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/date_dim';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.household_demographics (
+CREATE TABLE IF NOT EXISTS household_demographics (
   hd_demo_sk BIGINT,
   hd_income_band_sk BIGINT,
   hd_buy_potential VARCHAR(15),
@@ -213,23 +213,23 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.household_demographics (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/household_demographics';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.income_band (
+CREATE TABLE IF NOT EXISTS income_band (
   ib_income_band_sk BIGINT,
   ib_lower_bound INT,
   ib_upper_bound INT)
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/income_band'
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/income_band';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.inventory (
+CREATE TABLE IF NOT EXISTS inventory (
   inv_item_sk BIGINT,
   inv_warehouse_sk BIGINT,
-  inv_quantity_on_hand INT)
-  inv_date_sk BIGINT,
+  inv_quantity_on_hand INT,
+  inv_date_sk BIGINT)
 USING iceberg
 PARTITIONED BY (inv_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/inventory';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.item (
+CREATE TABLE IF NOT EXISTS item (
   i_item_sk BIGINT,
   i_item_id VARCHAR(16),
   i_rec_start_date DATE,
@@ -255,7 +255,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.item (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/item';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.promotion (
+CREATE TABLE IF NOT EXISTS promotion (
   p_promo_sk BIGINT,
   p_promo_id VARCHAR(16),
   p_start_date_sk BIGINT,
@@ -276,16 +276,16 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.promotion (
   p_purpose VARCHAR(15),
   p_discount_active VARCHAR(1))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/promotion'
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/promotion';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.reason (
+CREATE TABLE IF NOT EXISTS reason (
   r_reason_sk BIGINT,
   r_reason_id VARCHAR(16),
   r_reason_desc VARCHAR(100))
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/reason';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.ship_mode (
+CREATE TABLE IF NOT EXISTS ship_mode (
   sm_ship_mode_sk BIGINT,
   sm_ship_mode_id VARCHAR(16),
   sm_type VARCHAR(30),
@@ -295,7 +295,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.ship_mode (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/ship_mode';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.store (
+CREATE TABLE IF NOT EXISTS store (
   s_store_sk BIGINT,
   s_store_id VARCHAR(16),
   s_rec_start_date DATE,
@@ -328,7 +328,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.store (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/store';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.store_returns (
+CREATE TABLE IF NOT EXISTS store_returns (
   sr_returned_date_sk BIGINT,
   sr_return_time_sk BIGINT,
   sr_item_sk BIGINT,
@@ -352,7 +352,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.store_returns (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/store_returns';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.store_sales (
+CREATE TABLE IF NOT EXISTS store_sales (
   ss_sold_time_sk BIGINT,
   ss_item_sk BIGINT,
   ss_customer_sk BIGINT,
@@ -374,13 +374,13 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.store_sales (
   ss_coupon_amt DECIMAL(7,2),
   ss_net_paid DECIMAL(7,2),
   ss_net_paid_inc_tax DECIMAL(7,2),
-  ss_net_profit DECIMAL(7,2)),
-  ss_sold_date_sk BIGINT
+  ss_net_profit DECIMAL(7,2),
+  ss_sold_date_sk BIGINT)
 USING iceberg
 PARTITIONED BY (ss_sold_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/store_sales';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.time_dim (
+CREATE TABLE IF NOT EXISTS time_dim (
   t_time_sk BIGINT,
   t_time_id VARCHAR(16),
   t_time INT,
@@ -392,9 +392,9 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.time_dim (
   t_sub_shift VARCHAR(20),
   t_meal_time VARCHAR(20))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/time_dim'
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/time_dim';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.warehouse (
+CREATE TABLE IF NOT EXISTS warehouse (
   w_warehouse_sk BIGINT,
   w_warehouse_id VARCHAR(16),
   w_warehouse_name VARCHAR(20),
@@ -412,7 +412,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.warehouse (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/warehouse';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.web_page (
+CREATE TABLE IF NOT EXISTS web_page (
   wp_web_page_sk BIGINT,
   wp_web_page_id VARCHAR(16),
   wp_rec_start_date DATE,
@@ -430,7 +430,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_page (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/web_page';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.web_returns (
+CREATE TABLE IF NOT EXISTS web_returns (
   wr_returned_date_sk BIGINT,
   wr_returned_time_sk BIGINT,
   wr_item_sk BIGINT,
@@ -458,7 +458,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_returns (
 USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/web_returns';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.web_sales (
+CREATE TABLE IF NOT EXISTS web_sales (
   ws_sold_time_sk BIGINT,
   ws_ship_date_sk BIGINT,
   ws_item_sk BIGINT,
@@ -491,13 +491,13 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_sales (
   ws_net_paid_inc_tax DECIMAL(7,2),
   ws_net_paid_inc_ship DECIMAL(7,2),
   ws_net_paid_inc_ship_tax DECIMAL(7,2),
-  ws_net_profit DECIMAL(7,2)),
-  ws_sold_date_sk BIGINT
+  ws_net_profit DECIMAL(7,2),
+  ws_sold_date_sk BIGINT)
 USING iceberg
 PARTITIONED BY (ws_sold_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/web_sales';
 
-CREATE TABLE tpcds_sf1000_parquet_varchar.web_site (
+CREATE TABLE IF NOT EXISTS web_site (
   web_site_sk BIGINT,
   web_site_id VARCHAR(16),
   web_rec_start_date DATE,
