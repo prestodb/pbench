@@ -82,7 +82,6 @@ USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/catalog_returns';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_sales (
-  cs_sold_date_sk BIGINT,
   cs_sold_time_sk BIGINT,
   cs_ship_date_sk BIGINT,
   cs_bill_customer_sk BIGINT,
@@ -115,8 +114,10 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_sales (
   cs_net_paid_inc_tax DECIMAL(7,2),
   cs_net_paid_inc_ship DECIMAL(7,2),
   cs_net_paid_inc_ship_tax DECIMAL(7,2),
-  cs_net_profit DECIMAL(7,2))
+  cs_net_profit DECIMAL(7,2)),
+  cs_sold_date_sk BIGINT
 USING iceberg
+PARTITIONED BY (cs_sold_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/catalog_sales';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.customer (
@@ -220,11 +221,12 @@ USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/income_band'
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.inventory (
-  inv_date_sk BIGINT,
   inv_item_sk BIGINT,
   inv_warehouse_sk BIGINT,
   inv_quantity_on_hand INT)
+  inv_date_sk BIGINT,
 USING iceberg
+PARTITIONED BY (inv_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/inventory';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.item (
@@ -351,7 +353,6 @@ USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/store_returns';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.store_sales (
-  ss_sold_date_sk BIGINT,
   ss_sold_time_sk BIGINT,
   ss_item_sk BIGINT,
   ss_customer_sk BIGINT,
@@ -373,8 +374,10 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.store_sales (
   ss_coupon_amt DECIMAL(7,2),
   ss_net_paid DECIMAL(7,2),
   ss_net_paid_inc_tax DECIMAL(7,2),
-  ss_net_profit DECIMAL(7,2))
+  ss_net_profit DECIMAL(7,2)),
+  ss_sold_date_sk BIGINT
 USING iceberg
+PARTITIONED BY (ss_sold_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/store_sales';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.time_dim (
@@ -456,7 +459,6 @@ USING iceberg
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/web_returns';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.web_sales (
-  ws_sold_date_sk BIGINT,
   ws_sold_time_sk BIGINT,
   ws_ship_date_sk BIGINT,
   ws_item_sk BIGINT,
@@ -489,8 +491,10 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_sales (
   ws_net_paid_inc_tax DECIMAL(7,2),
   ws_net_paid_inc_ship DECIMAL(7,2),
   ws_net_paid_inc_ship_tax DECIMAL(7,2),
-  ws_net_profit DECIMAL(7,2))
+  ws_net_profit DECIMAL(7,2)),
+  ws_sold_date_sk BIGINT
 USING iceberg
+PARTITIONED BY (ws_sold_date_sk)
 LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/web_sales';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.web_site (
