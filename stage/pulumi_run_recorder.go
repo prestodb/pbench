@@ -12,6 +12,7 @@ import (
 	"os"
 	"presto-benchmark/log"
 	"regexp"
+	"sync/atomic"
 	"time"
 )
 
@@ -28,6 +29,7 @@ type PulumiMySQLRunRecorder struct {
 	Project      string `json:"project"`
 	db           *sql.DB
 	apiEndpoint  *url.URL
+	clusterSaved atomic.Bool
 }
 
 func NewPulumiMySQLRunRecorder(cfgPath string, mySQLRunRecorder *MySQLRunRecorder) *PulumiMySQLRunRecorder {
@@ -164,7 +166,14 @@ func (p *PulumiMySQLRunRecorder) findPulumiStackFromClusterFQDN(ctx context.Cont
 	return nil
 }
 
-func (p *PulumiMySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*QueryResult) {
+func (p *PulumiMySQLRunRecorder) RecordRun(_ context.Context, _ *Stage, _ []*QueryResult) {
+	return
+}
+
+func (p *PulumiMySQLRunRecorder) RecordQuery(ctx context.Context, s *Stage, _ *QueryResult) {
+	if !p.clusterSaved.CompareAndSwap(false, true) {
+		return
+	}
 	stack := p.findPulumiStackFromClusterFQDN(ctx, s.States.ServerFQDN)
 	if stack == nil {
 		log.Info().Msgf("did not find a matching Pulumi stack for %s", s.States.ServerFQDN)
@@ -176,10 +185,6 @@ func (p *PulumiMySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, result
 		log.Error().Err(err).Str("run_name", s.States.RunName).Str("cluster_fqdn", s.States.ServerFQDN).
 			Msg("failed to record cluster info")
 	}
-}
-
-func (p *PulumiMySQLRunRecorder) RecordQuery(_ context.Context, _ *Stage, _ *QueryResult) {
-	return
 }
 
 type PulumiStacks struct {
