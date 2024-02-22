@@ -55,14 +55,15 @@ func NewMySQLRunRecorder(cfgPath string) *MySQLRunRecorder {
 	if db == nil {
 		return nil
 	}
-	log.Info().Msg("MySQL connection initialized, benchmark result summary will be sent to this database.")
 	_, err := db.Exec(pbenchRunsDDL)
 	if err == nil {
 		_, err = db.Exec(pbenchQueriesDDL)
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create MySQL table")
+		return nil
 	}
+	log.Info().Msg("MySQL connection initialized, benchmark result summary will be sent to this database.")
 	return &MySQLRunRecorder{
 		db:    db,
 		runId: -1,
@@ -71,8 +72,8 @@ func NewMySQLRunRecorder(cfgPath string) *MySQLRunRecorder {
 
 func (m *MySQLRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *QueryResult) {
 	if m.runId < 0 {
-		recordNewRun := `INSERT INTO pbench_runs (run_name, start_time) VALUES (?, ?)`
-		res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.RunStartTime)
+		recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time) VALUES (?, ?, ?)`
+		res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.ServerFQDN, s.States.RunStartTime)
 		if err != nil {
 			log.Error().Err(err).Str("run_name", s.States.RunName).Time("start_time", s.States.RunStartTime).
 				Msg("failed to add a new run to the MySQL database")

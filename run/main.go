@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/spf13/cobra"
+	"net/url"
 	"os"
 	"path/filepath"
 	"presto-benchmark/log"
@@ -21,12 +22,18 @@ var (
 	Password      string
 	InfluxCfgPath string
 	MySQLCfgPath  string
+	PulumiCfgPath string
 )
 
 func Run(_ *cobra.Command, args []string) {
+	parsedServerUrl, parseErr := url.Parse(ServerUrl)
+	if parseErr != nil {
+		log.Fatal().Err(parseErr).Str("server_url", ServerUrl).Msg("failed to parse server URL")
+	}
 	mainStage := &stage.Stage{
 		States: &stage.SharedStageStates{
 			RunName:      Name,
+			ServerFQDN:   parsedServerUrl.Host,
 			RunStartTime: time.Now(),
 			OutputPath:   OutputPath,
 		},
@@ -80,8 +87,10 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	}
 	mainStage.States.RegisterRunRecorder(&stage.FileBasedRunRecorder{})
-	mainStage.States.RegisterRunRecorder(stage.NewMySQLRunRecorder(MySQLCfgPath))
 	mainStage.States.RegisterRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
+	mySQLRunRecorder := stage.NewMySQLRunRecorder(MySQLCfgPath)
+	mainStage.States.RegisterRunRecorder(mySQLRunRecorder)
+	mainStage.States.RegisterRunRecorder(stage.NewPulumiMySQLRunRecorder(PulumiCfgPath, mySQLRunRecorder))
 	mainStage.Run(context.Background())
 }
 

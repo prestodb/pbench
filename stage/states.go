@@ -2,12 +2,14 @@ package stage
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"time"
 )
 
 type SharedStageStates struct {
 	RunName       string
+	ServerFQDN    string
 	RunStartTime  time.Time
 	RunFinishTime time.Time
 	// OutputPath is where we store the logs, query results, query json files, query column metadata files, etc.
@@ -31,7 +33,7 @@ type SharedStageStates struct {
 }
 
 func (states *SharedStageStates) RegisterRunRecorder(r RunRecorder) {
-	if r == nil {
+	if r == nil || reflect.ValueOf(r).IsNil() {
 		return
 	}
 	states.runRecorders = append(states.runRecorders, r)

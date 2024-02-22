@@ -23,6 +23,7 @@ go.work
 
 influxdb.json
 mysql.json
+pulumi.json
 
 # binaries
 presto-benchmark_*

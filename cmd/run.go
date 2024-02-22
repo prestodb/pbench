@@ -14,6 +14,7 @@ var runCmd = &cobra.Command{
 	[-u | --user <username>] [-p | --password <password>]
 	[--influx <InfluxDB connection config for run recorder>]
 	[--mysql <MySQL connection config for run recorder>]
+	[--pulumi <(only works when a MySQL run recorder is specified) Pulumi API config for storing deployment details with MySQL>]
 	[<root-level benchmark stage JSON files>...]`,
 	Short:                 "Run a benchmark",
 	Long:                  `Run a benchmark that is defined by a sequence of JSON configuration files.`,
@@ -32,4 +33,5 @@ func init() {
 	runCmd.Flags().StringVarP(&run.Password, "password", "p", "", "Presto user password")
 	runCmd.Flags().StringVar(&run.InfluxCfgPath, "influx", "", "InfluxDB connection config for run recorder")
 	runCmd.Flags().StringVar(&run.MySQLCfgPath, "mysql", "", "MySQL connection config for run recorder")
+	runCmd.Flags().StringVar(&run.PulumiCfgPath, "pulumi", "", "(only works when a MySQL run recorder is specified) Pulumi API config for storing deployment details with MySQL")
 }
