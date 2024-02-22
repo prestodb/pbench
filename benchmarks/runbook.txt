@@ -59,7 +59,8 @@ server='https://'
 ../pbench run \
     -s $server \
     -o $benchmark_base \
-    --influx ../influxdb.json \
+    --mysql ../mysql.json \
+    --pulumi ../pulumi.json \
     native_oss.json \
     tpc-ds/ds_sf1k.json \
     tpc-ds/power.json
