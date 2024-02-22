@@ -35,7 +35,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.call_center (
   cc_gmt_offset DECIMAL(5,2),
   cc_tax_percentage DECIMAL(5,2))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/call_center';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/call_center';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_page (
   cp_catalog_page_sk BIGINT,
@@ -48,7 +48,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_page (
   cp_description VARCHAR(100),
   cp_type VARCHAR(100))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/catalog_page';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/catalog_page';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_returns (
   cr_returned_date_sk BIGINT,
@@ -79,7 +79,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_returns (
   cr_store_credit DECIMAL(7,2),
   cr_net_loss DECIMAL(7,2))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/catalog_returns';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/catalog_returns';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_sales (
   cs_sold_time_sk BIGINT,
@@ -118,7 +118,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.catalog_sales (
   cs_sold_date_sk BIGINT
 USING iceberg
 PARTITIONED BY (cs_sold_date_sk)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/catalog_sales';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/catalog_sales';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.customer (
   c_customer_sk BIGINT,
@@ -140,7 +140,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.customer (
   c_email_address VARCHAR(50),
   c_last_review_date_sk BIGINT)
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/customer';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/customer';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.customer_address (
   ca_address_sk BIGINT,
@@ -157,7 +157,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.customer_address (
   ca_gmt_offset DECIMAL(5,2),
   ca_location_type VARCHAR(20))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/customer_address';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/customer_address';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.customer_demographics (
   cd_demo_sk BIGINT,
@@ -170,7 +170,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.customer_demographics (
   cd_dep_employed_count INT,
   cd_dep_college_count INT)
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/customer_demographics';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/customer_demographics';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.date_dim (
   d_date_sk BIGINT,
@@ -202,7 +202,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.date_dim (
   d_current_quarter VARCHAR(1),
   d_current_year VARCHAR(1))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/date_dim';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/date_dim';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.household_demographics (
   hd_demo_sk BIGINT,
@@ -211,14 +211,14 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.household_demographics (
   hd_dep_count INT,
   hd_vehicle_count INT)
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/household_demographics';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/household_demographics';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.income_band (
   ib_income_band_sk BIGINT,
   ib_lower_bound INT,
   ib_upper_bound INT)
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/income_band'
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/income_band'
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.inventory (
   inv_item_sk BIGINT,
@@ -227,7 +227,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.inventory (
   inv_date_sk BIGINT,
 USING iceberg
 PARTITIONED BY (inv_date_sk)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/inventory';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/inventory';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.item (
   i_item_sk BIGINT,
@@ -253,7 +253,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.item (
   i_manager_id INT,
   i_product_name VARCHAR(50))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/item';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/item';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.promotion (
   p_promo_sk BIGINT,
@@ -276,14 +276,14 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.promotion (
   p_purpose VARCHAR(15),
   p_discount_active VARCHAR(1))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/promotion'
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/promotion'
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.reason (
   r_reason_sk BIGINT,
   r_reason_id VARCHAR(16),
   r_reason_desc VARCHAR(100))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/reason';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/reason';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.ship_mode (
   sm_ship_mode_sk BIGINT,
@@ -293,7 +293,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.ship_mode (
   sm_carrier VARCHAR(20),
   sm_contract VARCHAR(20))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/ship_mode';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/ship_mode';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.store (
   s_store_sk BIGINT,
@@ -326,7 +326,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.store (
   s_gmt_offset DECIMAL(5,2),
   s_tax_precentage DECIMAL(5,2))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/store';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/store';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.store_returns (
   sr_returned_date_sk BIGINT,
@@ -350,7 +350,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.store_returns (
   sr_store_credit DECIMAL(7,2),
   sr_net_loss DECIMAL(7,2))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/store_returns';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/store_returns';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.store_sales (
   ss_sold_time_sk BIGINT,
@@ -378,7 +378,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.store_sales (
   ss_sold_date_sk BIGINT
 USING iceberg
 PARTITIONED BY (ss_sold_date_sk)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/store_sales';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/store_sales';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.time_dim (
   t_time_sk BIGINT,
@@ -392,7 +392,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.time_dim (
   t_sub_shift VARCHAR(20),
   t_meal_time VARCHAR(20))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/time_dim'
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/time_dim'
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.warehouse (
   w_warehouse_sk BIGINT,
@@ -410,7 +410,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.warehouse (
   w_country VARCHAR(20),
   w_gmt_offset DECIMAL(5,2))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/warehouse';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/warehouse';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.web_page (
   wp_web_page_sk BIGINT,
@@ -428,7 +428,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_page (
   wp_image_count INT,
   wp_max_ad_count INT)
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/web_page';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/web_page';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.web_returns (
   wr_returned_date_sk BIGINT,
@@ -456,7 +456,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_returns (
   wr_account_credit DECIMAL(7,2),
   wr_net_loss DECIMAL(7,2))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/web_returns';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/web_returns';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.web_sales (
   ws_sold_time_sk BIGINT,
@@ -495,7 +495,7 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_sales (
   ws_sold_date_sk BIGINT
 USING iceberg
 PARTITIONED BY (ws_sold_date_sk)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/web_sales';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/web_sales';
 
 CREATE TABLE tpcds_sf1000_parquet_varchar.web_site (
   web_site_sk BIGINT,
@@ -525,4 +525,4 @@ CREATE TABLE tpcds_sf1000_parquet_varchar.web_site (
   web_gmt_offset DECIMAL(5,2),
   web_tax_percentage DECIMAL(5,2))
 USING iceberg
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet/web_site';
+LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-varchar-opt0222/web_site';
