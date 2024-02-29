@@ -86,7 +86,7 @@ func Run(_ *cobra.Command, args []string) {
 			return client
 		}
 	}
-	mainStage.States.RegisterRunRecorder(&stage.FileBasedRunRecorder{})
+	mainStage.States.RegisterRunRecorder(stage.NewFileBasedRunRecorder())
 	mainStage.States.RegisterRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
 	mySQLRunRecorder := stage.NewMySQLRunRecorder(MySQLCfgPath)
 	mainStage.States.RegisterRunRecorder(mySQLRunRecorder)

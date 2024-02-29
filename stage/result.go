@@ -45,6 +45,9 @@ func (q *QueryResult) MarshalZerologObject(e *zerolog.Event) {
 	} else {
 		e.Int("row_count", q.RowCount)
 	}
+	if q.Query.ExpectedRowCount >= 0 {
+		e.Int("expected_row_count", q.Query.ExpectedRowCount)
+	}
 	e.Time("start_time", q.StartTime)
 	if q.EndTime != nil {
 		e.Time("finish_time", *q.EndTime)

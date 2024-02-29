@@ -51,14 +51,15 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 		"query_id": result.QueryId,
 	}
 	fields := map[string]interface{}{
-		"query_index": result.Query.Index,
-		"cold_run":    result.Query.ColdRun,
-		"run_index":   result.Query.RunIndex,
-		"info_url":    result.InfoUrl,
-		"succeeded":   result.QueryError == nil,
-		"row_count":   result.RowCount,
-		"start_time":  result.StartTime.UnixNano(),
-		"duration_ms": result.Duration.Milliseconds(),
+		"query_index":        result.Query.Index,
+		"cold_run":           result.Query.ColdRun,
+		"run_index":          result.Query.RunIndex,
+		"info_url":           result.InfoUrl,
+		"succeeded":          result.QueryError == nil,
+		"row_count":          result.RowCount,
+		"expected_row_count": result.Query.ExpectedRowCount,
+		"start_time":         result.StartTime.UnixNano(),
+		"duration_ms":        result.Duration.Milliseconds(),
 	}
 	if result.Query.File != nil {
 		fields["query_file"] = *result.Query.File

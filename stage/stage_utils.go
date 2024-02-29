@@ -51,6 +51,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	s.Queries = append(s.Queries, other.Queries...)
 	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
+	s.ExpectedRowCounts = append(s.ExpectedRowCounts, other.ExpectedRowCounts...)
 	if other.ColdRuns > 0 {
 		s.ColdRuns = other.ColdRuns
 	}

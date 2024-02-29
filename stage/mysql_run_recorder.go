@@ -85,7 +85,7 @@ func (m *MySQLRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Qu
 		}
 	}
 	recordNewQuery := `INSERT INTO pbench_queries (run_id, stage_id, query_file, query_index, query_id, run_index,
-cold_run, succeeded, start_time, end_time, row_count, duration_ms, info_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+cold_run, succeeded, start_time, end_time, row_count, expected_row_count, duration_ms, info_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	var queryFile string
 	if result.Query.File != nil {
 		queryFile = *result.Query.File
@@ -94,7 +94,7 @@ cold_run, succeeded, start_time, end_time, row_count, duration_ms, info_url) VAL
 	}
 	_, err := m.db.Exec(recordNewQuery, m.runId, result.StageId, queryFile, result.Query.Index, result.QueryId,
 		result.Query.RunIndex, result.Query.ColdRun, result.QueryError == nil, result.StartTime, *result.EndTime,
-		result.RowCount, result.Duration.Milliseconds(), result.InfoUrl)
+		result.RowCount, result.Query.ExpectedRowCount, result.Duration.Milliseconds(), result.InfoUrl)
 	if err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to MySQL")
 	}

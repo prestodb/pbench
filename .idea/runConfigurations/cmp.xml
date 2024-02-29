@@ -2,7 +2,7 @@
   <configuration default="false" name="cmp" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="presto-benchmark" />
     <working_directory value="$PROJECT_DIR$" />
-    <parameters value="cmp -r .*(query_\d{2}.*)_q0\.output -o $USER_HOME$/Downloads/benchmark_runs/tmp/diff_sf1k $USER_HOME$/Downloads/benchmark_runs/tpc-ds_sf1k_java_full-2024-01-03T18:44:38-08:00 $USER_HOME$/Downloads/benchmark_runs/tpc-ds_sf1k_native_full-2024-01-03T18:57:26-08:00" />
+    <parameters value="cmp -r .*(query_\d{2}.*)\.output -o $USER_HOME$/Downloads/benchmark_runs/tmp/diff_sf1k $USER_HOME$/Downloads/benchmark_runs/java_blueray_save_output_ds_sf1k_orderby_240222-122711 $USER_HOME$/Downloads/benchmark_runs/c0w1_java_oss_save_output_orderby_ds_sf1k_240222-171835" />
     <kind value="PACKAGE" />
     <package value="presto-benchmark" />
     <directory value="$PROJECT_DIR$" />

@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"presto-benchmark/log"
 	"presto-benchmark/presto"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,6 +32,9 @@ type Stage struct {
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.
 	QueryFiles []string `json:"query_files,omitempty"`
+	// An array of integers as expected row counts for all the queries we run. Including the queries from both Queries
+	// and QueryFiles. Queries first and QueryFiles follows.
+	ExpectedRowCounts []int `json:"expected_row_counts"`
 	// If not set, the default is 0.
 	ColdRuns int `json:"cold_runs,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
@@ -151,8 +153,6 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 		_ = s.run(ctx)
 	}()
 
-	summaryBuilder := &strings.Builder{}
-	summaryBuilder.WriteString("stage_id,query_file,query_index,cold_run,run_index,info_url,succeeded,row_count,start_time,end_time,duration_in_seconds\n")
 	for {
 		select {
 		case result := <-s.States.resultChan:
@@ -214,9 +214,11 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.setDefaults()
 	s.prepareClient()
 	s.propagateStates()
-	if err := s.runQueries(ctx, s.Queries, nil); err != nil {
+	expectedRowCountStartIndex := 0
+	if err := s.runQueries(ctx, s.Queries, nil, expectedRowCountStartIndex); err != nil {
 		return err
 	}
+	expectedRowCountStartIndex += len(s.Queries)
 	// Using range loop variable may cause some problems here because the file names can be propagated to some other
 	// goroutines that may use this query file path string.
 	for i := 0; i < len(s.QueryFiles); i++ {
@@ -232,7 +234,8 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		if err != nil {
 			return err
 		}
-		err = s.runQueries(ctx, queries, &s.QueryFiles[i])
+		err = s.runQueries(ctx, queries, &s.QueryFiles[i], expectedRowCountStartIndex)
+		expectedRowCountStartIndex += len(queries)
 		if err != nil {
 			return err
 		}
@@ -240,17 +243,21 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	return nil
 }
 
-func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string) (retErr error) {
+func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string, expectedRowCountStartIndex int) (retErr error) {
 	batchSize := len(queries)
 	for i, queryText := range queries {
 		for j := 0; j < s.ColdRuns+s.WarmRuns; j++ {
 			query := &Query{
-				Text:      queryText,
-				File:      queryFile,
-				Index:     i,
-				BatchSize: batchSize,
-				ColdRun:   j < s.ColdRuns,
-				RunIndex:  j,
+				Text:             queryText,
+				File:             queryFile,
+				Index:            i,
+				BatchSize:        batchSize,
+				ColdRun:          j < s.ColdRuns,
+				RunIndex:         j,
+				ExpectedRowCount: -1, // -1 means unspecified.
+			}
+			if len(s.ExpectedRowCounts) > expectedRowCountStartIndex+i {
+				query.ExpectedRowCount = s.ExpectedRowCounts[expectedRowCountStartIndex+i]
 			}
 
 			result, err := s.runQuery(ctx, query)
