@@ -1,7 +1,9 @@
-USE iceberg;
-CREATE SCHEMA IF NOT EXISTS tpcds_sf1000_parquet_varchar_iceberg_part LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/';
+CREATE SCHEMA IF NOT EXISTS tpcds_sf1000_parquet_varchar_part
+WITH (
+  location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/'
+);
 
-USE iceberg.tpcds_sf1000_parquet_varchar_iceberg_part;
+USE hive.tpcds_sf1000_parquet_varchar_part;
 
 CREATE TABLE IF NOT EXISTS call_center (
   cc_call_center_sk INT, -- identifier not null primary key
@@ -35,9 +37,10 @@ CREATE TABLE IF NOT EXISTS call_center (
   cc_country VARCHAR(20),
   cc_gmt_offset DECIMAL(5,2),
   cc_tax_percentage DECIMAL(5,2))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/call_center';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/call_center/data'
+);
 
 CREATE TABLE IF NOT EXISTS catalog_page (
   cp_catalog_page_sk INT, -- identifier not null primary key
@@ -49,9 +52,10 @@ CREATE TABLE IF NOT EXISTS catalog_page (
   cp_catalog_page_number INT,
   cp_description VARCHAR(100),
   cp_type VARCHAR(100))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_page';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_page/data'
+);
 
 CREATE TABLE IF NOT EXISTS catalog_returns (
   cr_returned_date_sk INT, -- identifier foreign key d_date_sk
@@ -81,9 +85,10 @@ CREATE TABLE IF NOT EXISTS catalog_returns (
   cr_reversed_charge DECIMAL(7,2),
   cr_store_credit DECIMAL(7,2),
   cr_net_loss DECIMAL(7,2))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 67108864, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_returns';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_returns/data'
+);
 
 CREATE TABLE IF NOT EXISTS catalog_sales (
   cs_sold_time_sk INT, -- identifier foreign key t_time_sk
@@ -120,10 +125,11 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
   cs_net_paid_inc_ship_tax DECIMAL(7,2),
   cs_net_profit DECIMAL(7,2),
   cs_sold_date_sk INT) -- identifier foreign key d_date_sk
-USING iceberg
-PARTITIONED BY (cs_sold_date_sk)
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_sales';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_sales/data',
+  partitioned_by = array['cs_sold_date_sk']
+);
 
 CREATE TABLE IF NOT EXISTS customer (
   c_customer_sk INT, -- identifier not null primary key
@@ -144,9 +150,10 @@ CREATE TABLE IF NOT EXISTS customer (
   c_login VARCHAR(13), -- char(13)
   c_email_address VARCHAR(50), -- char(50)
   c_last_review_date_sk INT) -- identifier foreign key d_date_sk
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/customer';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/customer/data'
+);
 
 CREATE TABLE IF NOT EXISTS customer_address (
   ca_address_sk INT, -- identifier not null primary key
@@ -162,9 +169,10 @@ CREATE TABLE IF NOT EXISTS customer_address (
   ca_country VARCHAR(20),
   ca_gmt_offset DECIMAL(5,2),
   ca_location_type VARCHAR(20)) -- char(20)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/customer_address';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/customer_address/data'
+);
 
 CREATE TABLE IF NOT EXISTS customer_demographics (
   cd_demo_sk INT, -- identifier not null primary key
@@ -176,9 +184,10 @@ CREATE TABLE IF NOT EXISTS customer_demographics (
   cd_dep_count INT,
   cd_dep_employed_count INT,
   cd_dep_college_count INT)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/customer_demographics';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/customer_demographics/data'
+);
 
 CREATE TABLE IF NOT EXISTS date_dim (
   d_date_sk INT, -- identifier not null primary key
@@ -209,9 +218,10 @@ CREATE TABLE IF NOT EXISTS date_dim (
   d_current_month VARCHAR(1), -- char(1)
   d_current_quarter VARCHAR(1), -- char(1)
   d_current_year VARCHAR(1)) -- char(1)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 4194304)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/date_dim';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/date_dim/data'
+);
 
 CREATE TABLE IF NOT EXISTS household_demographics (
   hd_demo_sk INT, -- identifier not null primary key
@@ -219,27 +229,30 @@ CREATE TABLE IF NOT EXISTS household_demographics (
   hd_buy_potential VARCHAR(15), -- char(15)
   hd_dep_count INT,
   hd_vehicle_count INT)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/household_demographics';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/household_demographics/data'
+);
 
 CREATE TABLE IF NOT EXISTS income_band (
   ib_income_band_sk INT, -- identifier not null primary key
   ib_lower_bound INT,
   ib_upper_bound INT)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/income_band';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/income_band/data'
+);
 
 CREATE TABLE IF NOT EXISTS inventory (
   inv_item_sk INT, -- identifier not null primary key foreign key i_item_sk
   inv_warehouse_sk INT, -- identifier not null primary key foreign key w_warehouse_sk
   inv_quantity_on_hand INT,
   inv_date_sk INT) -- identifier not null primary key foreign key d_date_sk
-USING iceberg
-PARTITIONED BY (inv_date_sk)
-TBLPROPERTIES ('write.target-file-size-bytes' = 67108864, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/inventory';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/inventory/data',
+  partitioned_by = array['inv_date_sk']
+);
 
 CREATE TABLE IF NOT EXISTS item (
   i_item_sk INT, -- identifier not null primary key
@@ -264,9 +277,10 @@ CREATE TABLE IF NOT EXISTS item (
   i_container VARCHAR(10), -- char(10)
   i_manager_id INT,
   i_product_name VARCHAR(50)) -- char(50)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 67108864, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/item';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/item/data'
+);
 
 CREATE TABLE IF NOT EXISTS promotion (
   p_promo_sk INT, -- identifier not null primary key
@@ -288,17 +302,19 @@ CREATE TABLE IF NOT EXISTS promotion (
   p_channel_details VARCHAR(100),
   p_purpose VARCHAR(15), -- char(15)
   p_discount_active VARCHAR(1)) -- char(1)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/promotion';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/promotion/data'
+);
 
 CREATE TABLE IF NOT EXISTS reason (
   r_reason_sk INT, -- identifier not null primary key
   r_reason_id VARCHAR(16), -- char(16) not null
   r_reason_desc VARCHAR(100)) -- char(100)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/reason';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/reason/data'
+);
 
 CREATE TABLE IF NOT EXISTS ship_mode (
   sm_ship_mode_sk INT, -- identifier not null primary key
@@ -307,9 +323,10 @@ CREATE TABLE IF NOT EXISTS ship_mode (
   sm_code VARCHAR(10), -- char(10)
   sm_carrier VARCHAR(20), -- char(20)
   sm_contract VARCHAR(20)) -- char(20)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/ship_mode';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/ship_mode/data'
+);
 
 CREATE TABLE IF NOT EXISTS store (
   s_store_sk INT, -- identifier not null primary key
@@ -341,9 +358,10 @@ CREATE TABLE IF NOT EXISTS store (
   s_country VARCHAR(20),
   s_gmt_offset DECIMAL(5,2),
   s_tax_precentage DECIMAL(5,2))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/store';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/store/data'
+);
 
 CREATE TABLE IF NOT EXISTS store_returns (
   sr_returned_date_sk INT, -- identifier foreign key d_date_sk
@@ -366,9 +384,10 @@ CREATE TABLE IF NOT EXISTS store_returns (
   sr_reversed_charge DECIMAL(7,2),
   sr_store_credit DECIMAL(7,2),
   sr_net_loss DECIMAL(7,2))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/store_returns';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/store_returns/data'
+);
 
 CREATE TABLE IF NOT EXISTS store_sales (
   ss_sold_time_sk INT, -- identifier foreign key t_time_sk
@@ -394,10 +413,11 @@ CREATE TABLE IF NOT EXISTS store_sales (
   ss_net_paid_inc_tax DECIMAL(7,2),
   ss_net_profit DECIMAL(7,2),
   ss_sold_date_sk BIGINT) -- identifier foreign key d_date_sk
-USING iceberg
-PARTITIONED BY (ss_sold_date_sk)
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/store_sales';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/store_sales/data',
+  partitioned_by = array['ss_sold_date_sk']
+);
 
 CREATE TABLE IF NOT EXISTS time_dim (
   t_time_sk INT, -- identifier not null primary key
@@ -410,9 +430,10 @@ CREATE TABLE IF NOT EXISTS time_dim (
   t_shift VARCHAR(20), -- char(20)
   t_sub_shift VARCHAR(20), -- char(20)
   t_meal_time VARCHAR(20)) -- char(20)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/time_dim';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/time_dim/data'
+);
 
 CREATE TABLE IF NOT EXISTS warehouse (
   w_warehouse_sk INT, -- identifier not null primary key
@@ -429,9 +450,10 @@ CREATE TABLE IF NOT EXISTS warehouse (
   w_zip VARCHAR(10), -- char(10)
   w_country VARCHAR(20),
   w_gmt_offset DECIMAL(5,2))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/warehouse';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/warehouse/data'
+);
 
 CREATE TABLE IF NOT EXISTS web_page (
   wp_web_page_sk INT, -- identifier not null primary key
@@ -448,9 +470,10 @@ CREATE TABLE IF NOT EXISTS web_page (
   wp_link_count INT,
   wp_image_count INT,
   wp_max_ad_count INT)
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_page';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_page/data'
+);
 
 CREATE TABLE IF NOT EXISTS web_returns (
   wr_returned_date_sk INT, -- identifier foreign key d_date_sk
@@ -477,9 +500,10 @@ CREATE TABLE IF NOT EXISTS web_returns (
   wr_reversed_charge DECIMAL(7,2),
   wr_account_credit DECIMAL(7,2),
   wr_net_loss DECIMAL(7,2))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_returns';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_returns/data'
+);
 
 CREATE TABLE IF NOT EXISTS web_sales (
   ws_sold_time_sk INT, -- identifier foreign key t_time_sk
@@ -516,10 +540,11 @@ CREATE TABLE IF NOT EXISTS web_sales (
   ws_net_paid_inc_ship_tax DECIMAL(7,2),
   ws_net_profit DECIMAL(7,2),
   ws_sold_date_sk INT) -- identifier foreign key d_date_sk
-USING iceberg
-PARTITIONED BY (ws_sold_date_sk)
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_sales';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_sales/data',
+  partitioned_by = array['ws_sold_date_sk']
+);
 
 CREATE TABLE IF NOT EXISTS web_site (
   web_site_sk INT, -- identifier not null primary key
@@ -548,6 +573,40 @@ CREATE TABLE IF NOT EXISTS web_site (
   web_country VARCHAR(20),
   web_gmt_offset DECIMAL(5,2),
   web_tax_percentage DECIMAL(5,2))
-USING iceberg
-TBLPROPERTIES ('write.target-file-size-bytes' = 16777216, 'write.parquet.row-group-size-bytes' = 16777216)
-LOCATION 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_site';
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_site/data'
+);
+
+-- aws s3 mv --recursive s3://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_sales/data/cs_sold_date_sk=null/ s3://presto-workload/tpcds-sf1000-parquet-iceberg-part/catalog_sales/data/cs_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload/tpcds-sf1000-parquet-iceberg-part/store_sales/data/ss_sold_date_sk=null/ s3://presto-workload/tpcds-sf1000-parquet-iceberg-part/store_sales/data/ss_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_sales/data/ws_sold_date_sk=null/ s3://presto-workload/tpcds-sf1000-parquet-iceberg-part/web_sales/data/ws_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+CALL system.sync_partition_metadata('tpcds_sf1000_parquet_varchar_part', 'catalog_sales', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf1000_parquet_varchar_part', 'inventory', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf1000_parquet_varchar_part', 'store_sales', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf1000_parquet_varchar_part', 'web_sales', 'FULL');
+
+ANALYZE call_center;
+ANALYZE catalog_page;
+ANALYZE catalog_returns;
+ANALYZE catalog_sales;
+ANALYZE customer;
+ANALYZE customer_address;
+ANALYZE customer_demographics;
+ANALYZE date_dim;
+ANALYZE household_demographics;
+ANALYZE income_band;
+ANALYZE inventory;
+ANALYZE item;
+ANALYZE promotion;
+ANALYZE reason;
+ANALYZE ship_mode;
+ANALYZE store;
+ANALYZE store_returns;
+ANALYZE store_sales;
+ANALYZE time_dim;
+ANALYZE warehouse;
+ANALYZE web_page;
+ANALYZE web_returns;
+ANALYZE web_sales;
+ANALYZE web_site;
