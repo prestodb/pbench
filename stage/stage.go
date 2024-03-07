@@ -341,9 +341,9 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	e.Msgf("submitted query")
 
 	var (
-		queryOutputFile *os.File
-		queryOutput     *bufio.Writer
-		wgQueryOutput   *sync.WaitGroup
+		queryOutputFile   *os.File
+		queryOutputWriter *bufio.Writer
+		queryOutputChan   chan []json.RawMessage
 	)
 	if *s.SaveOutput {
 		queryOutputFile, err = os.OpenFile(
@@ -352,49 +352,29 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		if err != nil {
 			return result, err
 		}
-		queryOutput = bufio.NewWriterSize(queryOutputFile, 8192)
-		wgQueryOutput = &sync.WaitGroup{}
-	}
+		queryOutputWriter = bufio.NewWriterSize(queryOutputFile, 8192)
+		queryOutputChan = make(chan []json.RawMessage)
+		defer close(queryOutputChan)
 
-	err = clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
-		result.RowCount += len(qr.Data)
-		if queryOutput == nil {
-			return nil
-		}
-		// Write output asynchronously. wgExitMainStage prevents the program from exiting if there is still
-		// output data to write after all the queries finish running.
-		s.States.wgExitMainStage.Add(1)
-		// wgQueryOutput waits for all the writes to complete then flush and close the file.
-		wgQueryOutput.Add(1)
-		go func(data []json.RawMessage) {
-			defer func() {
-				wgQueryOutput.Done()
-				s.States.wgExitMainStage.Done()
-			}()
-			for _, row := range data {
-				_, ioErr := queryOutput.Write(row)
-				if ioErr == nil {
-					ioErr = queryOutput.WriteByte('\n')
-				}
-				if ioErr != nil {
-					log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
-						Msg("failed to write query result")
-					return
-				}
-			}
-		}(qr.Data)
-		if qr.NextUri == nil {
-			_ = s.saveColumnMetadataFile(qr, result, querySourceStr)
-		}
-		return nil
-	})
-
-	// Now all the data for this query is being written
-	if queryOutput != nil {
+		// Start a goroutine to write query output in the background.
+		// Make sure the main stage won't exit until this background goroutine finishes.
 		s.States.wgExitMainStage.Add(1)
 		go func() {
-			wgQueryOutput.Wait()
-			if ioErr := queryOutput.Flush(); ioErr != nil {
+			for data := range queryOutputChan {
+				for _, row := range data {
+					_, ioErr := queryOutputWriter.Write(row)
+					if ioErr == nil {
+						ioErr = queryOutputWriter.WriteByte('\n')
+					}
+					if ioErr != nil {
+						log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+							Msg("failed to write query result")
+						// Skip the current batch on error.
+						break
+					}
+				}
+			}
+			if ioErr := queryOutputWriter.Flush(); ioErr != nil {
 				log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
 					Msg("failed to write query result")
 			} else {
@@ -404,5 +384,17 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 			s.States.wgExitMainStage.Done()
 		}()
 	}
+
+	err = clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
+		result.RowCount += len(qr.Data)
+		if queryOutputWriter != nil {
+			queryOutputChan <- qr.Data
+		}
+		if qr.NextUri == nil {
+			_ = s.saveColumnMetadataFile(qr, result, querySourceStr)
+		}
+		return nil
+	})
+
 	return result, err
 }
