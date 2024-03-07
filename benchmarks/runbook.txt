@@ -10,6 +10,16 @@ cd benchmarks
 benchmark_base='/Users/ezhang/Downloads/benchmark_runs'
 server='https://'
 
+# Java SF-1K power partitioned
+../pbench run \
+    -s $server \
+    -o $benchmark_base \
+    --mysql ../mysql.json \
+    --pulumi ../pulumi.json \
+    java_oss.json \
+    tpc-ds/ds_sf1k_part.json \
+    tpc-ds/power.json
+
 # Native SF-10
 ../pbench run \
     -s $server \
