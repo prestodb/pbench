@@ -61,6 +61,9 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 		"start_time":         result.StartTime.UnixNano(),
 		"duration_ms":        result.Duration.Milliseconds(),
 	}
+	if result.Query.ExpectedRowCount < 0 {
+		delete(fields, "expected_row_count")
+	}
 	if result.Query.File != nil {
 		fields["query_file"] = *result.Query.File
 	} else {

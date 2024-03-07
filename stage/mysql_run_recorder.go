@@ -94,7 +94,10 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 	}
 	_, err := m.db.Exec(recordNewQuery, m.runId, result.StageId, queryFile, result.Query.Index, result.QueryId,
 		result.Query.RunIndex, result.Query.ColdRun, result.QueryError == nil, result.StartTime, *result.EndTime,
-		result.RowCount, result.Query.ExpectedRowCount, result.Duration.Milliseconds(), result.InfoUrl)
+		result.RowCount, sql.NullInt32{
+			Int32: int32(result.Query.ExpectedRowCount),
+			Valid: result.Query.ExpectedRowCount >= 0,
+		}, result.Duration.Milliseconds(), result.InfoUrl)
 	if err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to MySQL")
 	}
