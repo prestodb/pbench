@@ -1,0 +1,13 @@
+--#BGBLK 3
+
+--set current schema bdinsights;
+SELECT
+MAX(SS_WHOLESALE_COST),
+MAX(SS_LIST_PRICE),
+MAX(SS_SALES_PRICE),
+MAX(SS_EXT_DISCOUNT_AMT),
+MAX(SS_NET_PROFIT)
+FROM store_sales;
+
+
+--#EOBLK
