@@ -1,5 +1,3 @@
-USE hive.tpcds_sf10000_parquet_varchar_part;
-
 SELECT
   checksum(cc_call_center_sk),
   checksum(cc_call_center_id),
