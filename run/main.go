@@ -42,6 +42,8 @@ func Run(_ *cobra.Command, args []string) {
 	var defaultRunNameBuilder *strings.Builder
 	if mainStage.States.RunName == "" {
 		defaultRunNameBuilder = &strings.Builder{}
+	} else {
+		mainStage.States.RunName = strings.ReplaceAll(mainStage.States.RunName, `%t`, mainStage.States.RunStartTime.Format(stage.RunNameTimeFormat))
 	}
 	for _, path := range args {
 		if st, err := processStagePath(path); err == nil {
