@@ -65,14 +65,9 @@ func ScanSqlStmt(data []byte, atEOF bool) (int, []byte, error) {
 			}
 		}
 	}
-	// If we're at EOF, we have a final, non-terminated line. Return it.
 	if atEOF {
-		token := strings.TrimSpace(string(data))
-		if len(token) > 0 {
-			return len(data), []byte(token), nil
-		} else {
-			return len(data), nil, nil
-		}
+		// If we're at EOF, there is a partial statement without a semicolon, we will have to discard it.
+		return len(data), nil, nil
 	}
 	// Request more data.
 	return 0, nil, nil
