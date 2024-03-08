@@ -1,7 +1,7 @@
 {
   "description": "Compute checksum of tpc-ds tables",
   "query_files": [
-    "datagen/8-compute-checksum.sql"
+    "datagen/8-chksm.sql"
   ],
   "save_output": true
 }

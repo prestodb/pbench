@@ -1,0 +1,7 @@
+{
+  "description": "Compute checksum of tpc-ds tables with padded varchar trimmed.",
+  "query_files": [
+    "datagen/8-chksm-trim.sql"
+  ],
+  "save_output": true
+}
