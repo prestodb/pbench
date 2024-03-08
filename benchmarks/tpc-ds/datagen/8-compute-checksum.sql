@@ -59,7 +59,8 @@ SELECT 'cc_country', checksum(cc_country) FROM call_center
 UNION ALL
 SELECT 'cc_gmt_offset', checksum(cc_gmt_offset) FROM call_center
 UNION ALL
-SELECT 'cc_tax_percentage', checksum(cc_tax_percentage) FROM call_center;
+SELECT 'cc_tax_percentage', checksum(cc_tax_percentage) FROM call_center
+ORDER BY 1;
 
 -- catalog_page
 SELECT 'cp_catalog_page_sk', checksum(cp_catalog_page_sk) FROM catalog_page
@@ -78,7 +79,8 @@ SELECT 'cp_catalog_page_number', checksum(cp_catalog_page_number) FROM catalog_p
 UNION ALL
 SELECT 'cp_description', checksum(cp_description) FROM catalog_page
 UNION ALL
-SELECT 'cp_type', checksum(cp_type) FROM catalog_page;
+SELECT 'cp_type', checksum(cp_type) FROM catalog_page
+ORDER BY 1;
 
 -- catalog_returns
 SELECT 'cr_returned_date_sk', checksum(cr_returned_date_sk) FROM catalog_returns
@@ -133,7 +135,8 @@ SELECT 'cr_reversed_charge', checksum(cr_reversed_charge) FROM catalog_returns
 UNION ALL
 SELECT 'cr_store_credit', checksum(cr_store_credit) FROM catalog_returns
 UNION ALL
-SELECT 'cr_net_loss', checksum(cr_net_loss) FROM catalog_returns;
+SELECT 'cr_net_loss', checksum(cr_net_loss) FROM catalog_returns
+ORDER BY 1;
 
 -- catalog_sales
 SELECT 'cs_sold_time_sk', checksum(cs_sold_time_sk) FROM catalog_sales
@@ -202,7 +205,8 @@ SELECT 'cs_net_paid_inc_ship_tax', checksum(cs_net_paid_inc_ship_tax) FROM catal
 UNION ALL
 SELECT 'cs_net_profit', checksum(cs_net_profit) FROM catalog_sales
 UNION ALL
-SELECT 'cs_sold_date_sk', checksum(cs_sold_date_sk) FROM catalog_sales;
+SELECT 'cs_sold_date_sk', checksum(cs_sold_date_sk) FROM catalog_sales
+ORDER BY 1;
 
 -- customer
 SELECT 'c_customer_sk', checksum(c_customer_sk) FROM customer
@@ -239,7 +243,8 @@ SELECT 'c_login', checksum(c_login) FROM customer
 UNION ALL
 SELECT 'c_email_address', checksum(c_email_address) FROM customer
 UNION ALL
-SELECT 'c_last_review_date_sk', checksum(c_last_review_date_sk) FROM customer;
+SELECT 'c_last_review_date_sk', checksum(c_last_review_date_sk) FROM customer
+ORDER BY 1;
 
 -- customer_address
 SELECT 'ca_address_sk', checksum(ca_address_sk) FROM customer_address
@@ -266,7 +271,8 @@ SELECT 'ca_country', checksum(ca_country) FROM customer_address
 UNION ALL
 SELECT 'ca_gmt_offset', checksum(ca_gmt_offset) FROM customer_address
 UNION ALL
-SELECT 'ca_location_type', checksum(ca_location_type) FROM customer_address;
+SELECT 'ca_location_type', checksum(ca_location_type) FROM customer_address
+ORDER BY 1;
 
 -- customer_demographics
 SELECT 'cd_demo_sk', checksum(cd_demo_sk) FROM customer_demographics
@@ -285,7 +291,8 @@ SELECT 'cd_dep_count', checksum(cd_dep_count) FROM customer_demographics
 UNION ALL
 SELECT 'cd_dep_employed_count', checksum(cd_dep_employed_count) FROM customer_demographics
 UNION ALL
-SELECT 'cd_dep_college_count', checksum(cd_dep_college_count) FROM customer_demographics;
+SELECT 'cd_dep_college_count', checksum(cd_dep_college_count) FROM customer_demographics
+ORDER BY 1;
 
 -- date_dim
 SELECT 'd_date_sk', checksum(d_date_sk) FROM date_dim
@@ -342,7 +349,8 @@ SELECT 'd_current_month', checksum(d_current_month) FROM date_dim
 UNION ALL
 SELECT 'd_current_quarter', checksum(d_current_quarter) FROM date_dim
 UNION ALL
-SELECT 'd_current_year', checksum(d_current_year) FROM date_dim;
+SELECT 'd_current_year', checksum(d_current_year) FROM date_dim
+ORDER BY 1;
 
 -- household_demographics
 SELECT 'hd_demo_sk', checksum(hd_demo_sk) FROM household_demographics
@@ -353,14 +361,16 @@ SELECT 'hd_buy_potential', checksum(hd_buy_potential) FROM household_demographic
 UNION ALL
 SELECT 'hd_dep_count', checksum(hd_dep_count) FROM household_demographics
 UNION ALL
-SELECT 'hd_vehicle_count', checksum(hd_vehicle_count) FROM household_demographics;
+SELECT 'hd_vehicle_count', checksum(hd_vehicle_count) FROM household_demographics
+ORDER BY 1;
 
 -- income_band
 SELECT 'ib_income_band_sk', checksum(ib_income_band_sk) FROM income_band
 UNION ALL
 SELECT 'ib_lower_bound', checksum(ib_lower_bound) FROM income_band
 UNION ALL
-SELECT 'ib_upper_bound', checksum(ib_upper_bound) FROM income_band;
+SELECT 'ib_upper_bound', checksum(ib_upper_bound) FROM income_band
+ORDER BY 1;
 
 -- inventory
 SELECT 'inv_item_sk', checksum(inv_item_sk) FROM inventory
@@ -369,7 +379,8 @@ SELECT 'inv_warehouse_sk', checksum(inv_warehouse_sk) FROM inventory
 UNION ALL
 SELECT 'inv_quantity_on_hand', checksum(inv_quantity_on_hand) FROM inventory
 UNION ALL
-SELECT 'inv_date_sk', checksum(inv_date_sk) FROM inventory;
+SELECT 'inv_date_sk', checksum(inv_date_sk) FROM inventory
+ORDER BY 1;
 
 -- item
 SELECT 'i_item_sk', checksum(i_item_sk) FROM item
@@ -414,7 +425,8 @@ SELECT 'i_container', checksum(i_container) FROM item
 UNION ALL
 SELECT 'i_manager_id', checksum(i_manager_id) FROM item
 UNION ALL
-SELECT 'i_product_name', checksum(i_product_name) FROM item;
+SELECT 'i_product_name', checksum(i_product_name) FROM item
+ORDER BY 1;
 
 -- promotion
 SELECT 'p_promo_sk', checksum(p_promo_sk) FROM promotion
@@ -453,14 +465,16 @@ SELECT 'p_channel_details', checksum(p_channel_details) FROM promotion
 UNION ALL
 SELECT 'p_purpose', checksum(p_purpose) FROM promotion
 UNION ALL
-SELECT 'p_discount_active', checksum(p_discount_active) FROM promotion;
+SELECT 'p_discount_active', checksum(p_discount_active) FROM promotion
+ORDER BY 1;
 
 -- reason
 SELECT 'r_reason_sk', checksum(r_reason_sk) FROM reason
 UNION ALL
 SELECT 'r_reason_id', checksum(r_reason_id) FROM reason
 UNION ALL
-SELECT 'r_reason_desc', checksum(r_reason_desc) FROM reason;
+SELECT 'r_reason_desc', checksum(r_reason_desc) FROM reason
+ORDER BY 1;
 
 -- ship_mode
 SELECT 'sm_ship_mode_sk', checksum(sm_ship_mode_sk) FROM ship_mode
@@ -473,7 +487,8 @@ SELECT 'sm_code', checksum(sm_code) FROM ship_mode
 UNION ALL
 SELECT 'sm_carrier', checksum(sm_carrier) FROM ship_mode
 UNION ALL
-SELECT 'sm_contract', checksum(sm_contract) FROM ship_mode;
+SELECT 'sm_contract', checksum(sm_contract) FROM ship_mode
+ORDER BY 1;
 
 -- store
 SELECT 's_store_sk', checksum(s_store_sk) FROM store
@@ -532,7 +547,8 @@ SELECT 's_country', checksum(s_country) FROM store
 UNION ALL
 SELECT 's_gmt_offset', checksum(s_gmt_offset) FROM store
 UNION ALL
-SELECT 's_tax_precentage', checksum(s_tax_precentage) FROM store;
+SELECT 's_tax_precentage', checksum(s_tax_precentage) FROM store
+ORDER BY 1;
 
 -- store_returns
 SELECT 'sr_returned_date_sk', checksum(sr_returned_date_sk) FROM store_returns
@@ -573,7 +589,8 @@ SELECT 'sr_reversed_charge', checksum(sr_reversed_charge) FROM store_returns
 UNION ALL
 SELECT 'sr_store_credit', checksum(sr_store_credit) FROM store_returns
 UNION ALL
-SELECT 'sr_net_loss', checksum(sr_net_loss) FROM store_returns;
+SELECT 'sr_net_loss', checksum(sr_net_loss) FROM store_returns
+ORDER BY 1;
 
 -- store_sales
 SELECT 'ss_sold_time_sk', checksum(ss_sold_time_sk) FROM store_sales
@@ -620,7 +637,8 @@ SELECT 'ss_net_paid_inc_tax', checksum(ss_net_paid_inc_tax) FROM store_sales
 UNION ALL
 SELECT 'ss_net_profit', checksum(ss_net_profit) FROM store_sales
 UNION ALL
-SELECT 'ss_sold_date_sk', checksum(ss_sold_date_sk) FROM store_sales;
+SELECT 'ss_sold_date_sk', checksum(ss_sold_date_sk) FROM store_sales
+ORDER BY 1;
 
 -- time_dim
 SELECT 't_time_sk', checksum(t_time_sk) FROM time_dim
@@ -641,7 +659,8 @@ SELECT 't_shift', checksum(t_shift) FROM time_dim
 UNION ALL
 SELECT 't_sub_shift', checksum(t_sub_shift) FROM time_dim
 UNION ALL
-SELECT 't_meal_time', checksum(t_meal_time) FROM time_dim;
+SELECT 't_meal_time', checksum(t_meal_time) FROM time_dim
+ORDER BY 1;
 
 -- warehouse
 SELECT 'w_warehouse_sk', checksum(w_warehouse_sk) FROM warehouse
@@ -670,7 +689,8 @@ SELECT 'w_zip', checksum(w_zip) FROM warehouse
 UNION ALL
 SELECT 'w_country', checksum(w_country) FROM warehouse
 UNION ALL
-SELECT 'w_gmt_offset', checksum(w_gmt_offset) FROM warehouse;
+SELECT 'w_gmt_offset', checksum(w_gmt_offset) FROM warehouse
+ORDER BY 1;
 
 -- web_page
 SELECT 'wp_web_page_sk', checksum(wp_web_page_sk) FROM web_page
@@ -699,7 +719,8 @@ SELECT 'wp_link_count', checksum(wp_link_count) FROM web_page
 UNION ALL
 SELECT 'wp_image_count', checksum(wp_image_count) FROM web_page
 UNION ALL
-SELECT 'wp_max_ad_count', checksum(wp_max_ad_count) FROM web_page;
+SELECT 'wp_max_ad_count', checksum(wp_max_ad_count) FROM web_page
+ORDER BY 1;
 
 -- web_returns
 SELECT 'wr_returned_date_sk', checksum(wr_returned_date_sk) FROM web_returns
@@ -748,7 +769,8 @@ SELECT 'wr_reversed_charge', checksum(wr_reversed_charge) FROM web_returns
 UNION ALL
 SELECT 'wr_account_credit', checksum(wr_account_credit) FROM web_returns
 UNION ALL
-SELECT 'wr_net_loss', checksum(wr_net_loss) FROM web_returns;
+SELECT 'wr_net_loss', checksum(wr_net_loss) FROM web_returns
+ORDER BY 1;
 
 -- web_sales
 SELECT 'ws_sold_time_sk', checksum(ws_sold_time_sk) FROM web_sales
@@ -817,7 +839,8 @@ SELECT 'ws_net_paid_inc_ship_tax', checksum(ws_net_paid_inc_ship_tax) FROM web_s
 UNION ALL
 SELECT 'ws_net_profit', checksum(ws_net_profit) FROM web_sales
 UNION ALL
-SELECT 'ws_sold_date_sk', checksum(ws_sold_date_sk) FROM web_sales;
+SELECT 'ws_sold_date_sk', checksum(ws_sold_date_sk) FROM web_sales
+ORDER BY 1;
 
 -- web_site
 SELECT 'web_site_sk', checksum(web_site_sk) FROM web_site
@@ -870,4 +893,5 @@ SELECT 'web_country', checksum(web_country) FROM web_site
 UNION ALL
 SELECT 'web_gmt_offset', checksum(web_gmt_offset) FROM web_site
 UNION ALL
-SELECT 'web_tax_percentage', checksum(web_tax_percentage) FROM web_site;
+SELECT 'web_tax_percentage', checksum(web_tax_percentage) FROM web_site
+ORDER BY 1;
