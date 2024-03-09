@@ -1,5 +1,5 @@
 {
-  "description": "Run a subset of power test",
+  "description": "Run a very small subset of power test",
   "query_files": [
     "queries/query_01.sql",
     "queries/query_02.sql",

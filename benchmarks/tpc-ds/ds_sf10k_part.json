@@ -1,4 +1,0 @@
-{
-  "description": "Specifies the schema for TPC-DS scale factor 10 TB.",
-  "schema": "tpcds_sf10000_parquet_varchar_part"
-}

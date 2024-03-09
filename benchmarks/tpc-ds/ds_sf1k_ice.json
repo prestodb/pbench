@@ -1,0 +1,5 @@
+{
+  "description": "Specifies the catalog and the schema for TPC-DS Iceberg scale factor 1 TB.",
+  "catalog": "iceberg",
+  "schema": "tpcds_sf1000_parquet_iceberg"
+}
