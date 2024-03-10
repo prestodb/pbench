@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-//go:embed btq_outer2inner.sql
+//go:embed query_splitter_test.sql
 var fileWithTrailingComment string
 
 func TestQuerySplitter(t *testing.T) {
