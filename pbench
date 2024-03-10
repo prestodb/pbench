@@ -2,7 +2,7 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 GO=/usr/local/go/bin/go
 
-if [ ! -f $SCRIPT_DIR/presto-benchmark_$(arch) ]; then
+if [ ! -f $SCRIPT_DIR/pbench_$(arch) ]; then
     if [ ! -f $GO ]; then
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             pkg=go1.21.5.linux-amd64.tar.gz
@@ -15,9 +15,9 @@ if [ ! -f $SCRIPT_DIR/presto-benchmark_$(arch) ]; then
         fi
     fi
     pushd $SCRIPT_DIR > /dev/null
-    env GOOS=linux GOARCH=amd64 $GO build -o $SCRIPT_DIR/presto-benchmark_x86_64 $SCRIPT_DIR
-    env GOOS=darwin GOARCH=arm64 $GO build -o $SCRIPT_DIR/presto-benchmark_arm64 $SCRIPT_DIR
+    env GOOS=linux GOARCH=amd64 $GO build -o $SCRIPT_DIR/pbench_x86_64 $SCRIPT_DIR
+    env GOOS=darwin GOARCH=arm64 $GO build -o $SCRIPT_DIR/pbench_arm64 $SCRIPT_DIR
     popd > /dev/null
 fi
 
-$SCRIPT_DIR/presto-benchmark_$(arch) "$@"
+$SCRIPT_DIR/pbench_$(arch) "$@"

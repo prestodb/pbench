@@ -8,7 +8,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"os"
-	"presto-benchmark/log"
+	"pbench/log"
 )
 
 var (

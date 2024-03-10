@@ -1,4 +1,4 @@
-module presto-benchmark
+module pbench
 
 go 1.20
 

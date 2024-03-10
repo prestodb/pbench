@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"presto-benchmark/log"
-	"presto-benchmark/presto"
-	"presto-benchmark/stage"
+	"pbench/log"
+	"pbench/presto"
+	"pbench/stage"
 	"strings"
 	"time"
 )

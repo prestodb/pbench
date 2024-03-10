@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"presto-benchmark/log"
+	"pbench/log"
 	"regexp"
 	"sync/atomic"
 	"time"

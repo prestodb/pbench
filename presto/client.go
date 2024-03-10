@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"presto-benchmark/log"
+	"pbench/log"
 	"strings"
 	"time"
 )

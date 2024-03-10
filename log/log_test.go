@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"net"
 	"os"
-	"presto-benchmark/log"
+	"pbench/log"
 	"strings"
 	"testing"
 

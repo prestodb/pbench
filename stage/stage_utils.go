@@ -8,8 +8,8 @@ import (
 	"github.com/rs/zerolog"
 	"os"
 	"path/filepath"
-	"presto-benchmark/log"
-	"presto-benchmark/presto"
+	"pbench/log"
+	"pbench/presto"
 	"strconv"
 	"time"
 )

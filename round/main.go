@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
-	"presto-benchmark/log"
+	"pbench/log"
 	"regexp"
 	"strings"
 )

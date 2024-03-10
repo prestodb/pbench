@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	genconfig "presto-benchmark/gen-config"
+	genconfig "pbench/gen-config"
 )
 
 var genConfigCmd = &cobra.Command{

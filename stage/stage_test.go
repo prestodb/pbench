@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
-	"presto-benchmark/presto"
+	"pbench/presto"
 	"syscall"
 	"testing"
 

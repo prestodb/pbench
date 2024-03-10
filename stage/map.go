@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"presto-benchmark/log"
+	"pbench/log"
 )
 
 type Map map[string]*Stage

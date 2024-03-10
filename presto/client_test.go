@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/stretchr/testify/assert"
-	"presto-benchmark/presto"
+	"pbench/presto"
 	"strings"
 	"syscall"
 	"testing"

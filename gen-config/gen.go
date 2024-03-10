@@ -4,7 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"presto-benchmark/log"
+	"pbench/log"
 	"strings"
 	"text/template"
 )

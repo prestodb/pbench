@@ -7,7 +7,7 @@ import (
 	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"os"
-	"presto-benchmark/log"
+	"pbench/log"
 )
 
 type InfluxRunRecorder struct {

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"presto-benchmark/cmp"
+	"pbench/cmp"
 )
 
 var cmpCmd = &cobra.Command{

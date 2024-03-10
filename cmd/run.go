@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"os"
-	"presto-benchmark/run"
+	"pbench/run"
 )
 
 // runCmd represents the run command

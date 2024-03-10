@@ -7,7 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"presto-benchmark/log"
+	"pbench/log"
 
 	"github.com/spf13/cobra"
 )

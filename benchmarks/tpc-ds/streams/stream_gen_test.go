@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"presto-benchmark/stage"
+	"pbench/stage"
 )
 
 func TestGenerateStreams(t *testing.T) {

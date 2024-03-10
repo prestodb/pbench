@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"presto-benchmark/log"
+	"pbench/log"
 )
 
 type QueryRow []any

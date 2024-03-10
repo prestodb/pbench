@@ -1,7 +1,7 @@
 package main
 
 import (
-	"presto-benchmark/cmd"
+	"pbench/cmd"
 )
 
 func main() {

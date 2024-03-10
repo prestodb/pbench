@@ -2,7 +2,7 @@ package stage
 
 import (
 	"github.com/rs/zerolog"
-	"presto-benchmark/log"
+	"pbench/log"
 	"time"
 )
 
