@@ -13,6 +13,8 @@ import (
 type InfluxRunRecorder struct {
 	influxClient influxdb2.Client
 	influxWriter influxapi.WriteAPIBlocking
+	failed       int
+	mismatch     int
 }
 
 func NewInfluxRunRecorder(cfgPath string) *InfluxRunRecorder {
@@ -63,6 +65,11 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 	}
 	if result.Query.ExpectedRowCount < 0 {
 		delete(fields, "expected_row_count")
+	} else if result.Query.ExpectedRowCount != result.RowCount {
+		i.mismatch++
+	}
+	if result.QueryError != nil {
+		i.failed++
 	}
 	if result.Query.File != nil {
 		fields["query_file"] = *result.Query.File
@@ -82,6 +89,8 @@ func (i *InfluxRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*
 	fields := map[string]interface{}{
 		"start_time":  s.States.RunStartTime.UnixNano(),
 		"queries_ran": len(results),
+		"failed":      i.failed,
+		"mismatch":    i.mismatch,
 		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
 	}
 	point := write.NewPoint("runs", tags, fields, s.States.RunFinishTime)

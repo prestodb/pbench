@@ -19,8 +19,10 @@ var (
 )
 
 type MySQLRunRecorder struct {
-	db    *sql.DB
-	runId int64
+	db       *sql.DB
+	runId    int64
+	failed   int
+	mismatch int
 }
 
 func initMySQLConn(cfgPath string) *sql.DB {
@@ -92,6 +94,12 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 	} else {
 		queryFile = "inline"
 	}
+	if result.QueryError != nil {
+		m.failed++
+	}
+	if result.Query.ExpectedRowCount >= 0 && result.Query.ExpectedRowCount != result.RowCount {
+		m.mismatch++
+	}
 	_, err := m.db.Exec(recordNewQuery, m.runId, result.StageId, queryFile, result.Query.Index, result.QueryId,
 		result.Query.RunIndex, result.Query.ColdRun, result.QueryError == nil, result.StartTime, *result.EndTime,
 		result.RowCount, sql.NullInt32{
@@ -104,8 +112,9 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 }
 
 func (m *MySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*QueryResult) {
-	completeRunInfo := `UPDATE pbench_runs SET queries_ran = ?, duration_ms = ? WHERE run_id = ?`
-	res, err := m.db.Exec(completeRunInfo, len(results), s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), m.runId)
+	completeRunInfo := `UPDATE pbench_runs SET queries_ran = ?, failed = ?, mismatch = ?, duration_ms = ? WHERE run_id = ?`
+	res, err := m.db.Exec(completeRunInfo, len(results), m.failed, m.mismatch,
+		s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), m.runId)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to complete the run information in the MySQL database")
