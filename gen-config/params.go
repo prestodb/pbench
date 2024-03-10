@@ -21,7 +21,7 @@ type GeneratorParameters struct {
 }
 
 var (
-	//go:embed default_params.json
+	//go:embed params.json
 	DefaultGeneratorParametersBytes []byte
 	DefaultGeneratorParameters      = &GeneratorParameters{}
 )
