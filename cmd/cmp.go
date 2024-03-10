@@ -15,6 +15,6 @@ var cmpCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(cmpCmd)
-	cmpCmd.Flags().StringVarP(&cmp.IdRegexStr, "id-regex", "r", `.*(query_\d{2}).*\.output`, "regex to extract result id from file names in two directories to find matching files to compare")
+	cmpCmd.Flags().StringVarP(&cmp.FileIdRegexStr, "file-id-regex", "r", `.*(query_\d{2}).*\.output`, "regex to extract file id from file names in two directories to find matching files to compare")
 	cmpCmd.Flags().StringVarP(&cmp.OutputPath, "output-path", "o", "./diff", "diff output path")
 }
