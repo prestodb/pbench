@@ -75,7 +75,8 @@ func NewMySQLRunRecorder(cfgPath string) *MySQLRunRecorder {
 
 func (m *MySQLRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *QueryResult) {
 	if m.runId < 0 {
-		recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time) VALUES (?, ?, ?)`
+		recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time, queries_ran, failed, mismatch)
+VALUES (?, ?, ?, 0, 0, 0)`
 		res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.ServerFQDN, s.States.RunStartTime)
 		if err != nil {
 			log.Error().Err(err).Str("run_name", s.States.RunName).Time("start_time", s.States.RunStartTime).
@@ -109,12 +110,21 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 	if err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to MySQL")
 	}
+	updateRunInfo := `UPDATE pbench_runs SET queries_ran = queries_ran + 1, failed = ?, mismatch = ? WHERE run_id = ?`
+	res, err := m.db.Exec(updateRunInfo, m.failed, m.mismatch, m.runId)
+	if err != nil {
+		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
+			Msg("failed to update the run information in the MySQL database")
+	}
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected > 1 {
+		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).Int64("rows_affected", rowsAffected).
+			Msg("more than 1 row was affected when trying to complete the run information in the MySQL database")
+	}
 }
 
 func (m *MySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*QueryResult) {
-	completeRunInfo := `UPDATE pbench_runs SET queries_ran = ?, failed = ?, mismatch = ?, duration_ms = ? WHERE run_id = ?`
-	res, err := m.db.Exec(completeRunInfo, len(results), m.failed, m.mismatch,
-		s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), m.runId)
+	completeRunInfo := `UPDATE pbench_runs SET duration_ms = ? WHERE run_id = ?`
+	res, err := m.db.Exec(completeRunInfo, s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), m.runId)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to complete the run information in the MySQL database")
