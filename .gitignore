@@ -26,4 +26,4 @@ mysql.json
 pulumi.json
 
 # binaries
-presto-benchmark_*
+pbench_*

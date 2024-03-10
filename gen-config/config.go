@@ -17,19 +17,22 @@ type ClusterConfig struct {
 	HeapSizeGb                    uint                 `json:"-"`
 	JavaQueryMaxTotalMemPerNodeGb uint                 `json:"-"`
 	JavaQueryMaxMemPerNodeGb      uint                 `json:"-"`
-	NativeProxygenMemGb           uint                 `json:"-"`
 	NativeSystemMemGb             uint                 `json:"-"`
+	NativeProxygenMemGb           uint                 `json:"-"`
+	NativeBufferMemGb             uint                 `json:"-"`
 	NativeQueryMemGb              uint                 `json:"-"`
 	Path                          string               `json:"-"`
 }
 
 func (c *ClusterConfig) Calculate() {
-	c.ContainerMemoryGb = c.MemoryPerNodeGb - uint(math.Ceil(c.GeneratorParameters.SysReservedGb))
+	c.ContainerMemoryGb = c.MemoryPerNodeGb - uint(math.Ceil(math.Min(c.GeneratorParameters.SysReservedMemCapGb,
+		float64(c.MemoryPerNodeGb)*c.GeneratorParameters.SysReservedMemPercent)))
 	c.HeapSizeGb = uint(math.Floor(float64(c.ContainerMemoryGb) * c.GeneratorParameters.HeapSizePercentOfContainerMem))
 	c.HeadroomGb = uint(math.Ceil(float64(c.HeapSizeGb) * c.GeneratorParameters.HeadroomPercentOfHeap))
 	c.JavaQueryMaxTotalMemPerNodeGb = uint(math.Floor(float64(c.HeapSizeGb) * c.GeneratorParameters.QueryMaxTotalMemPerNodePercentOfHeap))
 	c.JavaQueryMaxMemPerNodeGb = uint(math.Floor(float64(c.JavaQueryMaxTotalMemPerNodeGb) * c.GeneratorParameters.QueryMaxMemPerNodePercentOfTotal))
-	c.NativeProxygenMemGb = uint(math.Ceil(math.Min(c.GeneratorParameters.ProxygenMemPerWorkerGb*float64(c.NumberOfWorkers), c.GeneratorParameters.ProxygenMemCapGb)))
-	c.NativeSystemMemGb = c.ContainerMemoryGb - c.NativeProxygenMemGb - uint(math.Ceil(c.GeneratorParameters.NonVeloxBufferMemGb))
+	c.NativeProxygenMemGb = uint(math.Ceil(math.Min(c.GeneratorParameters.ProxygenMemCapGb, c.GeneratorParameters.ProxygenMemPerWorkerGb*float64(c.NumberOfWorkers))))
+	c.NativeBufferMemGb = uint(math.Ceil(math.Min(c.GeneratorParameters.NativeBufferMemCapGb, float64(c.ContainerMemoryGb)*c.GeneratorParameters.NativeBufferMemPercent)))
+	c.NativeSystemMemGb = c.ContainerMemoryGb - c.NativeBufferMemGb - c.NativeProxygenMemGb
 	c.NativeQueryMemGb = uint(math.Floor(float64(c.NativeSystemMemGb) * c.GeneratorParameters.NativeQueryMemPercentOfSysMem))
 }

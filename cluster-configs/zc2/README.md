@@ -2,8 +2,9 @@
 custom (vCPU: 64, Memory: 712 GB) * 28
 
 ### Global
-* `SysReservedGb = 2`
-* `ContainerMemoryGb = MemoryPerNodeGb - ceil(SysReservedGb) = 712 - ceil(2) = 710` [[docker-stack-java.yaml](docker-stack-java.yaml)] and [[docker-stack-native.yaml](docker-stack-native.yaml)]
+* `SysReservedMemCapGb = 2`
+* `SysReservedMemPercent = 0.05`
+* `ContainerMemoryGb = MemoryPerNodeGb - ceil(min(SysReservedMemCapGb, MemoryPerNodeGb * SysReservedMemPercent)) = 712 - ceil(min(2, 712 * 0.05)) = 710` [[docker-stack-java.yaml](docker-stack-java.yaml)] and [[docker-stack-native.yaml](docker-stack-native.yaml)]
 ### For Java clusters:
 * `HeapSizeGb = floor(ContainerMemory * HeapSizePercentOfContainerMem) = floor(710 * 0.9) = 639` (`-Xmx` and `-Xms` in [[coordinator jvm.config](coordinator/jvm.config)] and [[worker jvm.config](workers/jvm.config)])
 * [[coordinator config.properties](coordinator/config.properties)] and [[worker config.properties](worker/config.properties)]
@@ -14,7 +15,10 @@ custom (vCPU: 64, Memory: 712 GB) * 28
   * `query.max-memory = query.max-memory-per-node * NumberOfWorkers = 459 * 28 = 12852` [[documentation](https://prestodb.io/docs/current/admin/properties.html#memory-management-properties)]
 ### For Prestissimo clusters:
 * Coordinator heap setting same as Java cluster
-* `NativeProxygenMemGb = ceil(min(ProxygenMemPerWorkerGb * NumberOfWorkers, ProxygenMemCapGb)) = ceil(min(0.125 * 28, 2)) = 2`
-* `NonVeloxBufferMemGb = 8`
-* `system-memory-gb = ContainerMemory - NativeProxygenMemGb - ceil(NonVeloxBufferMemGb) = 710 - 2 - ceil(8) = 700`
-* `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(700 * 0.95) = 665`
+* `NativeBufferMemCapGb = 16`
+* `NativeBufferMemPercent = 0.1`
+* `NativeBufferMemGb = ceil(min(NativeBufferMemCapGb, ContainerMemoryGb * NativeBufferMemPercent)) = ceil(min(16, 710 * 0.1)) = 16`
+* `NativeProxygenMemGb = ceil(min(ProxygenMemCapGb, ProxygenMemPerWorkerGb * NumberOfWorkers)) = ceil(min(2, 0.125 * 28)) = 2`
+
+* `system-memory-gb = ContainerMemory - NativeBufferMemGb - NativeProxygenMemGb = 710 - 16 - 2 = 692`
+* `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(692 * 0.95) = 657`

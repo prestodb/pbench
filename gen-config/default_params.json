@@ -1,11 +1,13 @@
 {
-  "sys_reserved_gb": 2,
+  "sys_reserved_mem_percent": 0.05,
+  "sys_reserved_mem_cap_gb": 2,
   "heap_size_percent_of_container_mem": 0.9,
   "headroom_percent_of_heap": 0.2,
   "query_max_total_mem_per_node_percent_of_heap": 0.8,
   "query_max_mem_per_node_percent_of_total": 0.9,
   "proxygen_mem_per_worker_gb": 0.125,
   "proxygen_mem_cap_gb": 2,
-  "non_velox_buffer_mem_gb": 8,
+  "native_buffer_mem_percent": 0.1,
+  "native_buffer_mem_cap_gb": 16,
   "native_query_mem_percent_of_sys_mem": 0.95
 }
