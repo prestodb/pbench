@@ -1,5 +1,8 @@
 {
   "description": "Specifies the catalog and the schema for TPC-DS Iceberg scale factor 10 TB partitioned.",
   "catalog": "iceberg",
-  "schema": "tpcds_sf10000_parquet_varchar_iceberg_part"
+  "schema": "tpcds_sf10000_parquet_varchar_iceberg_part",
+  "session_params": {
+    "iceberg.hive_statistics_merge_strategy": "USE_NULLS_FRACTION_AND_NDV"
+  }
 }
