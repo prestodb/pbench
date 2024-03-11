@@ -296,7 +296,7 @@ func (s *Stage) querySourceString(result *QueryResult) (sourceStr string) {
 		} else {
 			sourceStr += "_w"
 		}
-		sourceStr += strconv.Itoa(result.Query.RunIndex)
+		sourceStr += strconv.Itoa(result.Query.SequenceNo)
 	}
 	return
 }

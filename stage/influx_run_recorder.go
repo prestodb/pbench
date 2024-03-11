@@ -55,7 +55,7 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 	fields := map[string]interface{}{
 		"query_index":        result.Query.Index,
 		"cold_run":           result.Query.ColdRun,
-		"run_index":          result.Query.RunIndex,
+		"sequence_no":        result.Query.SequenceNo,
 		"info_url":           result.InfoUrl,
 		"succeeded":          result.QueryError == nil,
 		"row_count":          result.RowCount,

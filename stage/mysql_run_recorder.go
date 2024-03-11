@@ -87,7 +87,7 @@ VALUES (?, ?, ?, 0, 0, 0)`
 				Msg("added a new run to the MySQL database")
 		}
 	}
-	recordNewQuery := `INSERT INTO pbench_queries (run_id, stage_id, query_file, query_index, query_id, run_index,
+	recordNewQuery := `INSERT INTO pbench_queries (run_id, stage_id, query_file, query_index, query_id, sequence_no,
 cold_run, succeeded, start_time, end_time, row_count, expected_row_count, duration_ms, info_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	var queryFile string
 	if result.Query.File != nil {
@@ -102,7 +102,7 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 		m.mismatch++
 	}
 	_, err := m.db.Exec(recordNewQuery, m.runId, result.StageId, queryFile, result.Query.Index, result.QueryId,
-		result.Query.RunIndex, result.Query.ColdRun, result.QueryError == nil, result.StartTime, *result.EndTime,
+		result.Query.SequenceNo, result.Query.ColdRun, result.QueryError == nil, result.StartTime, *result.EndTime,
 		result.RowCount, sql.NullInt32{
 			Int32: int32(result.Query.ExpectedRowCount),
 			Valid: result.Query.ExpectedRowCount >= 0,

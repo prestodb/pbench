@@ -6,6 +6,6 @@ type Query struct {
 	Index            int
 	BatchSize        int
 	ColdRun          bool
-	RunIndex         int
+	SequenceNo       int
 	ExpectedRowCount int
 }

@@ -253,7 +253,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				Index:            i,
 				BatchSize:        batchSize,
 				ColdRun:          j < s.ColdRuns,
-				RunIndex:         j,
+				SequenceNo:       j,
 				ExpectedRowCount: -1, // -1 means unspecified.
 			}
 			if len(s.ExpectedRowCounts) > expectedRowCountStartIndex+i {

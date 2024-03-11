@@ -20,7 +20,7 @@ type FileBasedRunRecorder struct {
 
 func NewFileBasedRunRecorder() *FileBasedRunRecorder {
 	r := &FileBasedRunRecorder{}
-	r.summaryBuilder.WriteString("stage_id,query_file,query_index,cold_run,run_index,info_url,succeeded,row_count,expected_row_count,start_time,end_time,duration_in_seconds\n")
+	r.summaryBuilder.WriteString("stage_id,query_file,query_index,cold_run,sequence_no,info_url,succeeded,row_count,expected_row_count,start_time,end_time,duration_in_seconds\n")
 	return r
 }
 
@@ -32,7 +32,7 @@ func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *
 		f.summaryBuilder.WriteString("inline")
 	}
 	f.summaryBuilder.WriteString(fmt.Sprintf(",%d,%t,%d,%s,%t,%d,%d,%s,%s,%f\n",
-		result.Query.Index, result.Query.ColdRun, result.Query.RunIndex, result.InfoUrl,
+		result.Query.Index, result.Query.ColdRun, result.Query.SequenceNo, result.InfoUrl,
 		result.QueryError == nil, result.RowCount, result.Query.ExpectedRowCount, result.StartTime.Format(time.RFC3339),
 		result.EndTime.Format(time.RFC3339), result.Duration.Seconds()))
 }

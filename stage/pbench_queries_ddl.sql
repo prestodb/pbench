@@ -4,7 +4,7 @@ create table if not exists pbench_queries
     stage_id           varchar(255) not null,
     query_file         varchar(255) not null,
     query_index        int          not null,
-    run_index          int          not null,
+    sequence_no        int          not null,
     query_id           varchar(255) not null,
     cold_run           tinyint(1)   not null,
     succeeded          tinyint(1)   not null,
@@ -14,6 +14,6 @@ create table if not exists pbench_queries
     expected_row_count int          null,
     duration_ms        int          not null,
     info_url           varchar(255) not null,
-    primary key (run_id, stage_id, query_file, query_index, run_index)
+    primary key (run_id, stage_id, query_file, query_index, sequence_no)
 )
     partition by hash (`run_id`) partitions 16;

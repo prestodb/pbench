@@ -33,7 +33,7 @@ func (q *QueryResult) MarshalZerologObject(e *zerolog.Event) {
 	}
 	e.Int("query_index", q.Query.Index)
 	e.Bool("cold_run", q.Query.ColdRun)
-	e.Int("run_index", q.Query.RunIndex)
+	e.Int("sequence_no", q.Query.SequenceNo)
 	e.Str("info_url", q.InfoUrl)
 	if q.simpleLogging {
 		q.simpleLogging = false
