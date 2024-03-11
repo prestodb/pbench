@@ -159,8 +159,8 @@ func (s *Stage) setDefaults() {
 	if s.SaveJson == nil {
 		s.SaveJson = &falseValue
 	}
-	if s.WarmRuns == 0 {
-		s.WarmRuns = 1
+	if s.ColdRuns+s.WarmRuns == 0 {
+		s.ColdRuns = 1
 	}
 }
 
