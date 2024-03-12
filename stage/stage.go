@@ -15,7 +15,6 @@ import (
 	"pbench/log"
 	"pbench/presto"
 	"regexp"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -228,12 +227,6 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		s.expectedRowCountInCurrentSchema = erc
 	} else {
 		for k, v := range s.ExpectedRowCounts {
-			if !strings.HasPrefix(k, "^") {
-				k = "^" + k
-			}
-			if !strings.HasSuffix(k, "$") {
-				k += "$"
-			}
 			if matcher, err := regexp.Compile(k); err != nil {
 				continue
 			} else if matcher.MatchString(keyToMatch) {
