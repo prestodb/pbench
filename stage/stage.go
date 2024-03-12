@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"pbench/log"
 	"pbench/presto"
+	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,9 +34,10 @@ type Stage struct {
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.
 	QueryFiles []string `json:"query_files,omitempty"`
-	// An array of integers as expected row counts for all the queries we run. Including the queries from both Queries
-	// and QueryFiles. Queries first and QueryFiles follows.
-	ExpectedRowCounts []int `json:"expected_row_counts"`
+	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
+	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
+	// Can use regexp as key to match multiple [catalog.schema] pairs.
+	ExpectedRowCounts map[string][]int `json:"expected_row_counts"`
 	// If not set, the default is 0.
 	ColdRuns int `json:"cold_runs,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
@@ -77,6 +80,11 @@ type Stage struct {
 	// Client is by default passed down to descendant stages.
 	Client *presto.Client `json:"-"`
 
+	// Convenient access to the expected row count array under the current schema.
+	expectedRowCountInCurrentSchema []int
+	// Convenient access to the catalog and schema
+	currentCatalog string
+	currentSchema  string
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
 
@@ -215,6 +223,25 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.prepareClient()
 	s.propagateStates()
 	expectedRowCountStartIndex := 0
+	keyToMatch := s.currentCatalog + "." + s.currentSchema
+	if erc, exists := s.ExpectedRowCounts[keyToMatch]; exists {
+		s.expectedRowCountInCurrentSchema = erc
+	} else {
+		for k, v := range s.ExpectedRowCounts {
+			if !strings.HasPrefix(k, "^") {
+				k = "^" + k
+			}
+			if !strings.HasSuffix(k, "$") {
+				k += "$"
+			}
+			if matcher, err := regexp.Compile(k); err != nil {
+				continue
+			} else if matcher.MatchString(keyToMatch) {
+				s.expectedRowCountInCurrentSchema = v
+				break
+			}
+		}
+	}
 	if err := s.runQueries(ctx, s.Queries, nil, expectedRowCountStartIndex); err != nil {
 		return err
 	}
@@ -256,8 +283,8 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				SequenceNo:       j,
 				ExpectedRowCount: -1, // -1 means unspecified.
 			}
-			if len(s.ExpectedRowCounts) > expectedRowCountStartIndex+i {
-				query.ExpectedRowCount = s.ExpectedRowCounts[expectedRowCountStartIndex+i]
+			if len(s.expectedRowCountInCurrentSchema) > expectedRowCountStartIndex+i {
+				query.ExpectedRowCount = s.expectedRowCountInCurrentSchema[expectedRowCountStartIndex+i]
 			}
 
 			result, err := s.runQuery(ctx, query)
@@ -326,11 +353,11 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 
 	// Log query submission
 	e := log.Debug().EmbedObject(result.SimpleLogging())
-	if catalog := s.Client.GetCatalog(); catalog != "" {
-		e = e.Str("catalog", catalog)
+	if s.currentCatalog != "" {
+		e = e.Str("catalog", s.currentCatalog)
 	}
-	if schema := s.Client.GetSchema(); schema != "" {
-		e = e.Str("schema", schema)
+	if s.currentSchema != "" {
+		e = e.Str("schema", s.currentSchema)
 	}
 	if *s.SaveOutput {
 		e.Bool("save_output", true)

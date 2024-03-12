@@ -51,7 +51,13 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	s.Queries = append(s.Queries, other.Queries...)
 	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
-	s.ExpectedRowCounts = append(s.ExpectedRowCounts, other.ExpectedRowCounts...)
+	for k, v := range other.ExpectedRowCounts {
+		if v != nil {
+			s.ExpectedRowCounts[k] = v
+		} else {
+			delete(s.ExpectedRowCounts, k)
+		}
+	}
 	if other.ColdRuns > 0 {
 		s.ColdRuns = other.ColdRuns
 	}
@@ -127,12 +133,18 @@ func (s *Stage) prepareClient() {
 	s.Client = s.States.GetClient()
 	log.Info().EmbedObject(s).Msg("created new client")
 	if s.Catalog != nil {
-		s.Client.Catalog(*s.Catalog)
-		log.Info().EmbedObject(s).Str("catalog", *s.Catalog).Msg("set catalog")
+		s.currentCatalog = *s.Catalog
+		s.Client.Catalog(s.currentCatalog)
+		log.Info().EmbedObject(s).Str("catalog", s.currentCatalog).Msg("set catalog")
+	} else {
+		s.currentCatalog = s.Client.GetCatalog()
 	}
 	if s.Schema != nil {
-		s.Client.Schema(*s.Schema)
-		log.Info().EmbedObject(s).Str("schema", *s.Schema).Msg("set schema")
+		s.currentSchema = *s.Schema
+		s.Client.Schema(s.currentSchema)
+		log.Info().EmbedObject(s).Str("schema", s.currentSchema).Msg("set schema")
+	} else {
+		s.currentSchema = s.Client.GetSchema()
 	}
 	for k, v := range s.SessionParams {
 		s.Client.SessionParam(k, v)
