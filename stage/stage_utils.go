@@ -51,6 +51,9 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	s.Queries = append(s.Queries, other.Queries...)
 	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
+	if s.ExpectedRowCounts == nil {
+		s.ExpectedRowCounts = make(map[string][]int)
+	}
 	for k, v := range other.ExpectedRowCounts {
 		if v != nil {
 			s.ExpectedRowCounts[k] = v
