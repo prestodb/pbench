@@ -138,7 +138,7 @@ create table presto_benchmarks.presto_query_statistics
     splits                     bigint       null comment 'Number of Presto splits executed',
     analysis_time_ms           bigint       null comment 'Time taken to analyze the query',
     queued_time_ms             bigint       null comment 'Time that the query spent waiting inside the resource group queues',
-    planning_time              bigint       null,
+    planning_time_ms           bigint       null comment 'Time that the query spent in planning phase',
     query_wall_time_ms         bigint       null comment 'Total wall time from start to end taken by a query (includes both queuing and execution)',
     query_execution_time_ms    bigint       null comment 'Total wall time that the query spent executing (does not include queue time)',
     bytes_per_cpu_sec          bigint       null comment 'Input bytes read per cpu second of computation',
