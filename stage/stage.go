@@ -225,6 +225,8 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	keyToMatch := s.currentCatalog + "." + s.currentSchema
 	if erc, exists := s.ExpectedRowCounts[keyToMatch]; exists {
 		s.expectedRowCountInCurrentSchema = erc
+	} else if erc, exists = s.ExpectedRowCounts[s.currentSchema]; exists {
+		s.expectedRowCountInCurrentSchema = erc
 	} else {
 		for k, v := range s.ExpectedRowCounts {
 			if matcher, err := regexp.Compile(k); err != nil {
