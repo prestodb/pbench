@@ -13,8 +13,13 @@
 
 echo "node.id=$HOSTNAME" >> /opt/presto-server/etc/node.properties
 
-# Check for the reason of setting split_preload_per_driver:
-# https://github.com/prestodb/presto/issues/20020#issuecomment-1785083459
+if [ -f /opt/entrypoint_debug.sh ]
+then
+  cp ~/.ssh/authorized_keys2 ~/.ssh/authorized_keys
+  chmod 600 /etc/ssh/*_key
+  /usr/sbin/sshd
+fi
+
 /usr/bin/telegraf &
 GLOG_logtostderr=1 presto_server \
     --etc-dir=/opt/presto-server/etc

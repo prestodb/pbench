@@ -68,6 +68,8 @@ services:
           memory: 122G
     ports:
     - 8080:8080
+    - 2024:22
+    - 2025:2025
     entrypoint:
     - /bin/bash
     - /opt/entrypoint-native.sh
@@ -83,6 +85,8 @@ services:
     - /usr/bin/telegraf:/usr/bin/telegraf
     - /etc/telegraf:/etc/telegraf
     - /var/run/docker.sock:/var/run/docker.sock
+    - /home/centos/.ssh/authorized_keys:/root/.ssh/authorized_keys2
+    - /etc/ssh:/etc/ssh
     - /home/centos/presto/log/presto-server/:/var/log/presto-server/
     networks:
       presto-swarm:
