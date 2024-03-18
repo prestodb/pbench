@@ -17,3 +17,6 @@ create table if not exists pbench_queries
     primary key (run_id, stage_id, query_file, query_index, sequence_no)
 )
     partition by hash (`run_id`) partitions 16;
+
+create index pbench_queries_query_id_index
+    on presto_benchmarks.pbench_queries (query_id);
