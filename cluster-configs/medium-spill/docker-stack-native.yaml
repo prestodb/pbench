@@ -69,7 +69,6 @@ services:
     ports:
     - "8080:8080"
     - "2024:22"
-    - "2025:2025"
     entrypoint:
     - /bin/bash
     - /opt/entrypoint-native.sh
