@@ -20,8 +20,8 @@ services:
           cpus: '{{ dec .VCPUPerWorker }}'
           memory: {{ .ContainerMemoryGb }}G
     ports:
-    - 80:8080
-    - 9404:9404
+    - "80:8080"
+    - "9404:9404"
     entrypoint:
     - /bin/bash
     - /opt/entrypoint-java.sh
@@ -67,9 +67,9 @@ services:
           cpus: '{{ dec .VCPUPerWorker }}'
           memory: {{ .ContainerMemoryGb }}G
     ports:
-    - 8080:8080
-    - 2024:22
-    - 2025:2025
+    - "8080:8080"
+    - "2024:22"
+    - "2025:2025"
     entrypoint:
     - /bin/bash
     - /opt/entrypoint-native.sh
