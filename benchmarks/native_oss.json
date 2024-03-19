@@ -6,6 +6,8 @@
     "join_distribution_type": "AUTOMATIC",
     "join_reordering_strategy": "AUTOMATIC",
     "hive.parquet_pushdown_filter_enabled": true,
-    "hive.pushdown_filter_enabled": true
+    "hive.pushdown_filter_enabled": true,
+    "in_predicates_as_inner_joins_enabled": true,
+    "exploit_constraints": true
   }
 }
