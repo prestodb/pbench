@@ -15,10 +15,10 @@ r5.8xlarge (vCPU: 32, Memory: 248 GB) * 16
   * `query.max-memory = query.max-memory-per-node * NumberOfWorkers = 158 * 16 = 2528` [[documentation](https://prestodb.io/docs/current/admin/properties.html#memory-management-properties)]
 ### For Prestissimo clusters:
 * Coordinator heap setting same as Java cluster
-* `NativeBufferMemCapGb = 16`
+* `NativeBufferMemCapGb = 32`
 * `NativeBufferMemPercent = 0.1`
-* `NativeBufferMemGb = ceil(min(NativeBufferMemCapGb, ContainerMemoryGb * NativeBufferMemPercent)) = ceil(min(16, 246 * 0.1)) = 16`
+* `NativeBufferMemGb = ceil(min(NativeBufferMemCapGb, ContainerMemoryGb * NativeBufferMemPercent)) = ceil(min(32, 246 * 0.1)) = 25`
 * `NativeProxygenMemGb = ceil(min(ProxygenMemCapGb, ProxygenMemPerWorkerGb * NumberOfWorkers)) = ceil(min(2, 0.125 * 16)) = 2`
 
-* `system-memory-gb = ContainerMemory - NativeBufferMemGb - NativeProxygenMemGb = 246 - 16 - 2 = 228`
-* `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(228 * 0.95) = 216`
+* `system-memory-gb = ContainerMemory - NativeBufferMemGb - NativeProxygenMemGb = 246 - 25 - 2 = 219`
+* `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(219 * 0.95) = 208`
