@@ -21,6 +21,7 @@ var (
 	OutputPath    string
 	UserName      string
 	Password      string
+	RandSeed      int64
 	InfluxCfgPath string
 	MySQLCfgPath  string
 	PulumiCfgPath string
@@ -35,6 +36,7 @@ func Run(_ *cobra.Command, args []string) {
 		States: &stage.SharedStageStates{
 			RunName:      Name,
 			Comment:      Comment,
+			RandSeed:     RandSeed,
 			ServerFQDN:   parsedServerUrl.Host,
 			RunStartTime: time.Now(),
 			OutputPath:   OutputPath,

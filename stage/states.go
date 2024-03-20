@@ -11,6 +11,8 @@ type SharedStageStates struct {
 	RunName       string
 	Comment       string
 	ServerFQDN    string
+	RandSeed      int64
+	RandSeedUsed  bool
 	RunStartTime  time.Time
 	RunFinishTime time.Time
 	// OutputPath is where we store the logs, query results, query json files, query column metadata files, etc.

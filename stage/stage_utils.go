@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
 	"os"
 	"path/filepath"
 	"pbench/log"
 	"pbench/presto"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -61,6 +62,8 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 			delete(s.ExpectedRowCounts, k)
 		}
 	}
+	s.RandomExecution = other.RandomExecution
+	s.RandomlyExecuteUntil = other.RandomlyExecuteUntil
 	if other.ColdRuns > 0 {
 		s.ColdRuns = other.ColdRuns
 	}

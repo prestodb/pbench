@@ -94,6 +94,9 @@ func (i *InfluxRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*
 		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
 		"comment":     s.States.Comment,
 	}
+	if s.States.RandSeedUsed {
+		fields["rand_seed"] = s.States.RandSeed
+	}
 	point := write.NewPoint("runs", tags, fields, s.States.RunFinishTime)
 	if err := i.influxWriter.WritePoint(ctx, point); err != nil {
 		log.Error().Str("run_name", s.States.RunName).Err(err).Msg("failed to send run summary to influxdb")

@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,9 +15,12 @@ import (
 	"pbench/log"
 	"pbench/presto"
 	"regexp"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type Stage struct {
@@ -37,9 +40,16 @@ type Stage struct {
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
 	// Can use regexp as key to match multiple [catalog.schema] pairs.
 	ExpectedRowCounts map[string][]int `json:"expected_row_counts"`
-	// If not set, the default is 0.
-	ColdRuns int `json:"cold_runs,omitempty"`
+	// When RandomExecution is turned on, we randomly pick queries to run until a certain number of queries/a specific
+	// duration has passed. Expected row counts will not be checked in this mode because we cannot figure out the correct
+	// expected row count offset.
+	RandomExecution bool `json:"random_execution,omitempty"`
+	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
+	// before exiting.
+	RandomlyExecuteUntil string `json:"randomly_execute_until,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
+	ColdRuns int `json:"cold_runs,omitempty"`
+	// If not set, the default is 0.
 	WarmRuns int `json:"warm_runs,omitempty"`
 	// If StartOnNewClient is set to true, this stage will create a new client to execute itself.
 	// This new client will be passed down to its descendant stages unless those stages also set StartOnNewClient to true.
@@ -221,7 +231,14 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.setDefaults()
 	s.prepareClient()
 	s.propagateStates()
-	expectedRowCountStartIndex := 0
+	if s.RandomExecution {
+		return s.runRandomly(ctx)
+	}
+	return s.runSequentially(ctx)
+}
+
+func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
+	// Try to match an array of expected row counts
 	keyToMatch := s.currentCatalog + "." + s.currentSchema
 	if erc, exists := s.ExpectedRowCounts[keyToMatch]; exists {
 		s.expectedRowCountInCurrentSchema = erc
@@ -237,31 +254,90 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 			}
 		}
 	}
-	if err := s.runQueries(ctx, s.Queries, nil, expectedRowCountStartIndex); err != nil {
+	if err := s.runQueries(ctx, s.Queries, nil, 0); err != nil {
 		return err
 	}
-	expectedRowCountStartIndex += len(s.Queries)
+	expectedRowCountStartIndex := len(s.Queries)
 	// Using range loop variable may cause some problems here because the file names can be propagated to some other
 	// goroutines that may use this query file path string.
 	for i := 0; i < len(s.QueryFiles); i++ {
-		queryFileAbsPath := s.QueryFiles[i]
-		if !filepath.IsAbs(queryFileAbsPath) {
-			queryFileAbsPath = filepath.Join(s.BaseDir, queryFileAbsPath)
-		}
-		file, err := os.Open(queryFileAbsPath)
-		if err != nil {
-			return err
-		}
-		queries, err := presto.SplitQueries(file)
-		if err != nil {
-			return err
-		}
-		err = s.runQueries(ctx, queries, &s.QueryFiles[i], expectedRowCountStartIndex)
-		expectedRowCountStartIndex += len(queries)
-		if err != nil {
+		if err := s.runQueryFile(ctx, s.QueryFiles[i], &expectedRowCountStartIndex); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowCountStartIndex *int) (returnErr error) {
+	queryFileAbsPath := queryFile
+	if !filepath.IsAbs(queryFileAbsPath) {
+		queryFileAbsPath = filepath.Join(s.BaseDir, queryFileAbsPath)
+	}
+	file, err := os.Open(queryFileAbsPath)
+	var queries []string
+	if err == nil {
+		queries, err = presto.SplitQueries(file)
+	}
+	if err != nil {
+		if !*s.AbortOnError {
+			log.Error().Err(err).Str("file_path", queryFile).Msg("failed to read queries from file")
+			err = nil
+		}
+		// If we run into errors reading the query file, then the offset in the expected row count array will be messed up.
+		// Reset it to nil to stop showing expected row counts and to avoid confusions.
+		s.expectedRowCountInCurrentSchema = nil
+		return err
+	}
+	if expectedRowCountStartIndex != nil {
+		err = s.runQueries(ctx, queries, &queryFile, *expectedRowCountStartIndex)
+		*expectedRowCountStartIndex += len(queries)
+	} else {
+		err = s.runQueries(ctx, queries, &queryFile, 0)
+	}
+	return err
+}
+
+func (s *Stage) runRandomly(ctx context.Context) (returnErr error) {
+	var continueExecution func(queryCount int) bool
+	if dur, parseErr := time.ParseDuration(s.RandomlyExecuteUntil); parseErr == nil {
+		endTime := time.Now().Add(dur)
+		continueExecution = func(_ int) bool {
+			return time.Now().Before(endTime)
+		}
+	} else if count, atoiErr := strconv.Atoi(s.RandomlyExecuteUntil); atoiErr == nil {
+		continueExecution = func(queryCount int) bool {
+			return queryCount <= count
+		}
+	} else {
+		err := fmt.Errorf("failed to parse randomly_execute_until %s", s.RandomlyExecuteUntil)
+		if *s.AbortOnError {
+			return err
+		} else {
+			log.Error().Err(err).Send()
+			return nil
+		}
+	}
+	r := rand.New(rand.NewSource(s.States.RandSeed))
+	s.States.RandSeedUsed = true
+	log.Info().Int64("seed", s.States.RandSeed).Msg("random source seeded")
+	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
+	for i := 1; continueExecution(i); i++ {
+		idx := r.Intn(randIndexUpperBound)
+		if idx < len(s.Queries) {
+			// Run query embedded in the json file.
+			pseudoFileName := fmt.Sprintf("rand_%d", i)
+			if err := s.runQueries(ctx, s.Queries[idx:idx+1], &pseudoFileName, 0); err != nil {
+				return err
+			}
+		} else {
+			queryFile := s.QueryFiles[idx-len(s.Queries)]
+			pseudoFileName := fmt.Sprintf("rand_%d_%s", i, queryFile)
+			if err := s.runQueryFile(ctx, pseudoFileName, nil); err != nil {
+				return err
+			}
+		}
+	}
+	log.Info().Msg("Random execution concluded.")
 	return nil
 }
 

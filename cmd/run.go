@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"pbench/run"
+	"time"
 )
 
 // runCmd represents the run command
@@ -25,6 +26,7 @@ func init() {
 	runCmd.Flags().StringVarP(&run.OutputPath, "output-path", "o", wd, "Output directory path")
 	runCmd.Flags().StringVarP(&run.UserName, "user", "u", "", "Presto user name (optional)")
 	runCmd.Flags().StringVarP(&run.Password, "password", "p", "", "Presto user password (optional)")
+	runCmd.Flags().Int64VarP(&run.RandSeed, "seed", "e", time.Now().UnixMicro(), "Random seed for randomized execution")
 	runCmd.Flags().StringVar(&run.InfluxCfgPath, "influx", "", "InfluxDB connection config for run recorder (optional)")
 	runCmd.Flags().StringVar(&run.MySQLCfgPath, "mysql", "", "MySQL connection config for run recorder (optional)")
 	runCmd.Flags().StringVar(&run.PulumiCfgPath, "pulumi", "", "(only works when a MySQL run recorder is specified) Pulumi API config for storing deployment details with MySQL (optional)")

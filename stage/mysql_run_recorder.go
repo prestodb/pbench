@@ -123,8 +123,12 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 }
 
 func (m *MySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*QueryResult) {
-	completeRunInfo := `UPDATE pbench_runs SET duration_ms = ? WHERE run_id = ?`
-	res, err := m.db.Exec(completeRunInfo, s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), m.runId)
+	completeRunInfo := `UPDATE pbench_runs SET duration_ms = ?, rand_seed = ? WHERE run_id = ?`
+	randSeed := sql.NullInt64{
+		Int64: s.States.RandSeed,
+		Valid: s.States.RandSeedUsed,
+	}
+	res, err := m.db.Exec(completeRunInfo, s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), randSeed, m.runId)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to complete the run information in the MySQL database")

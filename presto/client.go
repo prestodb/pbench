@@ -24,8 +24,7 @@ const (
 	SourceHeader             = "X-Presto-Source"
 	ClientInfoHeader         = "X-Presto-Client-Info"
 	ClientTagHeader          = "X-Presto-Client-Tags"
-
-	DefaultUser = "presto-benchmark"
+	DefaultUser              = "pbench"
 )
 
 // RequestOption represents an option that can modify a http.Request.
