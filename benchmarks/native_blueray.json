@@ -8,6 +8,7 @@
     "glue.parquet_pushdown_filter_enabled": true,
     "glue.pushdown_filter_enabled": true,
     "in_predicates_as_inner_joins_enabled": true,
-    "exploit_constraints": true
+    "exploit_constraints": true,
+    "generate_domain_filters": true
   }
 }
