@@ -5,6 +5,8 @@ r5.16xlarge (vCPU: 64, Memory: 490 GB) * 32
 * `SysReservedMemCapGb = 2`
 * `SysReservedMemPercent = 0.05`
 * `ContainerMemoryGb = MemoryPerNodeGb - ceil(min(SysReservedMemCapGb, MemoryPerNodeGb * SysReservedMemPercent)) = 490 - ceil(min(2, 490 * 0.05)) = 488` [[docker-stack-java.yaml](docker-stack-java.yaml)] and [[docker-stack-native.yaml](docker-stack-native.yaml)]
+* `JoinMaxBcastSizePercentOfContainerMem = 0.01`
+* `JoinMaxBroadcastTableSizeMb = ceil(ContainerMemoryGb * JoinMaxBcastSizePercentOfContainerMem * 1024) = ceil(488 * 0.01 * 1024) = 4998MB`
 ### For Java clusters:
 * `HeapSizeGb = floor(ContainerMemory * HeapSizePercentOfContainerMem) = floor(488 * 0.9) = 439` (`-Xmx` and `-Xms` in [[coordinator jvm.config](coordinator/jvm.config)] and [[worker jvm.config](workers/jvm.config)])
 * [[coordinator config.properties](coordinator/config.properties)] and [[worker config.properties](worker/config.properties)]

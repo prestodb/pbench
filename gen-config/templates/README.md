@@ -7,6 +7,8 @@
 * `SysReservedMemCapGb = {{ .GeneratorParameters.SysReservedMemCapGb }}`
 * `SysReservedMemPercent = {{ .GeneratorParameters.SysReservedMemPercent }}`
 * `ContainerMemoryGb = MemoryPerNodeGb - ceil(min(SysReservedMemCapGb, MemoryPerNodeGb * SysReservedMemPercent)) = {{ .MemoryPerNodeGb }} - ceil(min({{ .GeneratorParameters.SysReservedMemCapGb }}, {{ .MemoryPerNodeGb }} * {{ .GeneratorParameters.SysReservedMemPercent }})) = {{ .ContainerMemoryGb }}` [[docker-stack-java.yaml](docker-stack-java.yaml)] and [[docker-stack-native.yaml](docker-stack-native.yaml)]
+* `JoinMaxBcastSizePercentOfContainerMem = {{ .GeneratorParameters.JoinMaxBcastSizePercentOfContainerMem }}`
+* `JoinMaxBroadcastTableSizeMb = ceil(ContainerMemoryGb * JoinMaxBcastSizePercentOfContainerMem * 1024) = ceil({{ .ContainerMemoryGb }} * {{ .GeneratorParameters.JoinMaxBcastSizePercentOfContainerMem }} * 1024) = {{ .JoinMaxBroadcastTableSizeMb }}MB`
 ### For Java clusters:
 * `HeapSizeGb = floor(ContainerMemory * HeapSizePercentOfContainerMem) = floor({{ .ContainerMemoryGb }} * {{ .GeneratorParameters.HeapSizePercentOfContainerMem }}) = {{ .HeapSizeGb }}` (`-Xmx` and `-Xms` in [[coordinator jvm.config](coordinator/jvm.config)] and [[worker jvm.config](workers/jvm.config)])
 * [[coordinator config.properties](coordinator/config.properties)] and [[worker config.properties](worker/config.properties)]

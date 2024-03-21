@@ -21,6 +21,7 @@ type ClusterConfig struct {
 	NativeProxygenMemGb           uint                 `json:"-"`
 	NativeBufferMemGb             uint                 `json:"-"`
 	NativeQueryMemGb              uint                 `json:"-"`
+	JoinMaxBroadcastTableSizeMb   uint                 `json:"-"`
 	Path                          string               `json:"-"`
 }
 
@@ -35,4 +36,5 @@ func (c *ClusterConfig) Calculate() {
 	c.NativeBufferMemGb = uint(math.Ceil(math.Min(c.GeneratorParameters.NativeBufferMemCapGb, float64(c.ContainerMemoryGb)*c.GeneratorParameters.NativeBufferMemPercent)))
 	c.NativeSystemMemGb = c.ContainerMemoryGb - c.NativeBufferMemGb - c.NativeProxygenMemGb
 	c.NativeQueryMemGb = uint(math.Floor(float64(c.NativeSystemMemGb) * c.GeneratorParameters.NativeQueryMemPercentOfSysMem))
+	c.JoinMaxBroadcastTableSizeMb = uint(math.Ceil(float64(c.ContainerMemoryGb) * c.GeneratorParameters.JoinMaxBcastSizePercentOfContainerMem * 1024))
 }
