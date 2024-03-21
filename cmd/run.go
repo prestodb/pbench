@@ -20,6 +20,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	wd, _ := os.Getwd()
 	runCmd.Flags().StringVarP(&run.Name, "name", "n", "", `Assign a name to this run. (default: "<main stage name>-<current time>")`)
+	runCmd.Flags().StringVarP(&run.Comment, "comment", "c", "", `Add a comment to this run.`)
 	runCmd.Flags().StringVarP(&run.ServerUrl, "server", "s", run.ServerUrl, "Presto server address")
 	runCmd.Flags().StringVarP(&run.OutputPath, "output-path", "o", wd, "Output directory path")
 	runCmd.Flags().StringVarP(&run.UserName, "user", "u", "", "Presto user name (optional)")

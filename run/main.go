@@ -16,6 +16,7 @@ import (
 
 var (
 	Name          string
+	Comment       string
 	ServerUrl     = stage.DefaultServerUrl
 	OutputPath    string
 	UserName      string
@@ -33,6 +34,7 @@ func Run(_ *cobra.Command, args []string) {
 	mainStage := &stage.Stage{
 		States: &stage.SharedStageStates{
 			RunName:      Name,
+			Comment:      Comment,
 			ServerFQDN:   parsedServerUrl.Host,
 			RunStartTime: time.Now(),
 			OutputPath:   OutputPath,

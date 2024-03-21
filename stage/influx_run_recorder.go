@@ -92,6 +92,7 @@ func (i *InfluxRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*
 		"failed":      i.failed,
 		"mismatch":    i.mismatch,
 		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
+		"comment":     s.States.Comment,
 	}
 	point := write.NewPoint("runs", tags, fields, s.States.RunFinishTime)
 	if err := i.influxWriter.WritePoint(ctx, point); err != nil {

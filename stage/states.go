@@ -9,6 +9,7 @@ import (
 
 type SharedStageStates struct {
 	RunName       string
+	Comment       string
 	ServerFQDN    string
 	RunStartTime  time.Time
 	RunFinishTime time.Time
