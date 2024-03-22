@@ -261,14 +261,14 @@ func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
 	// Using range loop variable may cause some problems here because the file names can be propagated to some other
 	// goroutines that may use this query file path string.
 	for i := 0; i < len(s.QueryFiles); i++ {
-		if err := s.runQueryFile(ctx, s.QueryFiles[i], &expectedRowCountStartIndex); err != nil {
+		if err := s.runQueryFile(ctx, s.QueryFiles[i], &expectedRowCountStartIndex, nil); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowCountStartIndex *int) (returnErr error) {
+func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowCountStartIndex *int, fileAlias *string) (returnErr error) {
 	queryFileAbsPath := queryFile
 	if !filepath.IsAbs(queryFileAbsPath) {
 		queryFileAbsPath = filepath.Join(s.BaseDir, queryFileAbsPath)
@@ -288,11 +288,14 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 		s.expectedRowCountInCurrentSchema = nil
 		return err
 	}
+	if fileAlias == nil {
+		fileAlias = &queryFile
+	}
 	if expectedRowCountStartIndex != nil {
-		err = s.runQueries(ctx, queries, &queryFile, *expectedRowCountStartIndex)
+		err = s.runQueries(ctx, queries, fileAlias, *expectedRowCountStartIndex)
 		*expectedRowCountStartIndex += len(queries)
 	} else {
-		err = s.runQueries(ctx, queries, &queryFile, 0)
+		err = s.runQueries(ctx, queries, fileAlias, 0)
 	}
 	return err
 }
@@ -337,13 +340,13 @@ func (s *Stage) runRandomly(ctx context.Context) (returnErr error) {
 			}
 		} else {
 			queryFile := s.QueryFiles[idx-len(s.Queries)]
-			pseudoFileName := fmt.Sprintf("rand_%d_%s", i, queryFile)
-			if err := s.runQueryFile(ctx, pseudoFileName, nil); err != nil {
+			fileAlias := fmt.Sprintf("rand_%d/%s", i, queryFile)
+			if err := s.runQueryFile(ctx, queryFile, nil, &fileAlias); err != nil {
 				return err
 			}
 		}
 	}
-	log.Info().Msg("Random execution concluded.")
+	log.Info().Msg("random execution concluded.")
 	return nil
 }
 
