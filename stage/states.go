@@ -12,6 +12,7 @@ type SharedStageStates struct {
 	Comment       string
 	ServerFQDN    string
 	RandSeed      int64
+	RandSkip      int
 	RandSeedUsed  bool
 	RunStartTime  time.Time
 	RunFinishTime time.Time

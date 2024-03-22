@@ -22,6 +22,7 @@ var (
 	UserName      string
 	Password      string
 	RandSeed      int64
+	RandSkip      int
 	InfluxCfgPath string
 	MySQLCfgPath  string
 	PulumiCfgPath string
@@ -37,6 +38,7 @@ func Run(_ *cobra.Command, args []string) {
 			RunName:      Name,
 			Comment:      Comment,
 			RandSeed:     RandSeed,
+			RandSkip:     RandSkip,
 			ServerFQDN:   parsedServerUrl.Host,
 			RunStartTime: time.Now(),
 			OutputPath:   OutputPath,
