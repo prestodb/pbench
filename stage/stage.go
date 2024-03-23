@@ -326,10 +326,10 @@ func (s *Stage) runRandomly(ctx context.Context) (returnErr error) {
 	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
 	for i := 1; continueExecution(i); i++ {
 		idx := r.Intn(randIndexUpperBound)
-		if i == s.States.RandSkip {
-			log.Info().Msgf("skipped %d random selections", i)
-		}
 		if i <= s.States.RandSkip {
+			if i == s.States.RandSkip {
+				log.Info().Msgf("skipped %d random selections", i)
+			}
 			continue
 		}
 		if idx < len(s.Queries) {
