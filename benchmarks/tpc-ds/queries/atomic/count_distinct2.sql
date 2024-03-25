@@ -1,6 +1,6 @@
 --#BGBLK 10
 
-set current query optimization 5;
+--set current query optimization 5;
 
 --set current schema blu2;
 

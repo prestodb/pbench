@@ -1,8 +1,8 @@
 --#BGBLK 30
 
  --set current schema bdinsights; 
-DROP TABLE web_sales_wide;
-CREATE TABLE web_sales_wide AS 
+DROP TABLE IF EXISTS web_sales_wide;
+CREATE TABLE web_sales_wide WITH (format = 'PARQUET') AS 
 ( SELECT  WS_SOLD_DATE_SK,
  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 This is a test of the American Broadc' 
  || 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 This is a test of the American Broadc' 
@@ -81,6 +81,6 @@ CREATE TABLE web_sales_wide AS
  || 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890 This is a test of the American Broadc'  wide_col_3
 FROM web_sales
 WHERE ws_sold_date_sk <= 2450816 + 30
-  AND ws_bill_customer_sk IS NOT NULL) definition only;
+  AND ws_bill_customer_sk IS NOT NULL) WITH NO DATA;
 
 --#EOBLK

@@ -16,7 +16,7 @@ with ss as
 --group by ss_item_sk, SS_SOLD_DATE_SK,
   -- SS_NET_PAID, SS_ADDR_SK
 )
-select count_big(*)
+select count(*)
   --  sum(s1.SS_NET_PAID), s1.SS_ADDR_SK
    from ss s1 
  , ss s2

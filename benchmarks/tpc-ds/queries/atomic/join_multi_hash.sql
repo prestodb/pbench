@@ -14,7 +14,7 @@ FROM catalog_sales cs1
     AND cs1.cs_item_sk=cr_item_sk
   )
   INNER JOIN date_dim ON (cr_returned_date_sk = d_date_sk)
-WHERE d_date BETWEEN '1999-01-01' and '1999-02-01'
+WHERE d_date BETWEEN DATE '1999-01-01' AND DATE '1999-02-01'
 ;
 
 --#EOBLK

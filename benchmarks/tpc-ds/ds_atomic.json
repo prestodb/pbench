@@ -10,7 +10,6 @@
     "queries/atomic/count_distinct2.sql",
     "queries/atomic/count_distinct3.sql",
     "queries/atomic/count_distinct_scpu.sql",
-    "queries/atomic/create_wide_tbl.sql",
     "queries/atomic/cross_join.sql",
     "queries/atomic/dtq_inner2outer.sql",
     "queries/atomic/dtq_outer2inner.sql",
