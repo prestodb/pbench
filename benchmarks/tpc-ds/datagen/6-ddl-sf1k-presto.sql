@@ -412,7 +412,7 @@ CREATE TABLE IF NOT EXISTS store_sales (
   ss_net_paid DECIMAL(7,2),
   ss_net_paid_inc_tax DECIMAL(7,2),
   ss_net_profit DECIMAL(7,2),
-  ss_sold_date_sk BIGINT) -- identifier foreign key d_date_sk
+  ss_sold_date_sk INT) -- identifier foreign key d_date_sk
 WITH (
   format = 'PARQUET',
   external_location = 's3a://presto-workload/tpcds-sf1000-parquet-iceberg-part/store_sales/data',

@@ -393,7 +393,7 @@ CREATE TABLE IF NOT EXISTS store_sales (
   ss_net_paid DECIMAL(7,2),
   ss_net_paid_inc_tax DECIMAL(7,2),
   ss_net_profit DECIMAL(7,2),
-  ss_sold_date_sk BIGINT) -- identifier foreign key d_date_sk
+  ss_sold_date_sk INT) -- identifier foreign key d_date_sk
 USING iceberg
 PARTITIONED BY (ss_sold_date_sk)
 TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)

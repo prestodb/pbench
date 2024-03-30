@@ -1,9 +1,9 @@
-CREATE SCHEMA IF NOT EXISTS tpcds_sf10000_parquet_varchar_part
+CREATE SCHEMA IF NOT EXISTS tpcds_sf100000_parquet_varchar_part
 WITH (
-  location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/'
+  location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/'
 );
 
-USE hive.tpcds_sf10000_parquet_varchar_part;
+USE hive.tpcds_sf100000_parquet_varchar_part;
 
 CREATE TABLE IF NOT EXISTS call_center (
   cc_call_center_sk INT, -- identifier not null primary key
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS call_center (
   cc_tax_percentage DECIMAL(5,2))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/call_center/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/call_center/data'
 );
 
 CREATE TABLE IF NOT EXISTS catalog_page (
@@ -54,10 +54,11 @@ CREATE TABLE IF NOT EXISTS catalog_page (
   cp_type VARCHAR(100))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/catalog_page/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/catalog_page/data'
 );
 
 CREATE TABLE IF NOT EXISTS catalog_returns (
+  cr_returned_date_sk INT, -- identifier foreign key d_date_sk
   cr_returned_time_sk INT,  -- identifier foreign key t_time_sk
   cr_item_sk INT, -- identifier not null primary key foreign key i_item_sk,cs_item_sk
   cr_refunded_customer_sk INT,  -- identifier foreign key c_customer_sk
@@ -83,12 +84,10 @@ CREATE TABLE IF NOT EXISTS catalog_returns (
   cr_refunded_cash DECIMAL(7,2),
   cr_reversed_charge DECIMAL(7,2),
   cr_store_credit DECIMAL(7,2),
-  cr_net_loss DECIMAL(7,2),
-  cr_returned_date_sk INT) -- identifier foreign key d_date_sk
+  cr_net_loss DECIMAL(7,2))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/catalog_returns/data',
-  partitioned_by = array['cr_returned_date_sk']
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/catalog_returns/data'
 );
 
 CREATE TABLE IF NOT EXISTS catalog_sales (
@@ -128,7 +127,7 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
   cs_sold_date_sk INT) -- identifier foreign key d_date_sk
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/catalog_sales/data',
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/catalog_sales/data',
   partitioned_by = array['cs_sold_date_sk']
 );
 
@@ -153,7 +152,7 @@ CREATE TABLE IF NOT EXISTS customer (
   c_last_review_date_sk INT) -- identifier foreign key d_date_sk
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/customer/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/customer/data'
 );
 
 CREATE TABLE IF NOT EXISTS customer_address (
@@ -172,7 +171,7 @@ CREATE TABLE IF NOT EXISTS customer_address (
   ca_location_type VARCHAR(20)) -- char(20)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/customer_address/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/customer_address/data'
 );
 
 CREATE TABLE IF NOT EXISTS customer_demographics (
@@ -187,7 +186,7 @@ CREATE TABLE IF NOT EXISTS customer_demographics (
   cd_dep_college_count INT)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/customer_demographics/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/customer_demographics/data'
 );
 
 CREATE TABLE IF NOT EXISTS date_dim (
@@ -221,7 +220,7 @@ CREATE TABLE IF NOT EXISTS date_dim (
   d_current_year VARCHAR(1)) -- char(1)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/date_dim/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/date_dim/data'
 );
 
 CREATE TABLE IF NOT EXISTS household_demographics (
@@ -232,7 +231,7 @@ CREATE TABLE IF NOT EXISTS household_demographics (
   hd_vehicle_count INT)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/household_demographics/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/household_demographics/data'
 );
 
 CREATE TABLE IF NOT EXISTS income_band (
@@ -241,7 +240,7 @@ CREATE TABLE IF NOT EXISTS income_band (
   ib_upper_bound INT)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/income_band/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/income_band/data'
 );
 
 CREATE TABLE IF NOT EXISTS inventory (
@@ -251,7 +250,7 @@ CREATE TABLE IF NOT EXISTS inventory (
   inv_date_sk INT) -- identifier not null primary key foreign key d_date_sk
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/inventory/data',
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/inventory/data',
   partitioned_by = array['inv_date_sk']
 );
 
@@ -280,7 +279,7 @@ CREATE TABLE IF NOT EXISTS item (
   i_product_name VARCHAR(50)) -- char(50)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/item/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/item/data'
 );
 
 CREATE TABLE IF NOT EXISTS promotion (
@@ -305,7 +304,7 @@ CREATE TABLE IF NOT EXISTS promotion (
   p_discount_active VARCHAR(1)) -- char(1)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/promotion/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/promotion/data'
 );
 
 CREATE TABLE IF NOT EXISTS reason (
@@ -314,7 +313,7 @@ CREATE TABLE IF NOT EXISTS reason (
   r_reason_desc VARCHAR(100)) -- char(100)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/reason/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/reason/data'
 );
 
 CREATE TABLE IF NOT EXISTS ship_mode (
@@ -326,7 +325,7 @@ CREATE TABLE IF NOT EXISTS ship_mode (
   sm_contract VARCHAR(20)) -- char(20)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/ship_mode/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/ship_mode/data'
 );
 
 CREATE TABLE IF NOT EXISTS store (
@@ -361,10 +360,11 @@ CREATE TABLE IF NOT EXISTS store (
   s_tax_precentage DECIMAL(5,2))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/store/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/store/data'
 );
 
 CREATE TABLE IF NOT EXISTS store_returns (
+  sr_returned_date_sk INT, -- identifier foreign key d_date_sk
   sr_return_time_sk INT, -- identifier foreign key t_time_sk
   sr_item_sk INT, -- identifier not null primary key foreign key i_item_sk,ss_item_sk
   sr_customer_sk INT, -- identifier foreign key c_customer_sk
@@ -383,12 +383,10 @@ CREATE TABLE IF NOT EXISTS store_returns (
   sr_refunded_cash DECIMAL(7,2),
   sr_reversed_charge DECIMAL(7,2),
   sr_store_credit DECIMAL(7,2),
-  sr_net_loss DECIMAL(7,2),
-  sr_returned_date_sk INT) -- identifier foreign key d_date_sk
+  sr_net_loss DECIMAL(7,2))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/store_returns/data',
-  partitioned_by = array['sr_returned_date_sk']
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/store_returns/data'
 );
 
 CREATE TABLE IF NOT EXISTS store_sales (
@@ -417,7 +415,7 @@ CREATE TABLE IF NOT EXISTS store_sales (
   ss_sold_date_sk INT) -- identifier foreign key d_date_sk
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/store_sales/data',
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/store_sales/data',
   partitioned_by = array['ss_sold_date_sk']
 );
 
@@ -434,7 +432,7 @@ CREATE TABLE IF NOT EXISTS time_dim (
   t_meal_time VARCHAR(20)) -- char(20)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/time_dim/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/time_dim/data'
 );
 
 CREATE TABLE IF NOT EXISTS warehouse (
@@ -454,7 +452,7 @@ CREATE TABLE IF NOT EXISTS warehouse (
   w_gmt_offset DECIMAL(5,2))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/warehouse/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/warehouse/data'
 );
 
 CREATE TABLE IF NOT EXISTS web_page (
@@ -474,10 +472,11 @@ CREATE TABLE IF NOT EXISTS web_page (
   wp_max_ad_count INT)
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_page/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_page/data'
 );
 
 CREATE TABLE IF NOT EXISTS web_returns (
+  wr_returned_date_sk INT, -- identifier foreign key d_date_sk
   wr_returned_time_sk INT, -- identifier foreign key t_time_sk
   wr_item_sk INT, -- identifier not null primary key foreign key i_item_sk,ss_item_sk
   wr_refunded_customer_sk INT, -- identifier foreign key c_customer_sk
@@ -500,12 +499,10 @@ CREATE TABLE IF NOT EXISTS web_returns (
   wr_refunded_cash DECIMAL(7,2),
   wr_reversed_charge DECIMAL(7,2),
   wr_account_credit DECIMAL(7,2),
-  wr_net_loss DECIMAL(7,2),
-  wr_returned_date_sk INT) -- identifier foreign key d_date_sk
+  wr_net_loss DECIMAL(7,2))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_returns/data',
-  partitioned_by = array['wr_returned_date_sk']
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_returns/data'
 );
 
 CREATE TABLE IF NOT EXISTS web_sales (
@@ -545,7 +542,7 @@ CREATE TABLE IF NOT EXISTS web_sales (
   ws_sold_date_sk INT) -- identifier foreign key d_date_sk
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_sales/data',
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_sales/data',
   partitioned_by = array['ws_sold_date_sk']
 );
 
@@ -578,21 +575,21 @@ CREATE TABLE IF NOT EXISTS web_site (
   web_tax_percentage DECIMAL(5,2))
 WITH (
   format = 'PARQUET',
-  external_location = 's3a://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_site/data'
+  external_location = 's3a://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_site/data'
 );
 
--- aws s3 mv --recursive s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/catalog_sales/data/cs_sold_date_sk=null/ s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/catalog_sales/data/cs_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
--- aws s3 mv --recursive s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/store_returns/data/sr_returned_date_sk=null/ s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/store_returns/data/sr_returned_date_sk=__HIVE_DEFAULT_PARTITION__/
--- aws s3 mv --recursive s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/store_sales/data/ss_sold_date_sk=null/ s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/store_sales/data/ss_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
--- aws s3 mv --recursive s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_returns/data/wr_returned_date_sk=null/ s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_returns/data/wr_returned_date_sk=__HIVE_DEFAULT_PARTITION__/
--- aws s3 mv --recursive s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_sales/data/ws_sold_date_sk=null/ s3://presto-workload/tpcds-sf10000-parquet-iceberg-part/web_sales/data/ws_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
-CALL system.sync_partition_metadata('tpcds_sf10000_parquet_varchar_part', 'catalog_returns', 'FULL');
-CALL system.sync_partition_metadata('tpcds_sf10000_parquet_varchar_part', 'catalog_sales', 'FULL');
-CALL system.sync_partition_metadata('tpcds_sf10000_parquet_varchar_part', 'inventory', 'FULL');
-CALL system.sync_partition_metadata('tpcds_sf10000_parquet_varchar_part', 'store_returns', 'FULL');
-CALL system.sync_partition_metadata('tpcds_sf10000_parquet_varchar_part', 'store_sales', 'FULL');
-CALL system.sync_partition_metadata('tpcds_sf10000_parquet_varchar_part', 'web_returns', 'FULL');
-CALL system.sync_partition_metadata('tpcds_sf10000_parquet_varchar_part', 'web_sales', 'FULL');
+-- aws s3 mv --recursive s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/catalog_sales/data/cs_sold_date_sk=null/ s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/catalog_sales/data/cs_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/store_returns/data/sr_returned_date_sk=null/ s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/store_returns/data/sr_returned_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/store_sales/data/ss_sold_date_sk=null/ s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/store_sales/data/ss_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_returns/data/wr_returned_date_sk=null/ s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_returns/data/wr_returned_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_sales/data/ws_sold_date_sk=null/ s3://presto-workload/tcpds-sf100000-parquet-partitioned-zurich-20240313/web_sales/data/ws_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- CALL system.sync_partition_metadata('tpcds_sf100000_parquet_varchar_part', 'catalog_returns', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf100000_parquet_varchar_part', 'catalog_sales', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf100000_parquet_varchar_part', 'inventory', 'FULL');
+-- CALL system.sync_partition_metadata('tpcds_sf100000_parquet_varchar_part', 'store_returns', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf100000_parquet_varchar_part', 'store_sales', 'FULL');
+-- CALL system.sync_partition_metadata('tpcds_sf100000_parquet_varchar_part', 'web_returns', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf100000_parquet_varchar_part', 'web_sales', 'FULL');
 
 ANALYZE call_center;
 ANALYZE catalog_page;
