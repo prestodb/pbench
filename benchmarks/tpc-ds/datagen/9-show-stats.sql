@@ -1,3 +1,4 @@
+set session iceberg.hive_statistics_merge_strategy='USE_NULLS_FRACTION_AND_NDV';
 show stats for call_center;
 show stats for catalog_page;
 show stats for catalog_returns;
