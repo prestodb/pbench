@@ -7,7 +7,7 @@
   "query_max_mem_per_node_percent_of_total": 0.9,
   "proxygen_mem_per_worker_gb": 0.125,
   "proxygen_mem_cap_gb": 2,
-  "native_buffer_mem_percent": 0.1,
+  "native_buffer_mem_percent": 0.05,
   "native_buffer_mem_cap_gb": 32,
   "native_query_mem_percent_of_sys_mem": 0.95,
   "join_max_bcast_size_percent_of_container_mem": 0.01
