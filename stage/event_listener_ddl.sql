@@ -63,6 +63,7 @@ create table presto_benchmarks.presto_query_operator_stats
     peak_total_memory_reservation_bytes  bigint       null,
     spilled_data_size_bytes              bigint       null,
     info                                 text         null,
+    runtime_stats                        text         null,
     dt                                   datetime(3)  not null,
     primary key (query_id, stage_id, pipeline_id, operator_id, dt)
 )
