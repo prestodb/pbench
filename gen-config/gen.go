@@ -16,6 +16,7 @@ var fm = template.FuncMap{
 	},
 	"mul": func(a uint, b uint) uint { return a * b },
 	"add": func(a uint, b uint) uint { return a + b },
+	"sub": func(a uint, b uint) uint { return a - b },
 	"seq": func(start, end uint) (stream chan uint) {
 		stream = make(chan uint)
 		go func() {
