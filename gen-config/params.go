@@ -19,6 +19,7 @@ type GeneratorParameters struct {
 	NativeBufferMemCapGb                  float64 `json:"native_buffer_mem_cap_gb"`
 	NativeQueryMemPercentOfSysMem         float64 `json:"native_query_mem_percent_of_sys_mem"`
 	JoinMaxBcastSizePercentOfContainerMem float64 `json:"join_max_bcast_size_percent_of_container_mem"`
+	MemoryPushBackStartBelowLimitGb       uint    `json:"memory_push_back_start_below_limit_gb"`
 }
 
 var (
