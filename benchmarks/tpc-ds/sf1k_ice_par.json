@@ -3,6 +3,6 @@
   "catalog": "iceberg",
   "schema": "tpcds_sf1000_parquet_varchar_iceberg_part",
   "session_params": {
-    "iceberg.hive_statistics_merge_strategy": "USE_NULLS_FRACTION_AND_NDV"
+    "iceberg.hive_statistics_merge_strategy": "NUMBER_OF_DISTINCT_VALUES,TOTAL_SIZE_IN_BYTES"
   }
 }
