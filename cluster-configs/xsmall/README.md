@@ -1,6 +1,7 @@
 # `xsmall` cluster
 r5.xlarge (vCPU: 4, Memory: 30 GB) * 2
 
+
 ### Global
 * `SysReservedMemCapGb = 2`
 * `SysReservedMemPercent = 0.05`

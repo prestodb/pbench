@@ -1,6 +1,7 @@
 # `2xlarge` cluster
 r5.16xlarge (vCPU: 64, Memory: 490 GB) * 48
 
+
 ### Global
 * `SysReservedMemCapGb = 2`
 * `SysReservedMemPercent = 0.05`

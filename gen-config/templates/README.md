@@ -3,6 +3,9 @@
 {{ if .SpillEnabled }}
 ### This configuration include Prestissimo spilling settings.
 {{ end }}
+{{ if .SsdCacheSize }}
+### This configuration includes an SSD Cache of {{ .SsdCacheSize }}GB
+{{ end }}
 ### Global
 * `SysReservedMemCapGb = {{ .GeneratorParameters.SysReservedMemCapGb }}`
 * `SysReservedMemPercent = {{ .GeneratorParameters.SysReservedMemPercent }}`
