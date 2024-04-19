@@ -6,8 +6,6 @@
     "join_distribution_type": "AUTOMATIC",
     "join_reordering_strategy": "AUTOMATIC",
     "glue.parquet_pushdown_filter_enabled": true,
-    "glue.pushdown_filter_enabled": false,
-    "in_predicates_as_inner_joins_enabled": true,
-    "exploit_constraints": true
+    "glue.pushdown_filter_enabled": false
   }
 }
