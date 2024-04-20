@@ -1,11 +1,12 @@
 # `{{ .Name }}` cluster
 {{ .WorkerInstanceType }} (vCPU: {{ .VCPUPerWorker }}, Memory: {{ .MemoryPerNodeGb }} GB) * {{ .NumberOfWorkers }}
-{{ if .SpillEnabled }}
+
+{{ if .SpillEnabled -}}
 ### This configuration include Prestissimo spilling settings.
-{{ end }}
-{{ if .SsdCacheSize }}
+{{ end -}}
+{{ if .SsdCacheSize -}}
 ### This configuration includes an SSD Cache of {{ .SsdCacheSize }}GB
-{{ end }}
+{{ end -}}
 ### Global
 * `SysReservedMemCapGb = {{ .GeneratorParameters.SysReservedMemCapGb }}`
 * `SysReservedMemPercent = {{ .GeneratorParameters.SysReservedMemPercent }}`

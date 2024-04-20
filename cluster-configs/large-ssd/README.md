@@ -1,9 +1,7 @@
 # `large` cluster
 r5d.8xlarge (vCPU: 32, Memory: 248 GB) * 16
 
-
 ### This configuration includes an SSD Cache of 500GB
-
 ### Global
 * `SysReservedMemCapGb = 2`
 * `SysReservedMemPercent = 0.05`

@@ -7,5 +7,5 @@
     "number_of_workers": 16,
     "memory_per_node_gb": 248,
     "vcpu_per_worker": 32,
-    "ssd_cache_size": 500 
+    "ssd_cache_size": 500
 }
