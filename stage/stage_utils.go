@@ -50,6 +50,9 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 			delete(s.SessionParams, k)
 		}
 	}
+	if s.TimeZone == nil {
+		s.TimeZone = other.TimeZone
+	}
 	s.Queries = append(s.Queries, other.Queries...)
 	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
 	if s.ExpectedRowCounts == nil {
@@ -160,6 +163,13 @@ func (s *Stage) prepareClient() {
 			Str("values", s.Client.GetSessionParams()).
 			Msg("set session params")
 	}
+	if s.TimeZone != nil {
+		s.currentTimeZone = *s.TimeZone
+		s.Client.TimeZone(s.currentTimeZone)
+		log.Info().EmbedObject(s).Str("timezone", s.currentTimeZone).Msg("set timezone")
+	} else {
+		s.currentTimeZone = s.Client.GetTimeZone()
+	}
 	s.Client.AppendClientTag(s.Id)
 }
 
@@ -193,7 +203,13 @@ func (s *Stage) propagateStates() {
 		if nextStage.SessionParams == nil {
 			nextStage.SessionParams = make(map[string]any)
 		}
+		if nextStage.TimeZone == nil {
+			nextStage.TimeZone = s.TimeZone
+		}
 		for k, v := range s.SessionParams {
+			if v == nil {
+				continue
+			}
 			if _, ok := nextStage.SessionParams[k]; !ok {
 				nextStage.SessionParams[k] = v
 			}

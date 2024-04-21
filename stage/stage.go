@@ -32,6 +32,7 @@ type Stage struct {
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`
+	TimeZone      *string        `json:"timezone"`
 	Queries       []string       `json:"queries,omitempty"`
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.
@@ -91,9 +92,10 @@ type Stage struct {
 
 	// Convenient access to the expected row count array under the current schema.
 	expectedRowCountInCurrentSchema []int
-	// Convenient access to the catalog and schema
-	currentCatalog string
-	currentSchema  string
+	// Convenient access to the catalog, schema, and timezone
+	currentCatalog  string
+	currentSchema   string
+	currentTimeZone string
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
 
@@ -438,6 +440,9 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	}
 	if s.currentSchema != "" {
 		e = e.Str("schema", s.currentSchema)
+	}
+	if s.currentTimeZone != "" {
+		e = e.Str("timezone", s.currentTimeZone)
 	}
 	if *s.SaveOutput {
 		e.Bool("save_output", true)

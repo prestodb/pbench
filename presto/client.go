@@ -24,6 +24,7 @@ const (
 	SourceHeader             = "X-Presto-Source"
 	ClientInfoHeader         = "X-Presto-Client-Info"
 	ClientTagHeader          = "X-Presto-Client-Tags"
+	TimeZoneHeader           = "X-Presto-Time-Zone"
 	DefaultUser              = "pbench"
 )
 
@@ -53,6 +54,11 @@ func NewClient(serverUrl string) (*Client, error) {
 	client.User(DefaultUser)
 	client.baseHeader.Set(SourceHeader, DefaultUser)
 	return client, nil
+}
+
+func (c *Client) TimeZone(timezone string) *Client {
+	c.baseHeader.Set(TimeZoneHeader, timezone)
+	return c
 }
 
 func (c *Client) User(user string) *Client {
@@ -122,6 +128,10 @@ func (c *Client) GetCatalog() string {
 
 func (c *Client) GetSchema() string {
 	return c.baseHeader.Get(SchemaHeader)
+}
+
+func (c *Client) GetTimeZone() string {
+	return c.baseHeader.Get(TimeZoneHeader)
 }
 
 func (c *Client) ClientInfo(info string) *Client {
