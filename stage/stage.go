@@ -196,7 +196,7 @@ func (s *Stage) Run(ctx context.Context) int {
 			for _, recorder := range s.States.runRecorders {
 				recorder.RecordRun(getCtxWithTimeout(time.Second*5), s, results)
 			}
-			return s.States.exitCode
+			return int(s.States.exitCode.Load())
 		}
 	}
 }
@@ -304,7 +304,7 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 			// Reset it to nil to stop showing expected row counts and to avoid confusions.
 			s.expectedRowCountInCurrentSchema = nil
 		} else {
-			s.States.exitCode = 1
+			s.States.exitCode.CompareAndSwap(0, 1)
 		}
 		return err
 	}
@@ -334,7 +334,7 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	} else {
 		err := fmt.Errorf("failed to parse randomly_execute_until %s", s.RandomlyExecuteUntil)
 		if *s.AbortOnError {
-			s.States.exitCode = 5
+			s.States.exitCode.CompareAndSwap(0, 5)
 			return err
 		} else {
 			log.Error().Err(err).Send()
@@ -391,7 +391,7 @@ func (s *Stage) runShellScripts(ctx context.Context) error {
 		if err != nil {
 			logEntry.Err(err).Msg("run shell script failed.")
 			if *s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				s.States.exitCode = cmd.ProcessState.ExitCode()
+				s.States.exitCode.CompareAndSwap(0, int32(cmd.ProcessState.ExitCode()))
 				return err
 			}
 		} else {
@@ -433,7 +433,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 					// If AbortOnError is set, we skip the rest queries in the same batch.
 					// Logging etc. will be handled in the parent stack.
 					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
-					s.States.exitCode = 1
+					s.States.exitCode.CompareAndSwap(0, 1)
 					return result
 				}
 				// Log the error information and continue running
