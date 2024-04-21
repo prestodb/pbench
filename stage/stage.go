@@ -2,6 +2,7 @@ package stage
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
@@ -37,6 +39,8 @@ type Stage struct {
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.
 	QueryFiles []string `json:"query_files,omitempty"`
+	// Run shell scripts after executing all the queries.
+	ShellScripts []string `json:"shell_scripts,omitempty"`
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
 	// Can use regexp as key to match multiple [catalog.schema] pairs.
@@ -232,14 +236,23 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		return ctx.Err()
 	case <-s.waitForPrerequisites():
 	}
-	log.Debug().EmbedObject(s).Msg("all prerequisites finished")
+	log.Info().EmbedObject(s).Msg("all prerequisites finished")
 	s.setDefaults()
 	s.prepareClient()
 	s.propagateStates()
-	if s.RandomExecution {
-		return s.runRandomly(ctx)
+	if len(s.Queries)+len(s.QueryFiles) > 0 {
+		if s.RandomExecution {
+			returnErr = s.runRandomly(ctx)
+		} else {
+			returnErr = s.runSequentially(ctx)
+		}
+	} else {
+		log.Info().Msg("no query to run.")
 	}
-	return s.runSequentially(ctx)
+	if returnErr == nil {
+		returnErr = s.runShellScripts(ctx)
+	}
+	return
 }
 
 func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
@@ -273,7 +286,7 @@ func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
 	return nil
 }
 
-func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowCountStartIndex *int, fileAlias *string) (returnErr error) {
+func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowCountStartIndex *int, fileAlias *string) error {
 	queryFileAbsPath := queryFile
 	if !filepath.IsAbs(queryFileAbsPath) {
 		queryFileAbsPath = filepath.Join(s.BaseDir, queryFileAbsPath)
@@ -305,7 +318,7 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 	return err
 }
 
-func (s *Stage) runRandomly(ctx context.Context) (returnErr error) {
+func (s *Stage) runRandomly(ctx context.Context) error {
 	var continueExecution func(queryCount int) bool
 	if dur, parseErr := time.ParseDuration(s.RandomlyExecuteUntil); parseErr == nil {
 		endTime := time.Now().Add(dur)
@@ -352,6 +365,30 @@ func (s *Stage) runRandomly(ctx context.Context) (returnErr error) {
 		}
 	}
 	log.Info().Msg("random execution concluded.")
+	return nil
+}
+
+func (s *Stage) runShellScripts(ctx context.Context) error {
+	for i, script := range s.ShellScripts {
+		cmd := exec.CommandContext(ctx, "/bin/sh", "-c", script)
+		cmd.Dir = s.BaseDir
+		outBuf, errBuf := new(bytes.Buffer), new(bytes.Buffer)
+		cmd.Stdout, cmd.Stderr = outBuf, errBuf
+		var logEntry *zerolog.Event
+		err := cmd.Run()
+		if err != nil {
+			logEntry = log.Error()
+		} else {
+			logEntry = log.Info()
+		}
+		logEntry.EmbedObject(s).Int("script_index", i).Str("script", script).
+			Int("exit_code", cmd.ProcessState.ExitCode()).Str("status", cmd.ProcessState.String()).
+			Dur("system_time", cmd.ProcessState.SystemTime()).Str("stdout", outBuf.String()).
+			Str("stderr", errBuf.String()).Msg("run shell script")
+		if err != nil && (*s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -437,7 +474,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	}
 
 	// Log query submission
-	e := log.Debug().EmbedObject(result.SimpleLogging())
+	e := log.Info().EmbedObject(result.SimpleLogging())
 	if s.currentCatalog != "" {
 		e = e.Str("catalog", s.currentCatalog)
 	}
@@ -493,7 +530,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 				log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
 					Msg("failed to write query result")
 			} else {
-				log.Debug().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
+				log.Info().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
 			}
 			_ = queryOutputFile.Close()
 			s.States.wgExitMainStage.Done()
