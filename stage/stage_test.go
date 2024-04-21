@@ -3,12 +3,11 @@ package stage
 import (
 	"context"
 	"errors"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"pbench/presto"
 	"syscall"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func assertStage(t *testing.T, stage *Stage, prerequisites, next []*Stage, queries, queryFiles int) {
@@ -31,6 +30,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	       stage_6
 	*/
 	stage1, stages, err := ParseStageGraphFromFile("../benchmarks/test/stage_1.json")
+	stage1.InitStates()
 	assert.Nil(t, err)
 	stage2 := stages.Get("stage_2")
 	stage3 := stages.Get("stage_3")

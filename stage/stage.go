@@ -112,6 +112,9 @@ func getCtxWithTimeout(timeout time.Duration) context.Context {
 
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) []*QueryResult {
+	if s.States == nil {
+		s.InitStates()
+	}
 	if s.States.RunName == "" {
 		s.States.RunName = s.Id
 	}

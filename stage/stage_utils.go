@@ -99,6 +99,11 @@ func (s *Stage) String() string {
 	return s.Id
 }
 
+func (s *Stage) InitStates() *Stage {
+	s.States = &SharedStageStates{}
+	return s
+}
+
 func (s *Stage) waitForPrerequisites() <-chan struct{} {
 	ch := make(chan struct{}, 1)
 	go func() {
