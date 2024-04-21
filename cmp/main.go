@@ -1,16 +1,15 @@
 package cmp
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
 	"github.com/spf13/cobra"
-	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
 	"pbench/log"
+	"pbench/utils"
 	"regexp"
 )
 
@@ -37,7 +36,7 @@ func Run(_ *cobra.Command, args []string) {
 		log.Fatal().Err(err).Str("build_side_path", buildSidePath).Msg("failed to build file ID map")
 	}
 
-	prepareOutputDirectory()
+	utils.PrepareOutputDirectory(OutputPath)
 
 	probeSideFileCount, fileCompared, diffWritten := 0, 0, 0
 	entries, readDirErr := os.ReadDir(probeSidePath)
@@ -100,24 +99,6 @@ func buildFileIdMap(path string) (map[string]string, error) {
 		}
 	}
 	return fileIdMap, nil
-}
-
-func prepareOutputDirectory() {
-	if stat, statErr := os.Stat(OutputPath); statErr != nil {
-		if errors.Is(statErr, unix.ENOENT) {
-			if mkdirErr := os.MkdirAll(OutputPath, 0755); mkdirErr != nil {
-				log.Fatal().Err(mkdirErr).Msg("failed to create output directory")
-			} else {
-				log.Info().Str("output_path", OutputPath).Msg("output directory created")
-			}
-		} else {
-			log.Fatal().Err(statErr).Msg("output path not valid")
-		}
-	} else if !stat.IsDir() {
-		log.Fatal().Str("output_path", OutputPath).Msg("output path is not a directory")
-	} else {
-		log.Info().Str("output_path", OutputPath).Msg("output directory")
-	}
 }
 
 func readFileIntoString(filePath string) string {

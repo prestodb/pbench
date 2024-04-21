@@ -67,14 +67,14 @@ func processRoundDecimalPath(path string) error {
 		fullPath := filepath.Join(path, entry.Name())
 		if entry.IsDir() {
 			if Recursive {
-				if err := processRoundDecimalPath(fullPath); err != nil {
+				if err = processRoundDecimalPath(fullPath); err != nil {
 					return err
 				}
 			} else {
 				continue
 			}
 		} else {
-			if err := processRoundDecimalFile(fullPath); err != nil {
+			if err = processRoundDecimalFile(fullPath); err != nil {
 				return err
 			}
 		}

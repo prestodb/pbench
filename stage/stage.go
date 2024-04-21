@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"pbench/log"
 	"pbench/presto"
+	"pbench/utils"
 	"regexp"
 	"strconv"
 	"sync"
@@ -127,11 +128,7 @@ func (s *Stage) Run(ctx context.Context) int {
 		s.States.OutputPath = s.BaseDir
 	}
 	s.States.OutputPath = filepath.Join(s.States.OutputPath, s.States.RunName)
-	if err := os.MkdirAll(s.States.OutputPath, 0755); err != nil {
-		log.Fatal().Str("output_path", s.States.OutputPath).Err(err).Msg("failed to create output directory")
-	} else {
-		log.Info().Str("output_path", s.States.OutputPath).Msg("output will be saved to this path")
-	}
+	utils.PrepareOutputDirectory(s.States.OutputPath)
 
 	// also start to write logs to the output directory from this point on.
 	logPath := filepath.Join(s.States.OutputPath, s.States.RunName+".log")
