@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
-	"encoding/json"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"os"
 	"pbench/log"
+	"pbench/utils"
 )
 
 var (
@@ -25,36 +23,8 @@ type MySQLRunRecorder struct {
 	mismatch int
 }
 
-func initMySQLConn(cfgPath string) *sql.DB {
-	if cfgPath == "" {
-		return nil
-	}
-	if bytes, ioErr := os.ReadFile(cfgPath); ioErr != nil {
-		log.Error().Err(ioErr).Msg("failed to read MySQL connection config")
-		return nil
-	} else {
-		mySQLCfg := &struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-			Server   string `json:"server"`
-			Database string `json:"database"`
-		}{}
-		if err := json.Unmarshal(bytes, mySQLCfg); err != nil {
-			log.Error().Err(err).Msg("failed to unmarshal MySQL connection config for the run recorder")
-			return nil
-		}
-		if db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true",
-			mySQLCfg.Username, mySQLCfg.Password, mySQLCfg.Server, mySQLCfg.Database)); err != nil {
-			log.Error().Err(err).Msg("failed to initialize MySQL connection for the run recorder")
-			return nil
-		} else {
-			return db
-		}
-	}
-}
-
 func NewMySQLRunRecorder(cfgPath string) *MySQLRunRecorder {
-	db := initMySQLConn(cfgPath)
+	db := utils.InitMySQLConnFromCfg(cfgPath)
 	if db == nil {
 		return nil
 	}
