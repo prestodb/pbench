@@ -8,6 +8,7 @@
   ],
   "shell_scripts": [
     "echo \"this is a script\"",
+    "python3 test_script.py",
     "ls -l"
   ],
   "next": [

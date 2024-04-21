@@ -133,7 +133,7 @@ func (s *Stage) logErr(ctx context.Context, err error) {
 	} else {
 		logEvent.EmbedObject(s).EmbedObject(log.NewMarshaller(err))
 	}
-	logEvent.Msg("query failed")
+	logEvent.Msg("execution failed")
 }
 
 func (s *Stage) prepareClient() {

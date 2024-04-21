@@ -44,7 +44,7 @@ type Stage struct {
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
 	// Can use regexp as key to match multiple [catalog.schema] pairs.
-	ExpectedRowCounts map[string][]int `json:"expected_row_counts"`
+	ExpectedRowCounts map[string][]int `json:"expected_row_counts,omitempty"`
 	// When RandomExecution is turned on, we randomly pick queries to run until a certain number of queries/a specific
 	// duration has passed. Expected row counts will not be checked in this mode because we cannot figure out the correct
 	// expected row count offset.
@@ -387,10 +387,15 @@ func (s *Stage) runShellScripts(ctx context.Context) error {
 		logEntry.EmbedObject(s).Int("script_index", i).Str("script", script).
 			Int("exit_code", cmd.ProcessState.ExitCode()).Str("status", cmd.ProcessState.String()).
 			Dur("system_time", cmd.ProcessState.SystemTime()).Str("stdout", outBuf.String()).
-			Str("stderr", errBuf.String()).Msg("run shell script")
-		if err != nil && (*s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
-			s.States.exitCode = cmd.ProcessState.ExitCode()
-			return err
+			Str("stderr", errBuf.String())
+		if err != nil {
+			logEntry.Err(err).Msg("run shell script failed.")
+			if *s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				s.States.exitCode = cmd.ProcessState.ExitCode()
+				return err
+			}
+		} else {
+			logEntry.Msg("run shell script")
 		}
 	}
 	return nil
