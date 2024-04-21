@@ -112,27 +112,28 @@ func (p *PulumiMySQLRunRecorder) doRequest(ctx context.Context, req *http.Reques
 }
 
 func (p *PulumiMySQLRunRecorder) findPulumiStackFromClusterFQDN(ctx context.Context, clusterFQDN string) *PulumiResource {
-	// First, list all the stacks.
-	listStacksUrl := fmt.Sprintf("/api/user/stacks?organization=%s&tagName=pulumi:project&tagValue=%s",
-		p.Organization, p.Project)
-	req, err := p.newGetRequest(listStacksUrl)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to create list stack request.")
-		return nil
-	}
-
-	stacks := &PulumiStacks{}
-	_, err = p.doRequest(ctx, req, stacks)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to list Pulumi stacks.")
-		return nil
-	}
-
 	fqdnBuildNumberExtractor := regexp.MustCompile(`.+(b\d+[nj])\.ibm\.prestodb\.dev`)
 	stackNameBuildNumberExtractor := regexp.MustCompile(`.+-(b\d+[nj])-.+`)
 
 	if match := fqdnBuildNumberExtractor.FindStringSubmatch(clusterFQDN); len(match) > 0 {
 		buildNumber := match[1]
+
+		// List all the stacks.
+		listStacksUrl := fmt.Sprintf("/api/user/stacks?organization=%s&tagName=pulumi:project&tagValue=%s",
+			p.Organization, p.Project)
+		req, err := p.newGetRequest(listStacksUrl)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create list stack request.")
+			return nil
+		}
+
+		stacks := &PulumiStacks{}
+		_, err = p.doRequest(ctx, req, stacks)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to list Pulumi stacks.")
+			return nil
+		}
+
 		for _, stack := range stacks.Stacks {
 			if match = stackNameBuildNumberExtractor.FindStringSubmatch(stack.StackName); len(match) == 0 || buildNumber != match[1] {
 				continue
