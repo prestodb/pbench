@@ -21,12 +21,24 @@ func ScanSqlStmt(data []byte, atEOF bool) (int, []byte, error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}
-	pos, inQuote, inComment := 0, byte(0), false
+	pos, inQuote, inComment, inMultilineComment := 0, byte(0), false, false
 	for ; pos < len(data); pos++ {
 		if inComment {
 			if i := bytes.IndexByte(data[pos:], '\n'); i >= 0 {
 				pos += i
 				inComment = false
+			} else {
+				break
+			}
+		} else if inMultilineComment {
+			if i := bytes.IndexByte(data[pos:], '*'); i >= 0 {
+				pos += i
+				if pos+1 >= len(data) { // this batch ends with this '*'
+					break
+				} else if data[pos+1] == '/' {
+					pos++
+					inMultilineComment = false
+				}
 			} else {
 				break
 			}
@@ -40,7 +52,7 @@ func ScanSqlStmt(data []byte, atEOF bool) (int, []byte, error) {
 				break
 			}
 		} else {
-			if i := bytes.IndexAny(data[pos:], `-'";`); i >= 0 {
+			if i := bytes.IndexAny(data[pos:], `-'";/`); i >= 0 {
 				pos += i
 				switch data[pos] {
 				case '-':
@@ -49,6 +61,13 @@ func ScanSqlStmt(data []byte, atEOF bool) (int, []byte, error) {
 					} else if data[pos+1] == '-' {
 						pos++
 						inComment = true
+					}
+				case '/':
+					if pos+1 >= len(data) { // this batch ends with this '/'
+						break
+					} else if data[pos+1] == '*' {
+						pos++
+						inMultilineComment = true
 					}
 				case '"', '\'':
 					inQuote = data[pos]

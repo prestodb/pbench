@@ -32,7 +32,7 @@ type Stage struct {
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`
-	TimeZone      *string        `json:"timezone"`
+	TimeZone      *string        `json:"timezone,omitempty"`
 	Queries       []string       `json:"queries,omitempty"`
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.

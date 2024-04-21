@@ -13,16 +13,19 @@ var fileWithTrailingComment string
 
 func TestQuerySplitter(t *testing.T) {
 	files := []string{
-		`select * from table1 where a = '\'--;'; --comment
-select * from table3;-;;
+		`select * from table1 where a = '\'/**/--;'; --comment
+select * from table3;-;/*
+select * from **/
+another query;;missing semicolon, should be discarded
 `,
 		fileWithTrailingComment,
 	}
 	expectedQueries := [][]string{
 		{
-			"select * from table1 where a = '\\'--;'",
+			"select * from table1 where a = '\\'/**/--;'",
 			"--comment\nselect * from table3",
 			"-",
+			"/*\nselect * from **/\nanother query",
 		}, {fileWithTrailingComment[:663]},
 	}
 	for i, file := range files {
