@@ -115,7 +115,7 @@ func getCtxWithTimeout(timeout time.Duration) context.Context {
 }
 
 // Run this stage and trigger its downstream stages.
-func (s *Stage) Run(ctx context.Context) []*QueryResult {
+func (s *Stage) Run(ctx context.Context) int {
 	if s.States == nil {
 		s.InitStates()
 	}
@@ -196,7 +196,7 @@ func (s *Stage) Run(ctx context.Context) []*QueryResult {
 			for _, recorder := range s.States.runRecorders {
 				recorder.RecordRun(getCtxWithTimeout(time.Second*5), s, results)
 			}
-			return results
+			return s.States.exitCode
 		}
 	}
 }
@@ -300,10 +300,12 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 		if !*s.AbortOnError {
 			log.Error().Err(err).Str("file_path", queryFile).Msg("failed to read queries from file")
 			err = nil
+			// If we run into errors reading the query file, then the offset in the expected row count array will be messed up.
+			// Reset it to nil to stop showing expected row counts and to avoid confusions.
+			s.expectedRowCountInCurrentSchema = nil
+		} else {
+			s.States.exitCode = 1
 		}
-		// If we run into errors reading the query file, then the offset in the expected row count array will be messed up.
-		// Reset it to nil to stop showing expected row counts and to avoid confusions.
-		s.expectedRowCountInCurrentSchema = nil
 		return err
 	}
 	if fileAlias == nil {
@@ -332,6 +334,7 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	} else {
 		err := fmt.Errorf("failed to parse randomly_execute_until %s", s.RandomlyExecuteUntil)
 		if *s.AbortOnError {
+			s.States.exitCode = 5
 			return err
 		} else {
 			log.Error().Err(err).Send()
@@ -386,6 +389,7 @@ func (s *Stage) runShellScripts(ctx context.Context) error {
 			Dur("system_time", cmd.ProcessState.SystemTime()).Str("stdout", outBuf.String()).
 			Str("stderr", errBuf.String()).Msg("run shell script")
 		if err != nil && (*s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+			s.States.exitCode = cmd.ProcessState.ExitCode()
 			return err
 		}
 	}
@@ -424,6 +428,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 					// If AbortOnError is set, we skip the rest queries in the same batch.
 					// Logging etc. will be handled in the parent stack.
 					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
+					s.States.exitCode = 1
 					return result
 				}
 				// Log the error information and continue running

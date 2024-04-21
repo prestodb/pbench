@@ -34,6 +34,7 @@ type SharedStageStates struct {
 	// Stages use resultChan to send the query result back to the main stage.
 	resultChan   chan *QueryResult
 	runRecorders []RunRecorder
+	exitCode     int
 }
 
 func (states *SharedStageStates) RegisterRunRecorder(r RunRecorder) {

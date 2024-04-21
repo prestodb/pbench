@@ -99,7 +99,7 @@ func Run(_ *cobra.Command, args []string) {
 	mySQLRunRecorder := stage.NewMySQLRunRecorder(MySQLCfgPath)
 	mainStage.States.RegisterRunRecorder(mySQLRunRecorder)
 	mainStage.States.RegisterRunRecorder(stage.NewPulumiMySQLRunRecorder(PulumiCfgPath, mySQLRunRecorder))
-	mainStage.Run(context.Background())
+	os.Exit(mainStage.Run(context.Background()))
 }
 
 func processStagePath(path string) (st *stage.Stage, returnErr error) {

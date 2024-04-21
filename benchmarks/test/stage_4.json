@@ -6,6 +6,10 @@
   "query_files": [
     "stage_4.sql"
   ],
+  "shell_scripts": [
+    "echo \"this is a script\"",
+    "ls -l"
+  ],
   "next": [
     "stage_5.json"
   ],
