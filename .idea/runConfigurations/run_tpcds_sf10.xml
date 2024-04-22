@@ -7,7 +7,7 @@
       <env name="server" value="https://engmichaelohsakab727n.ibm.prestodb.dev" />
     </envs>
     <kind value="PACKAGE" />
-    <package value="presto-benchmark" />
+    <package value="pbench" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$/main.go" />
     <method v="2" />

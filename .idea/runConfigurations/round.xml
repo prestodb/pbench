@@ -4,7 +4,7 @@
     <working_directory value="$PROJECT_DIR$" />
     <parameters value="round $USER_HOME$/Downloads/benchmark_runs/tpc-ds_sf1k_native_full-2024-01-03T18:57:26-08:00" />
     <kind value="PACKAGE" />
-    <package value="presto-benchmark" />
+    <package value="pbench" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$/main.go" />
     <method v="2" />

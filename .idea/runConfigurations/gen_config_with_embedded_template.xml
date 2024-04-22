@@ -4,7 +4,7 @@
     <working_directory value="$PROJECT_DIR$" />
     <parameters value="gen-config cluster-configs" />
     <kind value="PACKAGE" />
-    <package value="presto-benchmark" />
+    <package value="pbench" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$/main.go" />
     <method v="2" />
