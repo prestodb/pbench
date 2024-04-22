@@ -3,6 +3,7 @@ module pbench
 go 1.20
 
 require (
+	github.com/docker/go-units v0.5.0
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
