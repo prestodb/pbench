@@ -9,6 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 	"os"
 	"pbench/log"
+	"pbench/presto"
 	"reflect"
 	"strings"
 )
@@ -153,14 +154,20 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 			if fieldValue == nil {
 				if fvk == reflect.Invalid {
 					fieldValue = nil
-				} else if jsonMsg, ok := fv.Interface().(json.RawMessage); ok {
-					compactedJson := &bytes.Buffer{}
-					if err := json.Compact(compactedJson, jsonMsg); err == nil {
-						jsonMsg = compactedJson.Bytes()
-					}
-					fieldValue = string(jsonMsg)
 				} else {
-					fieldValue = fv.Interface()
+					switch typed := fv.Interface().(type) {
+					case json.RawMessage:
+						compactedJson := &bytes.Buffer{}
+						if err := json.Compact(compactedJson, typed); err == nil {
+							typed = compactedJson.Bytes()
+						}
+						fieldValue = string(typed)
+					case presto.Duration:
+						// TODO: Add a tag for precision. EventListener only uses ms.
+						fieldValue = typed.Milliseconds()
+					default:
+						fieldValue = fv.Interface()
+					}
 				}
 			}
 			if len(rowsMap[tableName]) == 0 {
