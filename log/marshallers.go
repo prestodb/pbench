@@ -46,6 +46,15 @@ func (ms *Marshaller) Nest() *Marshaller {
 	return ms
 }
 
+func derefValue(v *reflect.Value) reflect.Kind {
+	k := v.Kind()
+	for k == reflect.Pointer || k == reflect.Interface {
+		*v = v.Elem()
+		k = v.Kind()
+	}
+	return k
+}
+
 // NewMarshaller creates a new marshaller to serialize objects to log. If another marshaller
 // is provided in "other", its internal state will be copied to the newly created marshaller.
 func NewMarshaller(obj any, other ...*Marshaller) *Marshaller {
@@ -53,11 +62,7 @@ func NewMarshaller(obj any, other ...*Marshaller) *Marshaller {
 	if !ok {
 		v = reflect.ValueOf(obj)
 	}
-	k := v.Kind()
-	for k == reflect.Pointer || k == reflect.Interface {
-		v = v.Elem()
-		k = v.Kind()
-	}
+	derefValue(&v)
 	if len(other) > 0 {
 		return &Marshaller{
 			value:               v,
@@ -123,6 +128,16 @@ func (ms *Marshaller) marshalZerologMap(e *zerolog.Event) {
 	}
 }
 
+func tryCastToTime(v reflect.Value) *time.Time {
+	if !v.CanInterface() {
+		return nil
+	}
+	if t, ok := v.Interface().(time.Time); ok {
+		return &t
+	}
+	return nil
+}
+
 func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 	if k := ms.value.Kind(); k != reflect.Array && k != reflect.Slice {
 		return
@@ -133,11 +148,7 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 			break
 		}
 		v := ms.value.Index(i)
-		k := v.Kind()
-		for k == reflect.Interface || k == reflect.Pointer {
-			v = v.Elem()
-			k = v.Kind()
-		}
+		k := derefValue(&v)
 		if k == reflect.Invalid {
 			continue
 		}
@@ -185,8 +196,8 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 		case reflect.Float64:
 			a.Float64(v.Float())
 		case reflect.Struct, reflect.Map:
-			if t, ok := v.Interface().(time.Time); ok {
-				a.Time(t)
+			if t := tryCastToTime(v); t != nil {
+				a.Time(*t)
 			} else if ms.nestedLevel+1 > ms.nestedLevelLimit {
 				a.Str(v.String())
 			} else {
@@ -218,11 +229,7 @@ func toSnakeCase(in string) string {
 }
 
 func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect.Value) {
-	k := field.Kind()
-	for k == reflect.Interface || k == reflect.Pointer {
-		field = field.Elem()
-		k = field.Kind()
-	}
+	k := derefValue(&field)
 	if k == reflect.Invalid {
 		return
 	}
@@ -276,8 +283,8 @@ func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect
 			e.Array(fieldName, NewMarshaller(field, ms).Nest())
 		}
 	case reflect.Struct, reflect.Map:
-		if t, ok := field.Interface().(time.Time); ok {
-			e.Time(fieldName, t)
+		if t := tryCastToTime(field); t != nil {
+			e.Time(fieldName, *t)
 		} else if ms.nestedLevel+1 > ms.nestedLevelLimit {
 			e.Str(fieldName, field.String())
 		} else {
