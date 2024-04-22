@@ -19,7 +19,7 @@ create table presto_benchmarks.presto_query_creation_info
     transaction_id          varchar(255) null,
     client_tags             text         null comment 'The clients tags are tags that are manually added by customers and also automatically added by Presto. These tags help with selecting various execution parameters like resource groups and other settings',
     resource_estimates      varchar(255) null comment 'These are estimates about query execution metrics which can either be passed by a user manually or in certain situations predicted by the user. These estimates help in finding the best resource group to execute your query to optimize for latency and reliability',
-    dt                      datetime(3)  not null,
+    dt                      datetime(3)  default (now()) not null,
     primary key (query_id, dt)
 )
     partition by key (`dt`) partitions 365;
@@ -64,7 +64,7 @@ create table presto_benchmarks.presto_query_operator_stats
     spilled_data_size_bytes              bigint       null,
     info                                 text         null,
     runtime_stats                        text         null,
-    dt                                   datetime(3)  not null,
+    dt                                   datetime(3)  default (now()) not null,
     primary key (query_id, stage_id, pipeline_id, operator_id, dt)
 )
     partition by key (`dt`) partitions 365;
@@ -76,7 +76,7 @@ create table presto_benchmarks.presto_query_plans
     plan        longtext     null,
     json_plan   longtext     null,
     environment varchar(255) null,
-    dt          datetime(3)  not null,
+    dt          datetime(3)  default (now()) not null,
     primary key (query_id, dt)
 )
     partition by key (`dt`,`query_id`) partitions 365;
@@ -97,7 +97,7 @@ create table presto_benchmarks.presto_query_stage_stats
     gc_statistics                    text         null,
     cpu_distribution                 text         null,
     memory_distribution              text         null,
-    dt                               datetime(3)  not null,
+    dt                               datetime(3)  default (now()) not null,
     primary key (query_id, stage_id, dt)
 )
     partition by key (`dt`,`query_id`,`stage_id`) partitions 365;
@@ -161,7 +161,7 @@ create table presto_benchmarks.presto_query_statistics
     total_split_cpu_time_ms    bigint       null comment 'The total CPU time consumed by a query',
     stage_count                bigint       null comment 'Total number of stages in a query',
     cumulative_total_memory    double       null comment 'Total amount of total memory used the query over the source of its execution. The unit is bytes-ms',
-    dt                         datetime(3)  not null,
+    dt                         datetime(3)  default (now()) not null,
     primary key (dt, query_id)
 )
     partition by key (`dt`) partitions 365;
