@@ -10,7 +10,7 @@ import (
 
 func testInsertQueryInfo(t *testing.T) {
 	db := InitMySQLConnFromCfg("../mysql.json")
-	qi := presto.QueryInfo{QueryID: "a1",
+	qi := presto.QueryInfo{QueryId: "a1",
 		Session: presto.Session{
 			TransactionId:     "5f840560-6676-4686-94e3-387ed0d0c8a0",
 			Schema:            nil,
@@ -22,7 +22,6 @@ func testInsertQueryInfo(t *testing.T) {
 			UserAgent:         "",
 			ClientTags:        json.RawMessage(""),
 		}}
-	r, e := SqlInsertObject(db, qi, "presto_query_creation_info")
+	e := SqlInsertObject(db, qi, "presto_query_creation_info")
 	assert.Nil(t, e)
-	assert.NotNil(t, r)
 }

@@ -83,7 +83,7 @@ func newRowWithColumnCapacity(numColumns int) *Row {
 	}
 }
 
-func mergeRow(a, b *Row) (ret *Row) {
+func mergeColumns(a, b *Row) (ret *Row) {
 	la, lb := a.ColumnCount(), b.ColumnCount()
 	if la == 0 {
 		return b
@@ -104,13 +104,26 @@ func mergeRow(a, b *Row) (ret *Row) {
 }
 
 func multiplyRows(a, b []*Row) []*Row {
-	mergedRows := make([]*Row, 0, len(a)*len(b))
+	multipliedRows := make([]*Row, 0, len(a)*len(b))
 	for _, x := range a {
 		for _, y := range b {
-			mergedRows = append(mergedRows, mergeRow(x, y))
+			multipliedRows = append(multipliedRows, mergeColumns(x, y))
 		}
 	}
-	return mergedRows
+	return multipliedRows
+}
+
+type TableName string
+
+func mergeRowsMap(a, b map[TableName][]*Row) map[TableName][]*Row {
+	for tableName, rows2 := range b {
+		rows1 := a[tableName]
+		if len(rows1) == 0 {
+			rows1 = []*Row{newRowWithColumnCapacity(16)}
+		}
+		a[tableName] = multiplyRows(rows1, rows2)
+	}
+	return a
 }
 
 func derefValue(v *reflect.Value) reflect.Kind {
@@ -122,7 +135,8 @@ func derefValue(v *reflect.Value) reflect.Kind {
 	return k
 }
 
-func collectRows(v reflect.Value, tableName string) (rows []*Row) {
+func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row) {
+	rowsMap = make(map[TableName][]*Row)
 	if k := derefValue(&v); k != reflect.Struct {
 		return
 	}
@@ -130,31 +144,36 @@ func collectRows(v reflect.Value, tableName string) (rows []*Row) {
 	for i := 0; i < fieldCount; i++ {
 		f, fv := t.Field(i), v.Field(i)
 		fvk := derefValue(&fv)
-		if columnName := f.Tag.Get(tableName); columnName != "" {
-			var newValue any
-			if fvk == reflect.Invalid {
-				newValue = nil
-			} else if jsonMsg, ok := fv.Interface().(json.RawMessage); ok {
-				compactedJson := &bytes.Buffer{}
-				if err := json.Compact(compactedJson, jsonMsg); err == nil {
-					jsonMsg = compactedJson.Bytes()
+		var fieldValue any
+		for _, tableName := range tableNames {
+			columnName := f.Tag.Get(string(tableName))
+			if columnName == "" {
+				continue
+			}
+			if fieldValue == nil {
+				if fvk == reflect.Invalid {
+					fieldValue = nil
+				} else if jsonMsg, ok := fv.Interface().(json.RawMessage); ok {
+					compactedJson := &bytes.Buffer{}
+					if err := json.Compact(compactedJson, jsonMsg); err == nil {
+						jsonMsg = compactedJson.Bytes()
+					}
+					fieldValue = string(jsonMsg)
+				} else {
+					fieldValue = fv.Interface()
 				}
-				newValue = string(jsonMsg)
-			} else {
-				newValue = fv.Interface()
 			}
-			if len(rows) == 0 {
-				rows = []*Row{newRowWithColumnCapacity(16)}
+			if len(rowsMap[tableName]) == 0 {
+				rowsMap[tableName] = []*Row{newRowWithColumnCapacity(16)}
 			}
-			for _, row := range rows {
-				row.AddColumn(columnName, newValue)
+			for _, row := range rowsMap[tableName] {
+				row.AddColumn(columnName, fieldValue)
 			}
-		} else if fvk == reflect.Struct {
-			rowsFromStruct := collectRows(fv, tableName)
-			if len(rowsFromStruct) > 0 {
-				rows = multiplyRows(rows, rowsFromStruct)
-			}
-		} else if fvk == reflect.Array {
+		}
+		if fvk == reflect.Struct {
+			rowsMapFromStruct := collectRowsForEachTable(fv, tableNames...)
+			rowsMap = mergeRowsMap(rowsMap, rowsMapFromStruct)
+		} else if fvk == reflect.Array || fvk == reflect.Slice {
 			if fv.Len() == 0 {
 				continue
 			}
@@ -162,44 +181,45 @@ func collectRows(v reflect.Value, tableName string) (rows []*Row) {
 			if k := derefValue(&elem); k != reflect.Struct {
 				continue
 			}
-			rowsFromArray := make([]*Row, 0, 8)
+			rowsMapFromArray := make(map[TableName][]*Row)
 			for j := 0; j < fv.Len(); j++ {
-				rowsFromElement := collectRows(fv.Index(j), tableName)
-				rowsFromArray = append(rowsFromArray, rowsFromElement...)
+				rowsMapFromElement := collectRowsForEachTable(fv.Index(j), tableNames...)
+				for table, rmap := range rowsMapFromElement {
+					rowsMapFromArray[table] = append(rowsMapFromArray[table], rmap...)
+				}
 			}
-			if len(rowsFromArray) > 0 {
-				rows = multiplyRows(rows, rowsFromArray)
-			}
+			rowsMap = mergeRowsMap(rowsMap, rowsMapFromArray)
 		}
 	}
 	return
 }
 
-func SqlInsertObject(db *sql.DB, obj any, tableName string) ([]sql.Result, error) {
+func SqlInsertObject(db *sql.DB, obj any, tableNames ...TableName) error {
 	v, ok := obj.(reflect.Value)
 	if !ok {
 		v = reflect.ValueOf(obj)
 	}
 	if k := derefValue(&v); k != reflect.Struct {
-		return nil, fmt.Errorf("obj must be a struct, got %v", k)
+		return fmt.Errorf("obj must be a struct, got %v", k)
 	}
-	rows := collectRows(v, tableName)
-	if len(rows) == 0 {
-		return nil, fmt.Errorf("did not find a column to insert")
-	}
-	placeholders := strings.Repeat("?,", rows[0].ColumnCount())
-	placeholders = placeholders[:len(placeholders)-1]
-	sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
-		tableName, strings.Join(rows[0].ColumnNames, ","), placeholders)
+	rowsMap := collectRowsForEachTable(v, tableNames...)
 
-	results := make([]sql.Result, 0, len(rows))
-	for _, row := range rows {
-		log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
-		result, err := db.Exec(sqlStmt, row.Values...)
-		results = append(results, result)
-		if err != nil {
-			return results, err
+	for table, rows := range rowsMap {
+		if len(rows) == 0 {
+			continue
+		}
+		placeholders := strings.Repeat("?,", rows[0].ColumnCount())
+		placeholders = placeholders[:len(placeholders)-1]
+		sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+			table, strings.Join(rows[0].ColumnNames, ","), placeholders)
+
+		for _, row := range rows {
+			log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
+			_, err := db.Exec(sqlStmt, row.Values...)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	return results, nil
+	return nil
 }
