@@ -185,7 +185,9 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 		case reflect.Float64:
 			a.Float64(v.Float())
 		case reflect.Struct, reflect.Map:
-			if ms.nestedLevel+1 > ms.nestedLevelLimit {
+			if t, ok := v.Interface().(time.Time); ok {
+				a.Time(t)
+			} else if ms.nestedLevel+1 > ms.nestedLevelLimit {
 				a.Str(v.String())
 			} else {
 				a.Object(NewMarshaller(v, ms).Nest())
@@ -274,7 +276,9 @@ func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect
 			e.Array(fieldName, NewMarshaller(field, ms).Nest())
 		}
 	case reflect.Struct, reflect.Map:
-		if ms.nestedLevel+1 > ms.nestedLevelLimit {
+		if t, ok := field.Interface().(time.Time); ok {
+			e.Time(fieldName, t)
+		} else if ms.nestedLevel+1 > ms.nestedLevelLimit {
 			e.Str(fieldName, field.String())
 		} else {
 			e.Object(fieldName, NewMarshaller(field, ms).Nest())
