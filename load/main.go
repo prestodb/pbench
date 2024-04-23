@@ -68,7 +68,14 @@ func processFile(path string) (err error) {
 		return unmarshalErr
 	}
 	if mysqlDb != nil {
-		e := utils.SqlInsertObject(mysqlDb, queryInfo, "presto_query_operator_stats")
+		// OutputStage is in a tree structure, and we need to flatten it for its ORM to be correctly parsed.
+		e := queryInfo.FlattenAndPrepareForInsert()
+		if e == nil {
+			e = utils.SqlInsertObject(mysqlDb, queryInfo,
+				"presto_query_creation_info",
+				"presto_query_operator_stats",
+				"presto_query_stage_stats")
+		}
 		if e != nil {
 			log.Error().Err(e).Msg("failed to insert")
 			return e

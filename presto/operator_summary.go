@@ -44,11 +44,15 @@ type OperatorSummary struct {
 	PeakTotalMemoryReservation  SISize           `json:"peakTotalMemoryReservation" presto_query_operator_stats:"peak_total_memory_reservation_bytes"`
 	SpilledDataSize             SISize           `json:"spilledDataSize" presto_query_operator_stats:"spilled_data_size_bytes"`
 	Info                        *json.RawMessage `json:"info,omitempty" presto_query_operator_stats:"info"`
-	RuntimeStats                json.RawMessage  `json:"runtimeStats" presto_query_operator_stats:"runtime_stats"`
+	RuntimeStats                *json.RawMessage `json:"runtimeStats" presto_query_operator_stats:"runtime_stats"`
 }
 
 type Duration struct {
 	time.Duration
+}
+
+func (d *Duration) String() string {
+	return d.String()
 }
 
 func (d *Duration) MarshalJSON() ([]byte, error) {
@@ -88,7 +92,7 @@ func (s *SISize) UnmarshalJSON(bytes []byte) error {
 		*s = SISize(value)
 		return nil
 	case string:
-		sz, err := units.FromHumanSize(value)
+		sz, err := units.RAMInBytes(value)
 		if err != nil {
 			return err
 		}

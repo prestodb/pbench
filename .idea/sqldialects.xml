@@ -3,6 +3,7 @@
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/benchmarks/tpc-ds/datagen/1-ddl-sf1k.sql" dialect="SparkSQL" />
     <file url="file://$PROJECT_DIR$/benchmarks/tpc-ds/datagen/10-query-row-counts.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/load/clean_test_data.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/stage/delete_run.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/stage/event_listener_ddl.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/stage/list_row_count.sql" dialect="MySQL" />
