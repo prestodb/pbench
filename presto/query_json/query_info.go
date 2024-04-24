@@ -7,16 +7,17 @@ import (
 
 type QueryInfo struct {
 	QueryId         string           `json:"queryId" presto_query_creation_info:"query_id" presto_query_operator_stats:"query_id" presto_query_plans:"query_id" presto_query_stage_stats:"query_id" presto_query_statistics:"query_id"`
-	Session         *Session         `json:"session"`
 	Self            string           `json:"self" presto_query_creation_info:"uri" presto_query_statistics:"uri"`
 	Query           string           `json:"query" presto_query_creation_info:"query" presto_query_plans:"query" presto_query_statistics:"query"`
 	QueryType       string           `json:"queryType" presto_query_statistics:"query_type"`
 	State           string           `json:"state" presto_query_statistics:"query_state"`
-	FailureInfo     *json.RawMessage `json:"failure_info" presto_query_statistics:"failures_json"`
+	FailureInfo     *json.RawMessage `json:"failureInfo" presto_query_statistics:"failures_json"`
+	ErrorCode       *ErrorCode       `json:"errorCode"`
 	Warnings        *json.RawMessage `json:"warnings" presto_query_statistics:"warnings_json"`
+	ResourceGroupId *json.RawMessage `json:"resourceGroupId" presto_query_creation_info:"resource_group_name" presto_query_statistics:"resource_group_name"`
+	Session         *Session         `json:"session"`
 	QueryStats      *QueryStats      `json:"queryStats"`
 	OutputStage     *StageInfo       `json:"outputStage"`
-	ResourceGroupId *json.RawMessage `json:"resourceGroupId" presto_query_creation_info:"resource_group_name" presto_query_statistics:"resource_group_name"`
 
 	// Populated by PrepareForInsert
 	FlattenedStageList     []*StageInfo
@@ -48,9 +49,9 @@ type QueryStats struct {
 	PeakTaskTotalMemory                 SISize             `json:"peakTaskTotalMemory" presto_query_statistics:"peak_task_total_memory"`
 	WrittenIntermediatePhysicalDataSize SISize             `json:"writtenIntermediatePhysicalDataSize" presto_query_statistics:"written_intermediate_bytes"`
 	PeakNodeTotalMemory                 SISize             `json:"peakNodeTotalMemory" presto_query_statistics:"peak_node_total_memory"`
+	TotalDrivers                        int                `json:"totalDrivers" presto_query_statistics:"splits"`
 	StageGcStatistics                   []*json.RawMessage `json:"stageGcStatistics"`
 	OperatorSummaries                   []*OperatorSummary `json:"operatorSummaries"`
-	TotalDrivers                        int                `json:"totalDrivers" presto_query_statistics:"splits"`
 
 	// Calculated by PrepareForInsert
 	BytesPerCPUSec int64 `presto_query_statistics:"bytes_per_cpu_sec"`

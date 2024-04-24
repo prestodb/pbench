@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -12,7 +13,13 @@ import (
 	"pbench/presto/query_json"
 	"reflect"
 	"strings"
+	"time"
 )
+
+func GetCtxWithTimeout(timeout time.Duration) context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	return ctx
+}
 
 func PrepareOutputDirectory(path string) {
 	if stat, statErr := os.Stat(path); statErr != nil {

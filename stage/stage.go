@@ -110,11 +110,6 @@ type Stage struct {
 	started atomic.Bool
 }
 
-func getCtxWithTimeout(timeout time.Duration) context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*5)
-	return ctx
-}
-
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) int {
 	if s.States == nil {
@@ -181,7 +176,7 @@ func (s *Stage) Run(ctx context.Context) int {
 		case result := <-s.States.resultChan:
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordQuery(getCtxWithTimeout(time.Second*5), s, result)
+				recorder.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), s, result)
 			}
 		case sig := <-timeToExit:
 			if sig != nil {
@@ -191,7 +186,7 @@ func (s *Stage) Run(ctx context.Context) int {
 			}
 			s.States.RunFinishTime = time.Now()
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordRun(getCtxWithTimeout(time.Second*5), s, results)
+				recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
 			}
 			return int(s.States.exitCode.Load())
 		}

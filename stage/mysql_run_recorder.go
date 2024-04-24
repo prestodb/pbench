@@ -28,6 +28,10 @@ func NewMySQLRunRecorder(cfgPath string) *MySQLRunRecorder {
 	if db == nil {
 		return nil
 	}
+	return NewMySQLRunRecorderWithDb(db)
+}
+
+func NewMySQLRunRecorderWithDb(db *sql.DB) *MySQLRunRecorder {
 	_, err := db.Exec(pbenchRunsDDL)
 	if err == nil {
 		_, err = db.Exec(pbenchQueriesDDL)

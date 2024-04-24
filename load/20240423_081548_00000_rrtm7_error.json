@@ -1,7 +1,7 @@
 {
-  "queryId" : "20240423_081548_00000_rrtm7",
+  "queryId" : "20240423_081548_00000_rrtm7_error",
   "session" : {
-    "queryId" : "20240423_081548_00000_rrtm7",
+    "queryId" : "20240423_081548_00000_rrtm7_error",
     "transactionId" : "eb7cab9a-143b-4dfd-a45c-a15caaad1a5b",
     "clientTransactionSupport" : true,
     "user" : "ezhang",
@@ -25,7 +25,7 @@
   "state" : "FAILED",
   "memoryPool" : "general",
   "scheduled" : false,
-  "self" : "http://127.0.0.1:8080/v1/query/20240423_081548_00000_rrtm7",
+  "self" : "http://127.0.0.1:8080/v1/query/20240423_081548_00000_rrtm7_error",
   "query" : "select a",
   "queryStats" : {
     "createTime" : "2024-04-23T08:15:49.373Z",
