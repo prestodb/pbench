@@ -3,11 +3,13 @@ package query_json
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 )
 
 type StageInfo struct {
 	StageId                    string              `json:"stageId" presto_query_stage_stats:"stage_id"`
 	LatestAttemptExecutionInfo *StageExecutionInfo `json:"latestAttemptExecutionInfo"`
+	Plan                       *StagePlan          `json:"plan"`
 
 	SubStages []*StageInfo `json:"subStages"`
 
@@ -34,11 +36,19 @@ type StageExecutionStats struct {
 	GcInfo *StageGcInfo `json:"-"`
 }
 
+type StagePlan struct {
+	JsonRepresentation string `json:"jsonRepresentation"`
+}
+
 type StageGcInfo struct {
 	StageExecutionId int `json:"stageExecutionId"`
 }
 
-func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo) error {
+type WrappedPlan struct {
+	Plan json.RawMessage `json:"plan"`
+}
+
+func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[string]WrappedPlan) error {
 	if index := bytes.IndexByte([]byte(s.StageId), '.'); index > 0 && index+1 < len(s.StageId) {
 		// The stage IDs are in the format of 'query_id.[index]', we only keep the index in the database.
 		s.StageId = s.StageId[index+1:]
@@ -51,8 +61,12 @@ func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo) error {
 	s.StageExecutionId = stats.GcInfo.StageExecutionId
 	*flattened = append(*flattened, s)
 
+	queryPlan[strconv.Itoa(len(queryPlan))] = WrappedPlan{
+		Plan: json.RawMessage(s.Plan.JsonRepresentation),
+	}
+
 	for _, child := range s.SubStages {
-		if err := child.PrepareForInsert(flattened); err != nil {
+		if err := child.PrepareForInsert(flattened, queryPlan); err != nil {
 			return err
 		}
 	}

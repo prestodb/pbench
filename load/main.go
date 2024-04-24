@@ -74,8 +74,10 @@ func processFile(path string) (err error) {
 			e = utils.SqlInsertObject(mysqlDb, queryInfo,
 				"presto_query_creation_info",
 				"presto_query_operator_stats",
+				"presto_query_plans",
 				"presto_query_stage_stats",
-				"presto_query_statistics")
+				"presto_query_statistics",
+			)
 		}
 		if e != nil {
 			log.Error().Err(e).Msg("failed to insert")

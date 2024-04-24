@@ -6,10 +6,10 @@ import (
 )
 
 type QueryInfo struct {
-	QueryId         string           `json:"queryId" presto_query_creation_info:"query_id" presto_query_operator_stats:"query_id" presto_query_stage_stats:"query_id" presto_query_statistics:"query_id"`
+	QueryId         string           `json:"queryId" presto_query_creation_info:"query_id" presto_query_operator_stats:"query_id" presto_query_plans:"query_id" presto_query_stage_stats:"query_id" presto_query_statistics:"query_id"`
 	Session         *Session         `json:"session"`
 	Self            string           `json:"self" presto_query_creation_info:"uri" presto_query_statistics:"uri"`
-	Query           string           `json:"query" presto_query_creation_info:"query" presto_query_statistics:"query"`
+	Query           string           `json:"query" presto_query_creation_info:"query" presto_query_plans:"query" presto_query_statistics:"query"`
 	QueryType       string           `json:"queryType" presto_query_statistics:"query_type"`
 	State           string           `json:"state" presto_query_statistics:"query_state"`
 	FailureInfo     *json.RawMessage `json:"failure_info" presto_query_statistics:"failures_json"`
@@ -18,8 +18,10 @@ type QueryInfo struct {
 	OutputStage     *StageInfo       `json:"outputStage"`
 	ResourceGroupId *json.RawMessage `json:"resourceGroupId" presto_query_creation_info:"resource_group_name" presto_query_statistics:"resource_group_name"`
 
-	FlattenedStageList []*StageInfo
-	ParsedFailureInfo  *FailureInfo
+	// Populated by PrepareForInsert
+	FlattenedStageList     []*StageInfo
+	ParsedFailureInfo      *FailureInfo
+	AssembledQueryPlanJson string `presto_query_plans:"json_plan"`
 }
 
 type QueryStats struct {
@@ -77,5 +79,14 @@ func (q *QueryInfo) PrepareForInsert() error {
 	// To avoid this root output stage to be visited more than once during reflection,
 	// we set to nil after the tree is flattened.
 	q.OutputStage = nil
-	return s.PrepareForInsert(&q.FlattenedStageList)
+	AssembledQueryPlan := make(map[string]WrappedPlan)
+	if err := s.PrepareForInsert(&q.FlattenedStageList, AssembledQueryPlan); err != nil {
+		return err
+	}
+	if planJson, err := json.Marshal(AssembledQueryPlan); err != nil {
+		return err
+	} else {
+		q.AssembledQueryPlanJson = string(planJson)
+	}
+	return nil
 }
