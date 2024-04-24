@@ -471,6 +471,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	clientResult, _, err := s.Client.Query(ctx, query.Text,
 		func(req *http.Request) {
 			req.Header.Set(presto.SourceHeader, querySourceStr)
+			req.Header.Set(presto.TrinoSourceHeader, querySourceStr)
 		})
 	if clientResult != nil {
 		result.QueryId = clientResult.Id

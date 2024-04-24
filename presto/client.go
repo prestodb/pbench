@@ -22,6 +22,7 @@ const (
 	StartedTransactionHeader = "X-Presto-Started-Transaction-Id"
 	ClearTransactionHeader   = "X-Presto-Clear-Transaction-Id"
 	SourceHeader             = "X-Presto-Source"
+	TrinoSourceHeader        = "X-Trino-Source"
 	ClientInfoHeader         = "X-Presto-Client-Info"
 	ClientTagHeader          = "X-Presto-Client-Tags"
 	TimeZoneHeader           = "X-Presto-Time-Zone"
@@ -38,9 +39,11 @@ type Client struct {
 	sessionParams map[string]any
 	clientTags    []string
 	baseHeader    http.Header
+	isTrino       bool
+	forceHttps    bool
 }
 
-func NewClient(serverUrl string) (*Client, error) {
+func NewClient(serverUrl string, isTrino bool) (*Client, error) {
 	parsedServerUrl, err := url.Parse(serverUrl)
 	if err != nil {
 		return nil, err
@@ -50,35 +53,61 @@ func NewClient(serverUrl string) (*Client, error) {
 		serverUrl:     parsedServerUrl,
 		baseHeader:    make(http.Header),
 		sessionParams: make(map[string]any),
+		isTrino:       isTrino,
 	}
 	client.User(DefaultUser)
-	client.baseHeader.Set(SourceHeader, DefaultUser)
 	return client, nil
 }
 
+func (c *Client) setHeader(key, value string) {
+	if c.isTrino {
+		key = strings.Replace(key, "X-Presto", "X-Trino", 1)
+	}
+	c.baseHeader.Set(key, value)
+}
+
+func (c *Client) delHeader(key string) {
+	if c.isTrino {
+		key = strings.Replace(key, "X-Presto-", "X-Trino", 1)
+	}
+	c.baseHeader.Del(key)
+}
+
+func (c *Client) getHeader(key string) string {
+	if c.isTrino {
+		key = strings.Replace(key, "X-Presto-", "X-Trino", 1)
+	}
+	return c.baseHeader.Get(key)
+}
+
 func (c *Client) TimeZone(timezone string) *Client {
-	c.baseHeader.Set(TimeZoneHeader, timezone)
+	c.setHeader(TimeZoneHeader, timezone)
+	return c
+}
+
+func (c *Client) ForceHttps() *Client {
+	c.forceHttps = true
 	return c
 }
 
 func (c *Client) User(user string) *Client {
 	c.userInfo = url.User(user)
-	c.baseHeader.Set(UserHeader, c.userInfo.Username())
+	c.setHeader(UserHeader, user)
 	return c
 }
 
 func (c *Client) UserPassword(user, password string) *Client {
 	c.userInfo = url.UserPassword(user, password)
-	c.baseHeader.Set(UserHeader, c.userInfo.Username())
+	c.setHeader(UserHeader, user)
 	return c
 }
 
 func (c *Client) GetSessionParams() string {
-	return c.baseHeader.Get(SessionHeader)
+	return c.getHeader(SessionHeader)
 }
 
 func (c *Client) ClearSessionParams() *Client {
-	c.baseHeader.Del(SessionHeader)
+	c.delHeader(SessionHeader)
 	c.sessionParams = make(map[string]any)
 	return c
 }
@@ -90,7 +119,7 @@ func (c *Client) SessionParam(key string, value any) *Client {
 		c.sessionParams[key] = value
 	}
 	if len(c.sessionParams) == 0 {
-		c.baseHeader.Del(SessionHeader)
+		c.delHeader(SessionHeader)
 		return c
 	}
 	buf := strings.Builder{}
@@ -100,54 +129,54 @@ func (c *Client) SessionParam(key string, value any) *Client {
 		}
 		buf.WriteString(fmt.Sprintf("%s=%v", k, v))
 	}
-	c.baseHeader.Set(SessionHeader, buf.String())
+	c.setHeader(SessionHeader, buf.String())
 	return c
 }
 
 func (c *Client) Catalog(catalog string) *Client {
 	if catalog != "" {
-		c.baseHeader.Set(CatalogHeader, catalog)
+		c.setHeader(CatalogHeader, catalog)
 	} else {
-		c.baseHeader.Del(CatalogHeader)
+		c.delHeader(CatalogHeader)
 	}
 	return c
 }
 
 func (c *Client) Schema(schema string) *Client {
 	if schema != "" {
-		c.baseHeader.Set(SchemaHeader, schema)
+		c.setHeader(SchemaHeader, schema)
 	} else {
-		c.baseHeader.Del(SchemaHeader)
+		c.delHeader(SchemaHeader)
 	}
 	return c
 }
 
 func (c *Client) GetCatalog() string {
-	return c.baseHeader.Get(CatalogHeader)
+	return c.getHeader(CatalogHeader)
 }
 
 func (c *Client) GetSchema() string {
-	return c.baseHeader.Get(SchemaHeader)
+	return c.getHeader(SchemaHeader)
 }
 
 func (c *Client) GetTimeZone() string {
-	return c.baseHeader.Get(TimeZoneHeader)
+	return c.getHeader(TimeZoneHeader)
 }
 
 func (c *Client) ClientInfo(info string) *Client {
 	if info != "" {
-		c.baseHeader.Set(ClientInfoHeader, info)
+		c.setHeader(ClientInfoHeader, info)
 	} else {
-		c.baseHeader.Del(ClientInfoHeader)
+		c.delHeader(ClientInfoHeader)
 	}
 	return c
 }
 
 func (c *Client) ClientTags(tags ...string) *Client {
 	if len(tags) > 0 {
-		c.baseHeader.Set(ClientTagHeader, strings.Join(tags, ","))
+		c.setHeader(ClientTagHeader, strings.Join(tags, ","))
 	} else {
-		c.baseHeader.Del(ClientTagHeader)
+		c.delHeader(ClientTagHeader)
 	}
 	return c
 }
@@ -157,12 +186,12 @@ func (c *Client) AppendClientTag(tags ...string) *Client {
 		// nothing to append.
 		return c
 	}
-	value := c.baseHeader.Get(ClientTagHeader)
+	value := c.getHeader(ClientTagHeader)
 	if len(value) == 0 {
 		return c.ClientTags(tags...)
 	}
 	value += "," + strings.Join(tags, ",")
-	c.baseHeader.Set(ClientTagHeader, value)
+	c.setHeader(ClientTagHeader, value)
 	return c
 }
 
@@ -170,6 +199,9 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}, opts ...Req
 	u, err := c.serverUrl.Parse(urlStr)
 	if err != nil {
 		return nil, err
+	}
+	if c.forceHttps && u.Scheme == "http" {
+		u.Scheme = "https"
 	}
 
 	var bodyReader io.Reader
@@ -240,9 +272,9 @@ func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*htt
 			switch resp.StatusCode {
 			case http.StatusOK:
 				if id := resp.Header.Get(StartedTransactionHeader); id != "" {
-					c.baseHeader.Set(TransactionHeader, id)
+					c.setHeader(TransactionHeader, id)
 				} else if resp.Header.Get(ClearTransactionHeader) == "true" {
-					c.baseHeader.Del(TransactionHeader)
+					c.delHeader(TransactionHeader)
 				}
 				switch v := v.(type) {
 				case nil:

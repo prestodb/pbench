@@ -12,7 +12,7 @@ import (
 
 func TestQuery(t *testing.T) {
 	// This test requires Presto hive query runner.
-	client, err := presto.NewClient("http://127.0.0.1:8080")
+	client, err := presto.NewClient("http://127.0.0.1:8080", false)
 	assert.Nil(t, err)
 	qr, _, err := client.
 		User("ethan").

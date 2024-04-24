@@ -25,6 +25,8 @@ func init() {
 	runCmd.Flags().StringVarP(&run.Comment, "comment", "c", "", `Add a comment to this run (optional)`)
 	runCmd.Flags().StringVarP(&run.ServerUrl, "server", "s", run.ServerUrl, "Presto server address")
 	runCmd.Flags().StringVarP(&run.OutputPath, "output-path", "o", wd, "Output directory path")
+	runCmd.Flags().BoolVarP(&run.IsTrino, "trino", "", false, "Use Trino protocol")
+	runCmd.Flags().BoolVarP(&run.ForceHttps, "force-https", "", false, "Force all API requests to use HTTPS")
 	runCmd.Flags().StringVarP(&run.UserName, "user", "u", presto.DefaultUser, "Presto user name")
 	runCmd.Flags().StringVarP(&run.Password, "password", "p", "", "Presto user password (optional)")
 	runCmd.Flags().Int64VarP(&run.RandSeed, "seed", "e", time.Now().UnixMicro(), "Random seed for randomized execution")

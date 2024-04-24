@@ -27,7 +27,7 @@ type OnQueryCompletionFn func(result *QueryResult)
 var (
 	DefaultServerUrl   = "http://127.0.0.1:8080"
 	DefaultGetClientFn = func() *presto.Client {
-		client, _ := presto.NewClient(DefaultServerUrl)
+		client, _ := presto.NewClient(DefaultServerUrl, false)
 		return client
 	}
 )

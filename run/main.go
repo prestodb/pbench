@@ -19,6 +19,8 @@ var (
 	Comment       string
 	ServerUrl     = stage.DefaultServerUrl
 	OutputPath    string
+	IsTrino       bool
+	ForceHttps    bool
 	UserName      string
 	Password      string
 	RandSeed      int64
@@ -77,20 +79,29 @@ func Run(_ *cobra.Command, args []string) {
 	if UserName != "" {
 		if Password != "" {
 			mainStage.States.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(ServerUrl)
+				client, _ := presto.NewClient(ServerUrl, IsTrino)
 				client.UserPassword(UserName, Password)
+				if ForceHttps {
+					client.ForceHttps()
+				}
 				return client
 			}
 		} else {
 			mainStage.States.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(ServerUrl)
+				client, _ := presto.NewClient(ServerUrl, IsTrino)
 				client.User(UserName)
+				if ForceHttps {
+					client.ForceHttps()
+				}
 				return client
 			}
 		}
 	} else {
 		mainStage.States.GetClient = func() *presto.Client {
-			client, _ := presto.NewClient(ServerUrl)
+			client, _ := presto.NewClient(ServerUrl, IsTrino)
+			if ForceHttps {
+				client.ForceHttps()
+			}
 			return client
 		}
 	}
