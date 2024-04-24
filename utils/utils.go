@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 	"os"
 	"pbench/log"
-	"pbench/presto"
+	"pbench/presto/query_json"
 	"reflect"
 	"strings"
 )
@@ -162,7 +162,7 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 							typed = compactedJson.Bytes()
 						}
 						fieldValue = string(typed)
-					case presto.Duration:
+					case query_json.Duration:
 						// TODO: Add a tag for precision. EventListener only uses ms.
 						fieldValue = typed.Milliseconds()
 					default:
