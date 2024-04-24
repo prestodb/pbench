@@ -68,7 +68,8 @@ func processPath(path string) error {
 		return err
 	}
 	if !stat.IsDir() {
-		return processFile(path)
+		processFile(path)
+		return nil
 	}
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -79,27 +80,29 @@ func processPath(path string) error {
 			continue
 		}
 		fullPath := filepath.Join(path, entry.Name())
-		if err = processFile(fullPath); err != nil {
-			return err
-		}
+		processFile(fullPath)
 	}
 	return nil
 }
 
-func processFile(path string) (err error) {
+func processFile(path string) {
 	bytes, ioErr := os.ReadFile(path)
 	if ioErr != nil {
-		return ioErr
+		log.Error().Err(ioErr).Str("path", path).Msg("failed to read file")
+		return
 	}
 	queryInfo := new(query_json.QueryInfo)
 	if unmarshalErr := json.Unmarshal(bytes, queryInfo); unmarshalErr != nil {
-		return unmarshalErr
+		log.Error().Err(unmarshalErr).Str("path", path).Msg("failed to parse json file")
+		return
 	}
 
+	fileName := filepath.Base(path)
 	queryResult := &stage.QueryResult{
 		StageId: pseudoStage.Id,
 		Query: &stage.Query{
 			Text:             queryInfo.Query,
+			File:             &fileName,
 			ColdRun:          true,
 			ExpectedRowCount: -1,
 		},
@@ -142,11 +145,11 @@ func processFile(path string) (err error) {
 			)
 		}
 		if e != nil {
-			log.Error().Err(e).Msg("failed to insert")
-			return e
+			log.Error().Err(e).Str("path", path).Msg("failed to insert record")
+			return
 		}
 	}
-	return nil
+	log.Info().Str("path", path).Msg("success")
 }
 
 func registerRunRecorder(r stage.RunRecorder) {

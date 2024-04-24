@@ -68,8 +68,10 @@ func (q *QueryInfo) PrepareForInsert() error {
 		}
 	}
 
-	q.QueryStats.BytesPerSec = int64(q.QueryStats.RawInputDataSize) / q.QueryStats.ExecutionTime.Milliseconds()
-	if c := q.QueryStats.TotalCpuTime.Milliseconds(); c != 0 {
+	if q.QueryStats.ExecutionTime.Milliseconds() > 0 {
+		q.QueryStats.BytesPerSec = int64(q.QueryStats.RawInputDataSize) / q.QueryStats.ExecutionTime.Milliseconds()
+	}
+	if c := q.QueryStats.TotalCpuTime.Milliseconds(); c > 0 {
 		q.QueryStats.BytesPerCPUSec = int64(q.QueryStats.RawInputDataSize) / c
 		q.QueryStats.RowsPerCPUSec = q.QueryStats.RawInputPositions / c
 	}

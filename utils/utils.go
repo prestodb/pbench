@@ -228,7 +228,7 @@ func SqlInsertObject(db *sql.DB, obj any, tableNames ...TableName) error {
 			table, strings.Join(rows[0].ColumnNames, ","), placeholders)
 
 		for _, row := range rows {
-			log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
+			//log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
 			_, err := db.Exec(sqlStmt, row.Values...)
 			if err != nil {
 				return err

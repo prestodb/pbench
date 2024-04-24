@@ -49,6 +49,9 @@ type WrappedPlan struct {
 }
 
 func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[string]WrappedPlan) error {
+	if s == nil {
+		return nil
+	}
 	if index := bytes.IndexByte([]byte(s.StageId), '.'); index > 0 && index+1 < len(s.StageId) {
 		// The stage IDs are in the format of 'query_id.[index]', we only keep the index in the database.
 		s.StageId = s.StageId[index+1:]
