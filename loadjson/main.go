@@ -1,4 +1,4 @@
-package load
+package loadjson
 
 import (
 	"database/sql"
