@@ -24,6 +24,7 @@ func init() {
 	wd, _ := os.Getwd()
 	loadJsonCmd.Flags().StringVarP(&loadjson.Name, "name", "n", fmt.Sprintf("load_%s", time.Now().Format(stage.RunNameTimeFormat)), `Assign a name to this run. (default: "load_<current time>")`)
 	loadJsonCmd.Flags().StringVarP(&loadjson.Comment, "comment", "c", "", `Add a comment to this run (optional)`)
+	loadJsonCmd.Flags().BoolVarP(&loadjson.RecordRun, "record-run", "r", false, "Record all the loaded JSON as a run")
 	loadJsonCmd.Flags().StringVarP(&loadjson.OutputPath, "output-path", "o", wd, "Output directory path")
 	loadJsonCmd.Flags().StringVar(&loadjson.InfluxCfgPath, "influx", "", "InfluxDB connection config for run recorder (optional)")
 	loadJsonCmd.Flags().StringVar(&loadjson.MySQLCfgPath, "mysql", "", "MySQL connection config for event listener and  run recorder (optional)")

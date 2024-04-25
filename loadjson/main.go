@@ -19,6 +19,7 @@ var (
 	Name          string
 	Comment       string
 	OutputPath    string
+	RecordRun     bool
 	MySQLCfgPath  string
 	InfluxCfgPath string
 
@@ -34,9 +35,11 @@ func Run(_ *cobra.Command, args []string) {
 	queryResults = make([]*stage.QueryResult, 0, 8)
 
 	mysqlDb = utils.InitMySQLConnFromCfg(MySQLCfgPath)
-	registerRunRecorder(stage.NewFileBasedRunRecorder())
-	registerRunRecorder(stage.NewMySQLRunRecorderWithDb(mysqlDb))
-	registerRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
+	if RecordRun {
+		registerRunRecorder(stage.NewFileBasedRunRecorder())
+		registerRunRecorder(stage.NewMySQLRunRecorderWithDb(mysqlDb))
+		registerRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
+	}
 
 	pseudoStage = &stage.Stage{
 		Id:       "load_json",
@@ -97,6 +100,8 @@ func processFile(path string) {
 		return
 	}
 
+	queryInfo.QueryId = Name + "_" + queryInfo.QueryId
+
 	fileName := filepath.Base(path)
 	queryResult := &stage.QueryResult{
 		StageId: pseudoStage.Id,
@@ -149,7 +154,7 @@ func processFile(path string) {
 			return
 		}
 	}
-	log.Info().Str("path", path).Msg("success")
+	log.Info().Str("path", path).Str("query_id", queryInfo.QueryId).Msg("success")
 }
 
 func registerRunRecorder(r stage.RunRecorder) {
