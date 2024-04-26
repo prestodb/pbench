@@ -3,6 +3,7 @@ package query_json
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/xhit/go-str2duration/v2"
 	"time"
 )
 
@@ -29,7 +30,7 @@ func (d *Duration) UnmarshalJSON(bytes []byte) error {
 		return nil
 	case string:
 		var err error
-		d.Duration, err = time.ParseDuration(value)
+		d.Duration, err = str2duration.ParseDuration(value)
 		if err != nil {
 			return err
 		}
