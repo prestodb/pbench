@@ -25,13 +25,13 @@ type MySQLRunRecorder struct {
 
 func NewMySQLRunRecorder(cfgPath string) *MySQLRunRecorder {
 	db := utils.InitMySQLConnFromCfg(cfgPath)
-	if db == nil {
-		return nil
-	}
 	return NewMySQLRunRecorderWithDb(db)
 }
 
 func NewMySQLRunRecorderWithDb(db *sql.DB) *MySQLRunRecorder {
+	if db == nil {
+		return nil
+	}
 	_, err := db.Exec(pbenchRunsDDL)
 	if err == nil {
 		_, err = db.Exec(pbenchQueriesDDL)
