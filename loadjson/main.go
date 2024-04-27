@@ -150,29 +150,6 @@ func Run(_ *cobra.Command, args []string) {
 	close(timeToExit)
 }
 
-func processPath(path string) error {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	if !stat.IsDir() {
-		fileToProcessChan <- path
-		return nil
-	}
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		fullPath := filepath.Join(path, entry.Name())
-		fileToProcessChan <- fullPath
-	}
-	return nil
-}
-
 func processFile(ctx context.Context, path string) {
 	defer func() {
 		<-goRoutineCapGuard
@@ -227,10 +204,9 @@ func processFile(ctx context.Context, path string) {
 		})
 	}
 
-	var err error
 	if mysqlDb != nil {
 		// OutputStage is in a tree structure, and we need to flatten it for its ORM to be correctly parsed.
-		err = queryInfo.PrepareForInsert()
+		err := queryInfo.PrepareForInsert()
 		if err == nil {
 			err = utils.SqlInsertObject(ctx, mysqlDb, queryInfo,
 				"presto_query_creation_info",
@@ -240,10 +216,10 @@ func processFile(ctx context.Context, path string) {
 				"presto_query_statistics",
 			)
 		}
-	}
-	if err != nil {
-		log.Error().Err(err).Str("path", path).Msg("failed to insert event listener record")
-		return
+		if err != nil {
+			log.Error().Err(err).Str("path", path).Msg("failed to insert event listener record")
+			return
+		}
 	}
 	for _, r := range runRecorders {
 		r.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), pseudoStage, queryResult)
@@ -252,32 +228,32 @@ func processFile(ctx context.Context, path string) {
 	resultChan <- queryResult
 }
 
+func processPath(path string) error {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if !stat.IsDir() {
+		fileToProcessChan <- path
+		return nil
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		fullPath := filepath.Join(path, entry.Name())
+		fileToProcessChan <- fullPath
+	}
+	return nil
+}
+
 func registerRunRecorder(r stage.RunRecorder) {
 	if r == nil || reflect.ValueOf(r).IsNil() {
 		return
 	}
 	runRecorders = append(runRecorders, r)
-}
-
-type syncedTime struct {
-	t time.Time
-	m sync.Mutex
-}
-
-func newSyncedTime(t time.Time) *syncedTime {
-	return &syncedTime{
-		t: t,
-	}
-}
-
-func (st *syncedTime) Synchronized(f func(st *syncedTime)) {
-	st.m.Lock()
-	defer st.m.Unlock()
-	f(st)
-}
-
-func (st *syncedTime) GetTime() time.Time {
-	st.m.Lock()
-	defer st.m.Unlock()
-	return st.t
 }
