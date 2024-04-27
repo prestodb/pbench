@@ -1,11 +1,14 @@
 package loadjson
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -41,6 +44,21 @@ var (
 
 func Run(_ *cobra.Command, args []string) {
 	utils.PrepareOutputDirectory(OutputPath)
+	// also start to write logs to the output directory from this point on.
+	logPath := filepath.Join(OutputPath, "loadjson.log")
+	if logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644); err != nil {
+		log.Error().Str("log_path", logPath).Err(err).Msg("failed to create the log file")
+		// In this case, the global logger is not changed. Log messages are still printed to stderr.
+	} else {
+		bufWriter := bufio.NewWriter(logFile)
+		defer func() {
+			_ = bufWriter.Flush()
+			_ = logFile.Close()
+		}()
+		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stderr, bufWriter)).With().Timestamp().Stack().Logger())
+		log.Info().Str("log_path", logPath).Msg("log file will be saved to this path")
+	}
+	
 	mysqlDb = utils.InitMySQLConnFromCfg(MySQLCfgPath)
 	if RecordRun {
 		registerRunRecorder(stage.NewFileBasedRunRecorder())
