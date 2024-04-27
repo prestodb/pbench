@@ -130,6 +130,7 @@ func Run(_ *cobra.Command, args []string) {
 					return
 				}
 				goRoutineCapGuard <- struct{}{}
+				runningTasks.Add(1)
 				go processFile(ctx, fileToProcess)
 			}
 		}
@@ -177,7 +178,6 @@ func processFile(ctx context.Context, path string) {
 		<-goRoutineCapGuard
 		runningTasks.Done()
 	}()
-	runningTasks.Add(1)
 
 	bytes, ioErr := os.ReadFile(path)
 	if ioErr != nil {

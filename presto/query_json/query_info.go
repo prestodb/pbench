@@ -77,6 +77,8 @@ func (q *QueryInfo) PrepareForInsert() error {
 	}
 	q.QueryStats.StageCount = len(q.QueryStats.StageGcStatistics)
 
+	q.Session.PrepareForInsert()
+
 	q.FlattenedStageList = make([]*StageInfo, 0, 8)
 	s := q.OutputStage
 	// To avoid this root output stage to be visited more than once during reflection,
