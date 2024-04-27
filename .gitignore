@@ -31,3 +31,6 @@ vendor
 
 # binaries
 pbench_*
+
+# tar
+pbench.tar.gz

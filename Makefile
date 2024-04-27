@@ -3,7 +3,7 @@ all: clean pbench
 
 .PHONY: clean
 clean:
-	rm pbench_*
+	rm -rf pbench_* pbench.* release
 
 # ------------------------------------------------------------------------------
 #  pbench
@@ -11,6 +11,9 @@ clean:
 pbench:
 	pbench
 
-.PHONY: release
-release: clean pbench
-
+.PHONY: tar
+tar: clean pbench
+	mkdir -p release/pbench
+	cp -r pbench pbench_* benchmarks gen-config/templates release/pbench
+	cd release && tar -czf ../pbench.tar.gz *
+	rm -rf release
