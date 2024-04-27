@@ -244,8 +244,8 @@ func (s *Stage) propagateStates() {
 }
 
 func (s *Stage) saveQueryJsonFile(result *QueryResult) {
-	// We do not save json file for the cold run or when saveJson is false. But when there is an error, we always save the json file.
-	if (result.Query.ColdRun || !*s.SaveJson) && result.QueryError == nil {
+	// We do not save json file when saveJson is false. But when there is an error, we always save the json file.
+	if !*s.SaveJson && result.QueryError == nil {
 		return
 	}
 	s.States.wgExitMainStage.Add(1)
@@ -290,7 +290,7 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 }
 
 func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryResult, querySourceStr string) (returnErr error) {
-	if result.Query.ColdRun || !*s.SaveColumnMetadata || len(qr.Columns) == 0 {
+	if !*s.SaveColumnMetadata || len(qr.Columns) == 0 {
 		return
 	}
 	defer func() {

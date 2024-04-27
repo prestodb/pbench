@@ -69,7 +69,6 @@ type Stage struct {
 	AbortOnError *bool `json:"abort_on_error,omitempty"`
 	// If SaveOutput is set to true, the query result will be saved to files in its raw form.
 	// Children stages will inherit this value from their parent if it is not set.
-	// Cold runs will ignore this setting.
 	SaveOutput *bool `json:"save_output,omitempty"`
 	// If SaveColumnMetadata is set to true, we will save a json file of the query result's column metadata.
 	// See the "columns" field in Presto's query API response.
@@ -551,7 +550,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		if queryOutputWriter != nil {
 			queryOutputChan <- qr.Data
 		}
-		if qr.NextUri == nil {
+		if qr.NextUri == nil && query.SequenceNo == 0 {
 			_ = s.saveColumnMetadataFile(qr, result, querySourceStr)
 		}
 		return nil
