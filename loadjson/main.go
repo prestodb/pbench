@@ -43,6 +43,7 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
+	OutputPath = filepath.Join(OutputPath, RunName)
 	utils.PrepareOutputDirectory(OutputPath)
 	// also start to write logs to the output directory from this point on.
 	logPath := filepath.Join(OutputPath, "loadjson.log")
@@ -58,7 +59,7 @@ func Run(_ *cobra.Command, args []string) {
 		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stderr, bufWriter)).With().Timestamp().Stack().Logger())
 		log.Info().Str("log_path", logPath).Msg("log file will be saved to this path")
 	}
-	
+
 	mysqlDb = utils.InitMySQLConnFromCfg(MySQLCfgPath)
 	if RecordRun {
 		registerRunRecorder(stage.NewFileBasedRunRecorder())
@@ -213,6 +214,7 @@ func processFile(ctx context.Context, path string) {
 	runStartTime.Synchronized(func(st *syncedTime) {
 		if queryResult.StartTime.Before(st.t) {
 			st.t = queryResult.StartTime
+			pseudoStage.States.RunStartTime = queryResult.StartTime
 		}
 	})
 	if queryResult.EndTime != nil {
