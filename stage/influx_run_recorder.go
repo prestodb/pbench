@@ -46,6 +46,10 @@ func NewInfluxRunRecorder(cfgPath string) *InfluxRunRecorder {
 	}
 }
 
+func (i *InfluxRunRecorder) Start(_ context.Context, _ *Stage) error {
+	return nil
+}
+
 func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *QueryResult) {
 	tags := map[string]string{
 		"run_name": s.States.RunName,

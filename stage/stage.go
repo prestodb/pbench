@@ -17,6 +17,7 @@ import (
 	"pbench/log"
 	"pbench/presto"
 	"pbench/utils"
+	"reflect"
 	"regexp"
 	"strconv"
 	"sync"
@@ -165,6 +166,11 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	ctx, s.States.AbortAll = context.WithCancelCause(ctx)
 	log.Debug().EmbedObject(s).Msg("created cancellable context")
+	for _, recorder := range s.States.runRecorders {
+		if err := recorder.Start(ctx, s); err != nil {
+			log.Fatal().Err(err).Msgf("failed to prepare %s", reflect.TypeOf(recorder).Name())
+		}
+	}
 	// Start to run the queries defined in this main stage in a goroutine, which is managed exactly like all other
 	// concurrent stages.
 	go func() {

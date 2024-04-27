@@ -12,7 +12,6 @@ import (
 	"os"
 	"pbench/log"
 	"regexp"
-	"sync/atomic"
 	"time"
 )
 
@@ -29,7 +28,6 @@ type PulumiMySQLRunRecorder struct {
 	Project      string `json:"project"`
 	db           *sql.DB
 	apiEndpoint  *url.URL
-	clusterSaved atomic.Bool
 }
 
 func NewPulumiMySQLRunRecorder(cfgPath string, mySQLRunRecorder *MySQLRunRecorder) *PulumiMySQLRunRecorder {
@@ -167,26 +165,25 @@ func (p *PulumiMySQLRunRecorder) findPulumiStackFromClusterFQDN(ctx context.Cont
 	return nil
 }
 
-func (p *PulumiMySQLRunRecorder) RecordRun(_ context.Context, _ *Stage, _ []*QueryResult) {
-	return
-}
-
-func (p *PulumiMySQLRunRecorder) RecordQuery(ctx context.Context, s *Stage, _ *QueryResult) {
-	if !p.clusterSaved.CompareAndSwap(false, true) {
-		return
-	}
+func (p *PulumiMySQLRunRecorder) Start(ctx context.Context, s *Stage) error {
 	stack := p.findPulumiStackFromClusterFQDN(ctx, s.States.ServerFQDN)
 	if stack == nil {
 		log.Info().Msgf("did not find a matching Pulumi stack for %s", s.States.ServerFQDN)
-		return
+		return nil
 	}
 	recordCluster := `INSERT IGNORE INTO pbench_clusters (cluster_name, cluster_fqdn, created) VALUES (?, ?, ?)`
 	_, err := p.db.Exec(recordCluster, stack.Outputs.ClusterName, s.States.ServerFQDN, stack.Created)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Str("cluster_fqdn", s.States.ServerFQDN).
 			Msg("failed to record cluster info")
+		return err
 	}
+	return nil
 }
+
+func (p *PulumiMySQLRunRecorder) RecordRun(_ context.Context, _ *Stage, _ []*QueryResult) {}
+
+func (p *PulumiMySQLRunRecorder) RecordQuery(_ context.Context, _ *Stage, _ *QueryResult) {}
 
 type PulumiStacks struct {
 	Stacks []struct {

@@ -10,6 +10,7 @@ import (
 )
 
 type RunRecorder interface {
+	Start(ctx context.Context, s *Stage) error
 	RecordQuery(ctx context.Context, s *Stage, result *QueryResult)
 	RecordRun(ctx context.Context, s *Stage, results []*QueryResult)
 }
@@ -19,9 +20,12 @@ type FileBasedRunRecorder struct {
 }
 
 func NewFileBasedRunRecorder() *FileBasedRunRecorder {
-	r := &FileBasedRunRecorder{}
-	r.summaryBuilder.WriteString("stage_id,query_file,query_index,cold_run,sequence_no,info_url,succeeded,row_count,expected_row_count,start_time,end_time,duration_in_seconds\n")
-	return r
+	return &FileBasedRunRecorder{}
+}
+
+func (f *FileBasedRunRecorder) Start(_ context.Context, _ *Stage) error {
+	f.summaryBuilder.WriteString("stage_id,query_file,query_index,cold_run,sequence_no,info_url,succeeded,row_count,expected_row_count,start_time,end_time,duration_in_seconds\n")
+	return nil
 }
 
 func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *QueryResult) {

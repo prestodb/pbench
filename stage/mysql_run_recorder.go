@@ -47,20 +47,23 @@ func NewMySQLRunRecorderWithDb(db *sql.DB) *MySQLRunRecorder {
 	}
 }
 
-func (m *MySQLRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *QueryResult) {
-	if m.runId < 0 {
-		recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time, queries_ran, failed, mismatch, comment)
+func (m *MySQLRunRecorder) Start(_ context.Context, s *Stage) error {
+	recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time, queries_ran, failed, mismatch, comment)
 VALUES (?, ?, ?, 0, 0, 0, ?)`
-		res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.ServerFQDN, s.States.RunStartTime, s.States.Comment)
-		if err != nil {
-			log.Error().Err(err).Str("run_name", s.States.RunName).Time("start_time", s.States.RunStartTime).
-				Msg("failed to add a new run to the MySQL database")
-		} else {
-			m.runId, _ = res.LastInsertId()
-			log.Info().Int64("run_id", m.runId).Str("run_name", s.States.RunName).
-				Msg("added a new run to the MySQL database")
-		}
+	res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.ServerFQDN, s.States.RunStartTime, s.States.Comment)
+	if err != nil {
+		log.Error().Err(err).Str("run_name", s.States.RunName).Time("start_time", s.States.RunStartTime).
+			Msg("failed to add a new run to the MySQL database")
+		return err
+	} else {
+		m.runId, _ = res.LastInsertId()
+		log.Info().Int64("run_id", m.runId).Str("run_name", s.States.RunName).
+			Msg("added a new run to the MySQL database")
 	}
+	return nil
+}
+
+func (m *MySQLRunRecorder) RecordQuery(_ context.Context, s *Stage, result *QueryResult) {
 	recordNewQuery := `INSERT INTO pbench_queries (run_id, stage_id, query_file, query_index, query_id, sequence_no,
 cold_run, succeeded, start_time, end_time, row_count, expected_row_count, duration_ms, info_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	var queryFile string
@@ -97,12 +100,13 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 }
 
 func (m *MySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*QueryResult) {
-	completeRunInfo := `UPDATE pbench_runs SET duration_ms = ?, rand_seed = ? WHERE run_id = ?`
+	completeRunInfo := `UPDATE pbench_runs SET start_time = ?, duration_ms = ?, rand_seed = ? WHERE run_id = ?`
 	randSeed := sql.NullInt64{
 		Int64: s.States.RandSeed,
 		Valid: s.States.RandSeedUsed,
 	}
-	res, err := m.db.Exec(completeRunInfo, s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), randSeed, m.runId)
+	res, err := m.db.Exec(completeRunInfo, s.States.RunStartTime,
+		s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), randSeed, m.runId)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to complete the run information in the MySQL database")
