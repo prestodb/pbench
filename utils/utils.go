@@ -208,7 +208,18 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 	return
 }
 
-func SqlInsertObject(db *sql.DB, obj any, tableNames ...TableName) error {
+func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...TableName) (returnedErr error) {
+	tx, beginTxErr := db.BeginTx(ctx, nil)
+	if beginTxErr != nil {
+		return beginTxErr
+	}
+	defer func() {
+		if returnedErr != nil {
+			_ = tx.Rollback()
+		} else {
+			returnedErr = tx.Commit()
+		}
+	}()
 	v, ok := obj.(reflect.Value)
 	if !ok {
 		v = reflect.ValueOf(obj)
@@ -229,7 +240,7 @@ func SqlInsertObject(db *sql.DB, obj any, tableNames ...TableName) error {
 
 		for _, row := range rows {
 			//log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
-			_, err := db.Exec(sqlStmt, row.Values...)
+			_, err := tx.Exec(sqlStmt, row.Values...)
 			if err != nil {
 				return err
 			}

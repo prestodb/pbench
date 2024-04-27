@@ -87,8 +87,8 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 	if err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to MySQL")
 	}
-	updateRunInfo := `UPDATE pbench_runs SET queries_ran = queries_ran + 1, failed = ?, mismatch = ? WHERE run_id = ?`
-	res, err := m.db.Exec(updateRunInfo, m.failed, m.mismatch, m.runId)
+	updateRunInfo := `UPDATE pbench_runs SET start_time = ?, queries_ran = queries_ran + 1, failed = ?, mismatch = ? WHERE run_id = ?`
+	res, err := m.db.Exec(updateRunInfo, s.States.RunStartTime, m.failed, m.mismatch, m.runId)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to update the run information in the MySQL database")

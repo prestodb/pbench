@@ -5,12 +5,12 @@ GO=/usr/local/go/bin/go
 if [ ! -f $SCRIPT_DIR/pbench_$(arch) ]; then
     if [ ! -f $GO ]; then
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            pkg=go1.21.5.linux-amd64.tar.gz
+            pkg=go1.22.2.linux-amd64.tar.gz
             curl -OL https://go.dev/dl/$pkg
             sudo tar -C /usr/local -xzf $pkg
             rm $pkg
         elif [[ "$OSTYPE" == "darwin"* ]]; then
-            echo "Please install go first: https://go.dev/dl/go1.21.5.darwin-amd64.pkg"
+            echo "Please install go first: https://go.dev/dl/go1.22.2.darwin-amd64.pkg"
             exit
         fi
     fi
