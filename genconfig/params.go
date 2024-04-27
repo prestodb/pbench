@@ -1,4 +1,4 @@
-package gen_config
+package genconfig
 
 import (
 	_ "embed"

@@ -155,7 +155,7 @@ server='https://'
 
 
 # Re-regeenrate cluster configs
-./pbench gen-config -t gen-config/templates -p gen-config/default_params.json cluster-configs
+./pbench genconfig -t genconfig/templates -p genconfig/default_params.json cluster-configs
 
 # round decimal result
 ./pbench round -ir /Users/ezhang/Downloads/benchmark_runs/test

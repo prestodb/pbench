@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	genconfig "pbench/gen-config"
+	"pbench/genconfig"
 )
 
 var genConfigCmd = &cobra.Command{
-	Use:                   `gen-config [flags] [directory to search recursively for config.json]`,
+	Use:                   `genconfig [flags] [directory to search recursively for config.json]`,
 	DisableFlagsInUseLine: true,
 	Run:                   genconfig.Run,
 	Args:                  cobra.ExactArgs(1),
