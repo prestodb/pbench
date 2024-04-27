@@ -171,6 +171,8 @@ func (p *PulumiMySQLRunRecorder) Start(ctx context.Context, s *Stage) error {
 		log.Info().Msgf("did not find a matching Pulumi stack for %s", s.States.ServerFQDN)
 		return nil
 	}
+	log.Info().Str("cluster_name", stack.Outputs.ClusterName).Str("cluster_fqdn", s.States.ServerFQDN).
+		Msg("recorded cluster information")
 	recordCluster := `INSERT IGNORE INTO pbench_clusters (cluster_name, cluster_fqdn, created) VALUES (?, ?, ?)`
 	_, err := p.db.Exec(recordCluster, stack.Outputs.ClusterName, s.States.ServerFQDN, stack.Created)
 	if err != nil {
