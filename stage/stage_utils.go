@@ -20,10 +20,9 @@ const (
 	DefaultStageFileExt = ".json"
 )
 
-type GetClientFn func() *presto.Client
 type OnQueryCompletionFn func(result *QueryResult)
 
-var DefaultGetClientFn = func() *presto.Client {
+var DefaultNewClientFn = func() *presto.Client {
 	client, _ := presto.NewClient(utils.DefaultServerUrl, false)
 	return client
 }
@@ -136,11 +135,11 @@ func (s *Stage) prepareClient() {
 	if s.Client != nil && !s.StartOnNewClient {
 		return
 	}
-	if s.States.GetClient == nil {
-		s.States.GetClient = DefaultGetClientFn
-		log.Debug().Msg("using DefaultGetClientFn")
+	if s.States.NewClient == nil {
+		s.States.NewClient = DefaultNewClientFn
+		log.Debug().Msg("using DefaultNewClientFn")
 	}
-	s.Client = s.States.GetClient()
+	s.Client = s.States.NewClient()
 	log.Info().EmbedObject(s).Msg("created new client")
 	if s.Catalog != nil {
 		s.currentCatalog = *s.Catalog

@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
 	"golang.org/x/sys/unix"
+	"io"
 	"os"
 	"pbench/log"
 	"reflect"
@@ -38,6 +41,22 @@ func PrepareOutputDirectory(path string) {
 		log.Fatal().Str("output_path", path).Msg("output path is not a directory")
 	} else {
 		log.Info().Str("output_path", path).Msg("output directory")
+	}
+}
+
+func FlushLogFile(logPath string) (finalizer func()) {
+	if logFile, err := os.OpenFile(logPath, OpenNewFileFlags, 0644); err != nil {
+		log.Error().Str("log_path", logPath).Err(err).Msg("failed to create the log file")
+		// In this case, the global logger is not changed. Log messages are still printed to stderr.
+		return func() {}
+	} else {
+		bufWriter := bufio.NewWriter(logFile)
+		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stderr, bufWriter)).With().Timestamp().Stack().Logger())
+		log.Info().Str("log_path", logPath).Msg("log file will be saved to this path")
+		return func() {
+			_ = bufWriter.Flush()
+			_ = logFile.Close()
+		}
 	}
 }
 

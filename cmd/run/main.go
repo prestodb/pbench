@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
 	"pbench/stage"
 	"pbench/utils"
 	"strings"
@@ -72,35 +71,7 @@ func Run(_ *cobra.Command, args []string) {
 		log.Fatal().Err(err).Msg("failed to parse benchmark stage graph")
 	}
 
-	if PrestoFlags.UserName != "" {
-		if PrestoFlags.Password != "" {
-			mainStage.States.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(PrestoFlags.ServerUrl, PrestoFlags.IsTrino)
-				client.UserPassword(PrestoFlags.UserName, PrestoFlags.Password)
-				if PrestoFlags.ForceHttps {
-					client.ForceHttps()
-				}
-				return client
-			}
-		} else {
-			mainStage.States.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(PrestoFlags.ServerUrl, PrestoFlags.IsTrino)
-				client.User(PrestoFlags.UserName)
-				if PrestoFlags.ForceHttps {
-					client.ForceHttps()
-				}
-				return client
-			}
-		}
-	} else {
-		mainStage.States.GetClient = func() *presto.Client {
-			client, _ := presto.NewClient(PrestoFlags.ServerUrl, PrestoFlags.IsTrino)
-			if PrestoFlags.ForceHttps {
-				client.ForceHttps()
-			}
-			return client
-		}
-	}
+	mainStage.States.NewClient = PrestoFlags.NewPrestoClient
 	mainStage.States.RegisterRunRecorder(stage.NewFileBasedRunRecorder())
 	mainStage.States.RegisterRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
 	mySQLRunRecorder := stage.NewMySQLRunRecorder(MySQLCfgPath)

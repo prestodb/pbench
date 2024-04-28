@@ -2,6 +2,7 @@ package stage
 
 import (
 	"context"
+	"pbench/utils"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -20,8 +21,8 @@ type SharedStageStates struct {
 	// OutputPath is where we store the logs, query results, query json files, query column metadata files, etc.
 	// It should be set by the --output/-o command-line argument. Once set there, its value gets propagated to all the stages.
 	OutputPath string
-	// GetClient is called when the stage needs to create a new Presto client. This function is passed down to descendant stages by default.
-	GetClient GetClientFn
+	// NewClient is called when the stage needs to create a new Presto client. This function is passed down to descendant stages by default.
+	NewClient utils.NewPrestoClientFn
 	// AbortAll is passed down to descendant stages by default and will be used to cancel the current context.
 	AbortAll context.CancelCauseFunc `json:"-"`
 	// OnQueryCompletion is called after a query's result is drained. You cannot access query result in this function.
