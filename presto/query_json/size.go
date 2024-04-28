@@ -30,5 +30,5 @@ func (s *SISize) UnmarshalJSON(bytes []byte) error {
 }
 
 func (s *SISize) MarshalJSON() ([]byte, error) {
-	return json.Marshal(units.HumanSize(float64(*s)))
+	return json.Marshal(units.BytesSize(float64(*s)))
 }
