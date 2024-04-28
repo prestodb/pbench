@@ -1,0 +1,8 @@
+{
+  "description": "Specifies the catalog and the schema for TPC-DS Iceberg scale factor 1 TB of uncompressed data",
+  "catalog": "iceberg",
+  "schema": "tpcds_sf1000_parquet_uncompressed_iceberg",
+  "session_params": {
+    "iceberg.hive_statistics_merge_strategy": "NUMBER_OF_DISTINCT_VALUES,TOTAL_SIZE_IN_BYTES"
+  }
+}
