@@ -5,7 +5,11 @@ clean:
 
 install: pbench
 	rm -f /usr/local/bin/pbench
-	ln -s $(CURDIR)/pbench /usr/local/bin/pbench
+ifeq ($(shell uname -p),arm)
+	ln -s $(CURDIR)/pbench_arm64 /usr/local/bin/pbench
+else
+	ln -s $(CURDIR)/pbench_x86_64 /usr/local/bin/pbench
+endif
 
 .PHONY: pbench
 pbench:

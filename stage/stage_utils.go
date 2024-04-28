@@ -111,7 +111,7 @@ func (s *Stage) waitForPrerequisites() <-chan struct{} {
 func (s *Stage) logErr(ctx context.Context, err error) {
 	var queryResult *QueryResult
 	logEvent := log.Error()
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if ctx.Err() != nil {
 		logEvent.EmbedObject(s)
 		if cause := context.Cause(ctx); cause != nil && errors.As(cause, &queryResult) {
 			logEvent.Str("caused_by_stage", queryResult.StageId).

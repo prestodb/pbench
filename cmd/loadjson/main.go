@@ -93,14 +93,12 @@ func Run(_ *cobra.Command, args []string) {
 	// This is the task scheduler go routine. It feeds files to task runners with back pressure.
 	go func() {
 		for _, path := range args {
-			select {
-			case <-ctx.Done():
+			if ctx.Err() != nil {
 				break
-			default:
-				if err := processPath(ctx, path); err != nil {
-					// This whole command is not abort-on-error. We only log errors.
-					log.Error().Str("path", path).Err(err).Msg("failed to process path")
-				}
+			}
+			if err := processPath(ctx, path); err != nil {
+				// This whole command is not abort-on-error. We only log errors.
+				log.Error().Str("path", path).Err(err).Msg("failed to process path")
 			}
 		}
 		// Keep the main thread waiting for queryResults until all task runner finishes.

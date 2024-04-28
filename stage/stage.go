@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -375,7 +374,7 @@ func (s *Stage) runShellScripts(ctx context.Context) error {
 			Str("stderr", errBuf.String())
 		if err != nil {
 			logEntry.Err(err).Msg("run shell script failed.")
-			if *s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			if *s.AbortOnError || ctx.Err() != nil {
 				s.States.exitCode.CompareAndSwap(0, int32(cmd.ProcessState.ExitCode()))
 				return err
 			}
@@ -414,7 +413,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			// its execution succeeded or not.
 			s.States.resultChan <- result
 			if err != nil {
-				if *s.AbortOnError || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				if *s.AbortOnError || ctx.Err() != nil {
 					// If AbortOnError is set, we skip the rest queries in the same batch.
 					// Logging etc. will be handled in the parent stack.
 					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
@@ -449,10 +448,8 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		StartTime: time.Now(),
 	}
 
-	select {
-	case <-ctx.Done():
+	if ctx.Err() != nil {
 		return result, ctx.Err()
-	default:
 	}
 
 	querySourceStr := s.querySourceString(result)

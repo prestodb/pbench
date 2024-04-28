@@ -83,10 +83,8 @@ func (p *PulumiMySQLRunRecorder) doRequest(ctx context.Context, req *http.Reques
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			return nil, ctx.Err()
-		default:
 		}
 		return nil, err
 	}
