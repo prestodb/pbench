@@ -47,7 +47,7 @@ func Run(_ *cobra.Command, args []string) {
 
 	// also start to write logs to the output directory from this point on.
 	logPath := filepath.Join(OutputPath, "loadjson.log")
-	if logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644); err != nil {
+	if logFile, err := os.OpenFile(logPath, utils.OpenNewFileFlags, 0644); err != nil {
 		log.Error().Str("log_path", logPath).Err(err).Msg("failed to create the log file")
 		// In this case, the global logger is not changed. Log messages are still printed to stderr.
 	} else {

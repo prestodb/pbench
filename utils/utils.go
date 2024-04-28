@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	OpenNewFileFlags        = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
+	DirectoryNameTimeFormat = "060102-150405"
+)
+
 func GetCtxWithTimeout(timeout time.Duration) context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 	return ctx

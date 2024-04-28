@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"pbench/log"
+	"pbench/utils"
 	"regexp"
 	"strings"
 )
@@ -178,7 +179,7 @@ func processRoundDecimalFile(inputPath string) (err error) {
 			}
 			if len(decimalColIndexes) > 0 {
 				// found decimal columns, need to create a .wip file
-				outputFile, err = os.OpenFile(outputPath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+				outputFile, err = os.OpenFile(outputPath, utils.OpenNewFileFlags, 0644)
 				if err != nil {
 					return err
 				}

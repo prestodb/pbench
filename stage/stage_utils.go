@@ -17,9 +17,7 @@ import (
 )
 
 const (
-	OpenNewFileFlags    = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	DefaultStageFileExt = ".json"
-	RunNameTimeFormat   = "060102-150405"
 )
 
 type GetClientFn func() *presto.Client
@@ -256,7 +254,7 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 		{
 			queryJsonFile, err := os.OpenFile(
 				filepath.Join(s.States.OutputPath, querySourceStr)+".json",
-				OpenNewFileFlags, 0644)
+				utils.OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
 				// We need to save the query json file even if the stage context is canceled.
@@ -268,7 +266,7 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 		if result.QueryError != nil {
 			queryErrorFile, err := os.OpenFile(
 				filepath.Join(s.States.OutputPath, querySourceStr)+".error.json",
-				OpenNewFileFlags, 0644)
+				utils.OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
 				bytes, e := json.MarshalIndent(result.QueryError, "", "  ")
@@ -298,7 +296,7 @@ func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryRes
 	}()
 	columnMetadataFile, ioErr := os.OpenFile(
 		filepath.Join(s.States.OutputPath, querySourceStr)+".cols.json",
-		OpenNewFileFlags, 0644)
+		utils.OpenNewFileFlags, 0644)
 	if ioErr != nil {
 		return ioErr
 	}

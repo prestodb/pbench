@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-//go:embed 20240422_013209_00111_k6ve9.json
+//go:embed 20240422_013209_00111_k6ve9_shows_schema.json
 var testJson []byte
 
 func TestParseQueryInfo(t *testing.T) {

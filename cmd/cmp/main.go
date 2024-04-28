@@ -62,7 +62,7 @@ func Run(_ *cobra.Command, args []string) {
 			fileCompared++
 			if len(edits) > 0 {
 				diffFilePath := filepath.Join(OutputPath, fileId+".diff")
-				diffFile, ioErr := os.OpenFile(diffFilePath, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0644)
+				diffFile, ioErr := os.OpenFile(diffFilePath, utils.OpenNewFileFlags, 0644)
 				if ioErr != nil {
 					log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to open output file")
 					continue

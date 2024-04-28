@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"pbench/log"
+	"pbench/utils"
 	"strings"
 	"text/template"
 )
@@ -57,7 +58,7 @@ func GenerateFiles(configs []*ClusterConfig) {
 				log.Error().Err(err).Str("path", filepath.Dir(path)).Msg("failed to create directory")
 				return nil
 			}
-			f, err := os.OpenFile(outputPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+			f, err := os.OpenFile(outputPath, utils.OpenNewFileFlags, 0644)
 			if err != nil {
 				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to create file")
 				continue

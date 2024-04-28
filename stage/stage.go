@@ -127,7 +127,7 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	// also start to write logs to the output directory from this point on.
 	logPath := filepath.Join(s.States.OutputPath, s.States.RunName+".log")
-	if logFile, err := os.OpenFile(logPath, OpenNewFileFlags, 0644); err != nil {
+	if logFile, err := os.OpenFile(logPath, utils.OpenNewFileFlags, 0644); err != nil {
 		log.Error().Str("log_path", logPath).Err(err).Msg("failed to create the log file")
 		// In this case, the global logger is not changed. Log messages are still printed to stderr.
 	} else {
@@ -508,7 +508,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	if *s.SaveOutput {
 		queryOutputFile, err = os.OpenFile(
 			filepath.Join(s.States.OutputPath, querySourceStr)+".output",
-			OpenNewFileFlags, 0644)
+			utils.OpenNewFileFlags, 0644)
 		if err != nil {
 			return result, err
 		}

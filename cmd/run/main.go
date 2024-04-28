@@ -47,7 +47,7 @@ func Run(_ *cobra.Command, args []string) {
 	if mainStage.States.RunName == "" {
 		defaultRunNameBuilder = &strings.Builder{}
 	} else {
-		mainStage.States.RunName = strings.ReplaceAll(mainStage.States.RunName, `%t`, mainStage.States.RunStartTime.Format(stage.RunNameTimeFormat))
+		mainStage.States.RunName = strings.ReplaceAll(mainStage.States.RunName, `%t`, mainStage.States.RunStartTime.Format(utils.DirectoryNameTimeFormat))
 	}
 	for _, path := range args {
 		if st, err := processStagePath(path); err == nil {
@@ -62,7 +62,7 @@ func Run(_ *cobra.Command, args []string) {
 	}
 	if defaultRunNameBuilder != nil {
 		defaultRunNameBuilder.WriteByte('_')
-		defaultRunNameBuilder.WriteString(mainStage.States.RunStartTime.Format(stage.RunNameTimeFormat))
+		defaultRunNameBuilder.WriteString(mainStage.States.RunStartTime.Format(utils.DirectoryNameTimeFormat))
 		mainStage.States.RunName = defaultRunNameBuilder.String()
 	}
 	log.Info().Str("run_name", mainStage.States.RunName).Send()

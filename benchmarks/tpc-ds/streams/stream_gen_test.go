@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"pbench/utils"
 	"strconv"
 	"strings"
 	"testing"
@@ -37,7 +38,7 @@ func TestGenerateStreams(t *testing.T) {
 		}
 	}
 	for streamId := 0; streamId < len(streams); streamId++ {
-		file, err := os.OpenFile(fmt.Sprintf("stream_%02d.json", streamId+1), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+		file, err := os.OpenFile(fmt.Sprintf("stream_%02d.json", streamId+1), utils.OpenNewFileFlags, 0644)
 		assert.Nil(t, err)
 		st := &stage.Stage{
 			QueryFiles:       make([]string, 0, 99),
