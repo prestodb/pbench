@@ -67,27 +67,27 @@ func (q *QueryInfo) PrepareForInsert() error {
 			return err
 		}
 	}
-
-	if q.QueryStats.ExecutionTime.Milliseconds() > 0 {
-		q.QueryStats.BytesPerSec = int64(q.QueryStats.RawInputDataSize) / q.QueryStats.ExecutionTime.Milliseconds()
+	if t := q.QueryStats.ExecutionTime.Milliseconds(); t > 0 {
+		q.QueryStats.BytesPerSec = int64(q.QueryStats.RawInputDataSize) / t
 	}
 	if c := q.QueryStats.TotalCpuTime.Milliseconds(); c > 0 {
 		q.QueryStats.BytesPerCPUSec = int64(q.QueryStats.RawInputDataSize) / c
 		q.QueryStats.RowsPerCPUSec = q.QueryStats.RawInputPositions / c
 	}
 	q.QueryStats.StageCount = len(q.QueryStats.StageGcStatistics)
-
+	// The event listener output for session parameters is not standard JSON. We need to do some preprocessing.
 	q.Session.PrepareForInsert()
 
 	q.FlattenedStageList = make([]*StageInfo, 0, 8)
-	s := q.OutputStage
-	// To avoid this root output stage to be visited more than once during reflection,
-	// we set to nil after the tree is flattened.
-	q.OutputStage = nil
 	AssembledQueryPlan := make(map[string]WrappedPlan)
-	if err := s.PrepareForInsert(&q.FlattenedStageList, AssembledQueryPlan); err != nil {
+	// Stages from the query JSON are nested and query plans are enclosed within each stage.
+	// Event listener tables, however, expect them to be flattened as lists. Therefore, we need to preprocessing here.
+	if err := q.OutputStage.PrepareForInsert(&q.FlattenedStageList, AssembledQueryPlan); err != nil {
 		return err
 	}
+	// To avoid this OutputStage field to be visited again during reflection,
+	// we set to nil after the tree is flattened.
+	q.OutputStage = nil
 	if planJson, err := json.Marshal(AssembledQueryPlan); err != nil {
 		return err
 	} else {

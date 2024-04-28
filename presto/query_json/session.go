@@ -23,6 +23,10 @@ type Session struct {
 }
 
 func (s *Session) PrepareForInsert() {
+	// The special JSON-like output for session parameters come from two properties: SystemProperties and CatalogProperties
+	// SystemProperties is a simple string-string map. CatalogProperties has a string-string map for each catalog, and
+	// we need to flatten that.
+	// In addition, all strings are not enclosed by quotes.
 	b := bytes.Buffer{}
 	b.WriteString("{")
 	for k, v := range s.SystemProperties {

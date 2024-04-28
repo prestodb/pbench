@@ -158,23 +158,19 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 			if columnName == "" {
 				continue
 			}
-			if fieldValue == nil {
-				if fvk == reflect.Invalid {
-					fieldValue = nil
-				} else {
-					switch typed := fv.Interface().(type) {
-					case json.RawMessage:
-						compactedJson := &bytes.Buffer{}
-						if err := json.Compact(compactedJson, typed); err == nil {
-							typed = compactedJson.Bytes()
-						}
-						fieldValue = string(typed)
-					case query_json.Duration:
-						// TODO: Add a tag for precision. EventListener only uses ms.
-						fieldValue = typed.Milliseconds()
-					default:
-						fieldValue = fv.Interface()
+			if fieldValue == nil && fvk != reflect.Invalid {
+				switch typed := fv.Interface().(type) {
+				case json.RawMessage:
+					compactedJson := &bytes.Buffer{}
+					if err := json.Compact(compactedJson, typed); err == nil {
+						typed = compactedJson.Bytes()
 					}
+					fieldValue = string(typed)
+				case query_json.Duration:
+					// TODO: Add a tag for precision. EventListener only uses ms.
+					fieldValue = typed.Milliseconds()
+				default:
+					fieldValue = fv.Interface()
 				}
 			}
 			if len(rowsMap[tableName]) == 0 {
@@ -234,6 +230,7 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 			continue
 		}
 		placeholders := strings.Repeat("?,", rows[0].ColumnCount())
+		// Get rid of the trailing comma.
 		placeholders = placeholders[:len(placeholders)-1]
 		sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
 			table, strings.Join(rows[0].ColumnNames, ","), placeholders)

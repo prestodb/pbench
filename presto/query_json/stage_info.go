@@ -64,6 +64,7 @@ func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[stri
 	s.StageExecutionId = stats.GcInfo.StageExecutionId
 	*flattened = append(*flattened, s)
 
+	// WrappedPlan is only needed for formatting the json.
 	queryPlan[strconv.Itoa(len(queryPlan))] = WrappedPlan{
 		Plan: json.RawMessage(s.Plan.JsonRepresentation),
 	}
@@ -73,6 +74,7 @@ func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[stri
 			return err
 		}
 	}
+	// Avoid SubStages to be visited again during reflection.
 	s.SubStages = nil
 	return nil
 }
