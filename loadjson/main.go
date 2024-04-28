@@ -245,6 +245,10 @@ func processPath(ctx context.Context, path string) error {
 		return err
 	}
 	for _, entry := range entries {
+		if ctx.Err() != nil {
+			log.Info().Msg("abort task scheduling")
+			break
+		}
 		if entry.IsDir() {
 			continue
 		}
