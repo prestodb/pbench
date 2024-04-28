@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"pbench/genconfig"
+	"pbench/cmd/genconfig"
 )
 
 var genConfigCmd = &cobra.Command{
@@ -20,7 +20,7 @@ func init() {
 	genConfigCmd.Flags().StringVarP(&genconfig.ParameterPath, "parameter-file",
 		"p", "", "Specifies the parameter file. Use built-in defaults if not specified.")
 	genConfigCmd.AddCommand(&cobra.Command{
-		Use:                   "show-params",
+		Use:                   "default",
 		Short:                 "Print the built-in default generator parameter file.",
 		DisableFlagsInUseLine: true,
 		Run:                   genconfig.PrintDefaultParams,

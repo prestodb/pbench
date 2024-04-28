@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -10,9 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 	"os"
 	"pbench/log"
-	"pbench/presto/query_json"
 	"reflect"
-	"strings"
 	"time"
 )
 
@@ -67,181 +64,11 @@ func InitMySQLConnFromCfg(cfgPath string) *sql.DB {
 	}
 }
 
-type Row struct {
-	ColumnNames []string
-	Values      []any
-}
-
-func (r *Row) ColumnCount() int {
-	if len(r.ColumnNames) != len(r.Values) {
-		panic("invalid state")
-	}
-	return len(r.ColumnNames)
-}
-
-func (r *Row) AddColumn(name string, value any) {
-	r.ColumnNames = append(r.ColumnNames, name)
-	r.Values = append(r.Values, value)
-}
-
-func newRowWithColumnCapacity(numColumns int) *Row {
-	return &Row{
-		ColumnNames: make([]string, 0, numColumns),
-		Values:      make([]any, 0, numColumns),
-	}
-}
-
-func mergeColumns(a, b *Row) (ret *Row) {
-	la, lb := a.ColumnCount(), b.ColumnCount()
-	if la == 0 {
-		return b
-	}
-	if lb == 0 {
-		return a
-	}
-	l := la + b.ColumnCount()
-	ret = &Row{
-		ColumnNames: make([]string, l),
-		Values:      make([]any, l),
-	}
-	copy(ret.ColumnNames, a.ColumnNames)
-	copy(ret.Values, a.Values)
-	copy(ret.ColumnNames[la:], b.ColumnNames)
-	copy(ret.Values[la:], b.Values)
-	return
-}
-
-func multiplyRows(a, b []*Row) []*Row {
-	multipliedRows := make([]*Row, 0, len(a)*len(b))
-	for _, x := range a {
-		for _, y := range b {
-			multipliedRows = append(multipliedRows, mergeColumns(x, y))
-		}
-	}
-	return multipliedRows
-}
-
-type TableName string
-
-func mergeRowsMap(a, b map[TableName][]*Row) map[TableName][]*Row {
-	for tableName, rows2 := range b {
-		rows1 := a[tableName]
-		if len(rows1) == 0 {
-			rows1 = []*Row{newRowWithColumnCapacity(16)}
-		}
-		a[tableName] = multiplyRows(rows1, rows2)
-	}
-	return a
-}
-
-func derefValue(v *reflect.Value) reflect.Kind {
+func DerefValue(v *reflect.Value) reflect.Kind {
 	k := v.Kind()
 	for k == reflect.Pointer || k == reflect.Interface {
 		*v = v.Elem()
 		k = v.Kind()
 	}
 	return k
-}
-
-func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row) {
-	rowsMap = make(map[TableName][]*Row)
-	if k := derefValue(&v); k != reflect.Struct {
-		return
-	}
-	t, fieldCount := v.Type(), v.NumField()
-	for i := 0; i < fieldCount; i++ {
-		f, fv := t.Field(i), v.Field(i)
-		fvk := derefValue(&fv)
-		var fieldValue any
-		for _, tableName := range tableNames {
-			columnName := f.Tag.Get(string(tableName))
-			if columnName == "" {
-				continue
-			}
-			if fieldValue == nil && fvk != reflect.Invalid {
-				switch typed := fv.Interface().(type) {
-				case json.RawMessage:
-					compactedJson := &bytes.Buffer{}
-					if err := json.Compact(compactedJson, typed); err == nil {
-						typed = compactedJson.Bytes()
-					}
-					fieldValue = string(typed)
-				case query_json.Duration:
-					// TODO: Add a tag for precision. EventListener only uses ms.
-					fieldValue = typed.Milliseconds()
-				default:
-					fieldValue = fv.Interface()
-				}
-			}
-			if len(rowsMap[tableName]) == 0 {
-				rowsMap[tableName] = []*Row{newRowWithColumnCapacity(16)}
-			}
-			for _, row := range rowsMap[tableName] {
-				row.AddColumn(columnName, fieldValue)
-			}
-		}
-		if fvk == reflect.Struct {
-			rowsMapFromStruct := collectRowsForEachTable(fv, tableNames...)
-			rowsMap = mergeRowsMap(rowsMap, rowsMapFromStruct)
-		} else if fvk == reflect.Array || fvk == reflect.Slice {
-			if fv.Len() == 0 {
-				continue
-			}
-			elem := fv.Index(0)
-			if k := derefValue(&elem); k != reflect.Struct {
-				continue
-			}
-			rowsMapFromArray := make(map[TableName][]*Row)
-			for j := 0; j < fv.Len(); j++ {
-				rowsMapFromElement := collectRowsForEachTable(fv.Index(j), tableNames...)
-				for table, rmap := range rowsMapFromElement {
-					rowsMapFromArray[table] = append(rowsMapFromArray[table], rmap...)
-				}
-			}
-			rowsMap = mergeRowsMap(rowsMap, rowsMapFromArray)
-		}
-	}
-	return
-}
-
-func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...TableName) (returnedErr error) {
-	tx, beginTxErr := db.BeginTx(ctx, nil)
-	if beginTxErr != nil {
-		return beginTxErr
-	}
-	defer func() {
-		if returnedErr != nil {
-			_ = tx.Rollback()
-		} else {
-			returnedErr = tx.Commit()
-		}
-	}()
-	v, ok := obj.(reflect.Value)
-	if !ok {
-		v = reflect.ValueOf(obj)
-	}
-	if k := derefValue(&v); k != reflect.Struct {
-		return fmt.Errorf("obj must be a struct, got %v", k)
-	}
-	rowsMap := collectRowsForEachTable(v, tableNames...)
-
-	for table, rows := range rowsMap {
-		if len(rows) == 0 {
-			continue
-		}
-		placeholders := strings.Repeat("?,", rows[0].ColumnCount())
-		// Get rid of the trailing comma.
-		placeholders = placeholders[:len(placeholders)-1]
-		sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
-			table, strings.Join(rows[0].ColumnNames, ","), placeholders)
-
-		for _, row := range rows {
-			//log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
-			_, err := tx.Exec(sqlStmt, row.Values...)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }

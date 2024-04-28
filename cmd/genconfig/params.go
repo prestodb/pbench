@@ -3,6 +3,7 @@ package genconfig
 import (
 	_ "embed"
 	"encoding/json"
+	cluster_configs "pbench/clusters"
 )
 
 type GeneratorParameters struct {
@@ -22,14 +23,10 @@ type GeneratorParameters struct {
 	MemoryPushBackStartBelowLimitGb       uint    `json:"memory_push_back_start_below_limit_gb"`
 }
 
-var (
-	//go:embed params.json
-	DefaultGeneratorParametersBytes []byte
-	DefaultGeneratorParameters      = &GeneratorParameters{}
-)
+var DefaultGeneratorParameters = &GeneratorParameters{}
 
 func init() {
-	if err := json.Unmarshal(DefaultGeneratorParametersBytes, DefaultGeneratorParameters); err != nil {
+	if err := json.Unmarshal(cluster_configs.BuiltinGeneratorParametersBytes, DefaultGeneratorParameters); err != nil {
 		panic(err)
 	}
 }

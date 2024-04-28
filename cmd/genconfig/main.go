@@ -1,12 +1,12 @@
 package genconfig
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	cluster_configs "pbench/clusters"
 	"pbench/log"
 
 	"github.com/spf13/cobra"
@@ -18,9 +18,6 @@ var (
 	TemplatePath  = ""
 	TemplateFS    fs.FS
 	ParameterPath = ""
-
-	//go:embed templates
-	builtinTemplate embed.FS
 )
 
 func Run(_ *cobra.Command, args []string) {
@@ -41,7 +38,7 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	}
 	if TemplatePath == "" {
-		TemplateFS = builtinTemplate
+		TemplateFS = cluster_configs.BuiltinTemplate
 		TemplatePath = "templates"
 	} else {
 		TemplateFS = os.DirFS(TemplatePath)
@@ -80,5 +77,5 @@ func Run(_ *cobra.Command, args []string) {
 }
 
 func PrintDefaultParams(_ *cobra.Command, _ []string) {
-	fmt.Print(string(DefaultGeneratorParametersBytes))
+	fmt.Print(string(cluster_configs.BuiltinGeneratorParametersBytes))
 }

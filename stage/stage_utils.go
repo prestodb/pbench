@@ -25,13 +25,10 @@ const (
 type GetClientFn func() *presto.Client
 type OnQueryCompletionFn func(result *QueryResult)
 
-var (
-	DefaultServerUrl   = "http://127.0.0.1:8080"
-	DefaultGetClientFn = func() *presto.Client {
-		client, _ := presto.NewClient(DefaultServerUrl, false)
-		return client
-	}
-)
+var DefaultGetClientFn = func() *presto.Client {
+	client, _ := presto.NewClient(utils.DefaultServerUrl, false)
+	return client
+}
 
 func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.Id = other.Id

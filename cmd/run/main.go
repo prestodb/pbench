@@ -10,6 +10,7 @@ import (
 	"pbench/log"
 	"pbench/presto"
 	"pbench/stage"
+	"pbench/utils"
 	"strings"
 	"time"
 )
@@ -17,12 +18,7 @@ import (
 var (
 	Name          string
 	Comment       string
-	ServerUrl     = stage.DefaultServerUrl
-	OutputPath    string
-	IsTrino       bool
-	ForceHttps    bool
-	UserName      string
-	Password      string
+	PrestoFlags   utils.PrestoFlags
 	RandSeed      int64
 	RandSkip      int
 	InfluxCfgPath string
@@ -31,9 +27,9 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
-	parsedServerUrl, parseErr := url.Parse(ServerUrl)
+	parsedServerUrl, parseErr := url.Parse(PrestoFlags.ServerUrl)
 	if parseErr != nil {
-		log.Fatal().Err(parseErr).Str("server_url", ServerUrl).Msg("failed to parse server URL")
+		log.Fatal().Err(parseErr).Str("server_url", PrestoFlags.ServerUrl).Msg("failed to parse server URL")
 	}
 	mainStage := &stage.Stage{
 		States: &stage.SharedStageStates{
@@ -43,7 +39,7 @@ func Run(_ *cobra.Command, args []string) {
 			RandSkip:     RandSkip,
 			ServerFQDN:   parsedServerUrl.Host,
 			RunStartTime: time.Now(),
-			OutputPath:   OutputPath,
+			OutputPath:   PrestoFlags.OutputPath,
 		},
 	}
 
@@ -76,21 +72,21 @@ func Run(_ *cobra.Command, args []string) {
 		log.Fatal().Err(err).Msg("failed to parse benchmark stage graph")
 	}
 
-	if UserName != "" {
-		if Password != "" {
+	if PrestoFlags.UserName != "" {
+		if PrestoFlags.Password != "" {
 			mainStage.States.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(ServerUrl, IsTrino)
-				client.UserPassword(UserName, Password)
-				if ForceHttps {
+				client, _ := presto.NewClient(PrestoFlags.ServerUrl, PrestoFlags.IsTrino)
+				client.UserPassword(PrestoFlags.UserName, PrestoFlags.Password)
+				if PrestoFlags.ForceHttps {
 					client.ForceHttps()
 				}
 				return client
 			}
 		} else {
 			mainStage.States.GetClient = func() *presto.Client {
-				client, _ := presto.NewClient(ServerUrl, IsTrino)
-				client.User(UserName)
-				if ForceHttps {
+				client, _ := presto.NewClient(PrestoFlags.ServerUrl, PrestoFlags.IsTrino)
+				client.User(PrestoFlags.UserName)
+				if PrestoFlags.ForceHttps {
 					client.ForceHttps()
 				}
 				return client
@@ -98,8 +94,8 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	} else {
 		mainStage.States.GetClient = func() *presto.Client {
-			client, _ := presto.NewClient(ServerUrl, IsTrino)
-			if ForceHttps {
+			client, _ := presto.NewClient(PrestoFlags.ServerUrl, PrestoFlags.IsTrino)
+			if PrestoFlags.ForceHttps {
 				client.ForceHttps()
 			}
 			return client

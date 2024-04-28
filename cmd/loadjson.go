@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
-	"pbench/loadjson"
+	"pbench/cmd/loadjson"
 	"pbench/stage"
 	"runtime"
 	"time"

@@ -1,23 +1,30 @@
-.PHONY: all
 all: clean pbench
 
-.PHONY: clean
 clean:
 	rm -rf pbench_* release
 
-# ------------------------------------------------------------------------------
-#  pbench
+install: pbench
+	rm -f /usr/local/bin/pbench
+	ln -s $(CURDIR)/pbench /usr/local/bin/pbench
+
 .PHONY: pbench
 pbench:
-	pbench
+	./pbench > /dev/null
 
-# ------------------------------------------------------------------------------
-#  tar
-.PHONY: tar
 tar: clean pbench
 	mkdir -p release/pbench
-	cp -r pbench pbench_* benchmarks genconfig/templates release/pbench
+	cp -r pbench pbench_* benchmarks cmd/genconfig/templates release/pbench
 	cd release && \
 		tar -czf ../pbench_arm64.tar.gz pbench/pbench pbench/pbench_arm64 pbench/benchmarks pbench/templates && \
 		tar -czf ../pbench_x86_64.tar.gz pbench/pbench pbench/pbench_x86_64 pbench/benchmarks pbench/templates
 	rm -rf release
+
+upload: pbench
+	aws s3 cp pbench_x86_64 s3://presto-deploy-infra-and-cluster-a9d5d14
+
+sync:
+	cp -r clusters/* ../presto-performance/presto-deploy-cluster/clusters
+	rm -f ../presto-performance/presto-deploy-cluster/clusters/*.go
+
+clusters: pbench
+	./pbench genconfig -t clusters/templates -p clusters/params.json clusters

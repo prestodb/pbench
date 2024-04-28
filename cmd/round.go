@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"pbench/round"
+	"pbench/cmd/round"
 )
 
 // roundCmd represents the round command

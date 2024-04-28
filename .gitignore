@@ -15,7 +15,7 @@
 *.out
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 # Go workspace file
 go.work
@@ -27,10 +27,8 @@ influxdb.json
 mysql.json
 pulumi.json
 
-vendor
-
 # binaries
 pbench_*
 
-# tar
+# tarball
 pbench.tar.gz
