@@ -75,13 +75,16 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 	for i := 0; i < fieldCount; i++ {
 		f, fv := t.Field(i), v.Field(i)
 		fvk := DerefValue(&fv)
+		if fvk == reflect.Invalid {
+			continue
+		}
 		var fieldValue any
 		for _, tableName := range tableNames {
 			columnName := f.Tag.Get(string(tableName))
 			if columnName == "" {
 				continue
 			}
-			if fieldValue == nil && fvk != reflect.Invalid {
+			if fieldValue == nil {
 				switch typed := fv.Interface().(type) {
 				case json.RawMessage:
 					compactedJson := &bytes.Buffer{}

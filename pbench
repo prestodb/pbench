@@ -2,7 +2,7 @@
 
 OS=$(uname | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SCRIPT_DIR=$( cd -- "$( dirname -- "$(readlink ${BASH_SOURCE[0]})" )" &> /dev/null && pwd )
 
 if [[ "$ARCH" == "x86_64" ]]; then
     ARCH=amd64
@@ -11,8 +11,8 @@ fi
 EXE="$SCRIPT_DIR/pbench_${OS}_${ARCH}"
 
 if [ ! -f "$EXE" ]; then
-    if [ -f Makefile ]; then
-      make
+    if [ -f "$SCRIPT_DIR/Makefile" ]; then
+      cd "$SCRIPT_DIR" && make
     else
       echo "Cannot find $EXE"
       exit 1

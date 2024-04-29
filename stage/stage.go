@@ -71,7 +71,6 @@ type Stage struct {
 	// If SaveColumnMetadata is set to true, we will save a json file of the query result's column metadata.
 	// See the "columns" field in Presto's query API response.
 	// Children stages will inherit this value from their parent if it is not set.
-	// Cold runs will ignore this setting.
 	SaveColumnMetadata *bool `json:"save_column_metadata,omitempty"`
 	// If SaveJson is set to true, the query json will be saved to files in its raw form after the query is executed.
 	// Children stages will inherit this value from their parent if it is not set.
