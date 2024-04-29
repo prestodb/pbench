@@ -45,6 +45,7 @@ func Args(cmd *cobra.Command, args []string) error {
 func Run(_ *cobra.Command, args []string) {
 	decimalRegExp = regexp.MustCompile(fmt.Sprintf(`"?(\d+\.\d{%d})\d+"?`, DecimalPrecision))
 	for _, path := range args {
+		utils.ExpandHomeDirectory(&path)
 		if err := processRoundDecimalPath(path); err != nil {
 			log.Error().Str("path", path).Err(err).Send()
 		}

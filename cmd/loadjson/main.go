@@ -39,12 +39,14 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
+	utils.ExpandHomeDirectory(&OutputPath)
 	OutputPath = filepath.Join(OutputPath, RunName)
 	utils.PrepareOutputDirectory(OutputPath)
 
 	// also start to write logs to the output directory from this point on.
 	logPath := filepath.Join(OutputPath, "loadjson.log")
-	defer utils.FlushLogFile(logPath)
+	flushLog := utils.InitLogFile(logPath)
+	defer flushLog()
 
 	// Any error run recorder initialization will make the run recorder a noop.
 	// The program will continue with corresponding error logs.

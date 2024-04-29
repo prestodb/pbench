@@ -125,7 +125,8 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	// also start to write logs to the output directory from this point on.
 	logPath := filepath.Join(s.States.OutputPath, s.States.RunName+".log")
-	defer utils.FlushLogFile(logPath)
+	flushLog := utils.InitLogFile(logPath)
+	defer flushLog()
 
 	// This initial size is just a good start, might not be enough.
 	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))

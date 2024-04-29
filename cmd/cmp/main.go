@@ -36,6 +36,7 @@ func Run(_ *cobra.Command, args []string) {
 		log.Fatal().Err(err).Str("build_side_path", buildSidePath).Msg("failed to build file ID map")
 	}
 
+	utils.ExpandHomeDirectory(&OutputPath)
 	utils.PrepareOutputDirectory(OutputPath)
 
 	probeSideFileCount, fileCompared, diffWritten := 0, 0, 0

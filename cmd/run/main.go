@@ -30,6 +30,7 @@ func Run(_ *cobra.Command, args []string) {
 	if parseErr != nil {
 		log.Fatal().Err(parseErr).Str("server_url", PrestoFlags.ServerUrl).Msg("failed to parse server URL")
 	}
+	utils.ExpandHomeDirectory(&PrestoFlags.OutputPath)
 	mainStage := &stage.Stage{
 		States: &stage.SharedStageStates{
 			RunName:      Name,

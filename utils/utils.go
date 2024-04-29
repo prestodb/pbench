@@ -11,8 +11,10 @@ import (
 	"golang.org/x/sys/unix"
 	"io"
 	"os"
+	"path/filepath"
 	"pbench/log"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -24,6 +26,13 @@ const (
 func GetCtxWithTimeout(timeout time.Duration) context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), timeout)
 	return ctx
+}
+
+func ExpandHomeDirectory(path *string) {
+	if path != nil && strings.HasPrefix(*path, "~") {
+		home, _ := os.UserHomeDir()
+		*path = filepath.Join(home, strings.TrimPrefix(*path, "~"))
+	}
 }
 
 func PrepareOutputDirectory(path string) {
@@ -44,7 +53,7 @@ func PrepareOutputDirectory(path string) {
 	}
 }
 
-func FlushLogFile(logPath string) (finalizer func()) {
+func InitLogFile(logPath string) (finalizer func()) {
 	if logFile, err := os.OpenFile(logPath, OpenNewFileFlags, 0644); err != nil {
 		log.Error().Str("log_path", logPath).Err(err).Msg("failed to create the log file")
 		// In this case, the global logger is not changed. Log messages are still printed to stderr.
