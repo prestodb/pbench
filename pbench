@@ -1,23 +1,17 @@
 #!/usr/bin/env bash
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-GO=/usr/local/go/bin/go
 
-if [ ! -f $SCRIPT_DIR/pbench_$(arch) ]; then
-    if [ ! -f $GO ]; then
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            pkg=go1.22.2.linux-amd64.tar.gz
-            curl -OL https://go.dev/dl/$pkg
-            sudo tar -C /usr/local -xzf $pkg
-            rm $pkg
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            echo "Please install go first: https://go.dev/dl/go1.22.2.darwin-amd64.pkg"
-            exit
-        fi
+OS=$(uname | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+EXE="$SCRIPT_DIR/pbench_${OS}_${ARCH}"
+
+if [ ! -f "$EXE" ]; then
+    if [ -f Makefile ]; then
+      make
+    else
+      echo "Cannot find $EXE"
+      exit 1
     fi
-    pushd $SCRIPT_DIR > /dev/null
-    env GOOS=linux GOARCH=amd64 $GO build -o $SCRIPT_DIR/pbench_x86_64 $SCRIPT_DIR
-    env GOOS=darwin GOARCH=arm64 $GO build -o $SCRIPT_DIR/pbench_arm64 $SCRIPT_DIR
-    popd > /dev/null
 fi
 
-$SCRIPT_DIR/pbench_$(arch) "$@"
+$EXE "$@"

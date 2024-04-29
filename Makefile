@@ -1,30 +1,50 @@
-all: clean pbench
+OS=$(shell uname | tr '[:upper:]' '[:lower:]')
+ARCH=$(shell uname -m)
+BINARY=pbench
+PLATFORMS=darwin linux
+ARCHITECTURES=amd64 arm64
 
-clean:
-	rm -rf pbench_* release
+.PHONY: $(BINARY)
+$(BINARY): pre clean
+	go build -o $(BINARY)_$(OS)_$(ARCH)
 
-install: pbench
-	rm -f /usr/local/bin/pbench
-ifeq ($(shell uname -p),arm)
-	ln -s $(CURDIR)/pbench_arm64 /usr/local/bin/pbench
-else
-	ln -s $(CURDIR)/pbench_x86_64 /usr/local/bin/pbench
+.PHONY: all
+all: pre clean
+	$(foreach GOOS, $(PLATFORMS),\
+    	$(foreach GOARCH, $(ARCHITECTURES),\
+    		$(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); go build -v -o $(BINARY)_$(GOOS)_$(GOARCH))))
+
+pre:
+ifeq "$(shell which go)" ""
+	$(error No go in $$PATH)
 endif
 
-.PHONY: pbench
-pbench:
-	./pbench > /dev/null
+clean:
+	rm -rf $(BINARY)_* release
 
-tar: clean pbench
-	mkdir -p release/pbench
-	cp -r pbench pbench_* benchmarks cmd/genconfig/templates release/pbench
-	cd release && \
-		tar -czf ../pbench_arm64.tar.gz pbench/pbench pbench/pbench_arm64 pbench/benchmarks pbench/templates && \
-		tar -czf ../pbench_x86_64.tar.gz pbench/pbench pbench/pbench_x86_64 pbench/benchmarks pbench/templates
+uninstall:
+	rm -f /usr/local/bin/$(BINARY)
+
+install: pbench uninstall
+	ln -s $(CURDIR)/$(BINARY) /usr/local/bin/$(BINARY)
+
+tar: clean all
+	mkdir -p release/$(BINARY)
+	cp -r $(BINARY) $(BINARY)_* benchmarks clusters/params.json *.template.json clusters/templates release/$(BINARY)
+	cd release $(foreach GOOS, $(PLATFORMS),\
+		$(foreach GOARCH, $(ARCHITECTURES),\
+			&& tar -czf ../$(BINARY)_$(GOOS)_$(GOARCH).tar.gz \
+				$(BINARY)/$(BINARY) \
+				$(BINARY)/$(BINARY)_$(GOOS)_$(GOARCH) \
+				$(BINARY)/benchmarks \
+				$(BINARY)/templates \
+				$(BINARY)/*.template.json \
+				$(BINARY)/params.json))
 	rm -rf release
 
-upload: pbench
-	aws s3 cp pbench_x86_64 s3://presto-deploy-infra-and-cluster-a9d5d14
+upload:
+	$(shell export GOOS=linux; export GOARCH=amd64; go build -v -o $(BINARY)_amd64_linux)
+	aws s3 cp $(BINARY)_amd64_linux s3://presto-deploy-infra-and-cluster-a9d5d14
 
 sync:
 	cp -r clusters/* ../presto-performance/presto-deploy-cluster/clusters

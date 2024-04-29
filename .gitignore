@@ -31,4 +31,4 @@ pulumi.json
 pbench_*
 
 # tarball
-pbench.tar.gz
+*.tar.gz
