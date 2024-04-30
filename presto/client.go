@@ -124,6 +124,9 @@ func (c *Client) SessionParam(key string, value any) *Client {
 	}
 	buf := strings.Builder{}
 	for k, v := range c.sessionParams {
+		if vstr, ok := v.(string); ok {
+			v = url.QueryEscape(vstr)
+		}
 		if buf.Len() > 0 {
 			buf.WriteString(",")
 		}
