@@ -68,14 +68,14 @@ func (c *Client) setHeader(key, value string) {
 
 func (c *Client) delHeader(key string) {
 	if c.isTrino {
-		key = strings.Replace(key, "X-Presto-", "X-Trino", 1)
+		key = strings.Replace(key, "X-Presto", "X-Trino", 1)
 	}
 	c.baseHeader.Del(key)
 }
 
 func (c *Client) getHeader(key string) string {
 	if c.isTrino {
-		key = strings.Replace(key, "X-Presto-", "X-Trino", 1)
+		key = strings.Replace(key, "X-Presto", "X-Trino", 1)
 	}
 	return c.baseHeader.Get(key)
 }
