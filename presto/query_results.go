@@ -3,6 +3,7 @@ package presto
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"pbench/log"
 )
 
@@ -26,10 +27,13 @@ type QueryResults struct {
 }
 
 func (qr *QueryResults) HasMoreBatch() bool {
-	return qr.NextUri != nil
+	return qr != nil && qr.NextUri != nil
 }
 
 func (qr *QueryResults) FetchNextBatch(ctx context.Context) error {
+	if qr == nil {
+		return errors.New("nil QueryResults")
+	}
 	for qr.NextUri != nil {
 		newQr, _, err := qr.client.FetchNextBatch(ctx, *qr.NextUri)
 		if err != nil {
@@ -51,6 +55,9 @@ func (qr *QueryResults) FetchNextBatch(ctx context.Context) error {
 type ResultBatchHandler func(qr *QueryResults) error
 
 func (qr *QueryResults) Drain(ctx context.Context, handler ResultBatchHandler) error {
+	if qr == nil {
+		return errors.New("nil QueryResults")
+	}
 	for qr.HasMoreBatch() {
 		err := qr.FetchNextBatch(ctx)
 		if err != nil {
