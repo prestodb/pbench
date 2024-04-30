@@ -3,6 +3,7 @@ package presto
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -19,50 +20,39 @@ func TestPrestoUnmarshalScalar(t *testing.T) {
 	client, _ := NewClient("http://localhost:8080", false)
 	client.Catalog("tpch").Schema("sf1")
 	ctx := context.Background()
-
-	clientResult, _, err := client.Query(ctx, "SHOW CREATE TABLE lineitem")
-	rows := make([]json.RawMessage, 0)
-	columns := make([]Column, 0)
-	if err == nil {
-		columns = clientResult.Columns
-		err = clientResult.Drain(ctx, func(qr *QueryResults) error {
-			if len(qr.Data) > 0 {
-				rows = qr.Data
-			}
-			return nil
-		})
-	}
-	expectedDdl := "CREATE TABLE tpch.sf1.lineitem (\n   \"orderkey\" bigint NOT NULL,\n   \"partkey\" bigint NOT NULL,\n   \"suppkey\" bigint NOT NULL,\n   \"linenumber\" integer NOT NULL,\n   \"quantity\" double NOT NULL,\n   \"extendedprice\" double NOT NULL,\n   \"discount\" double NOT NULL,\n   \"tax\" double NOT NULL,\n   \"returnflag\" varchar(1) NOT NULL,\n   \"linestatus\" varchar(1) NOT NULL,\n   \"shipdate\" date NOT NULL,\n   \"commitdate\" date NOT NULL,\n   \"receiptdate\" date NOT NULL,\n   \"shipinstruct\" varchar(25) NOT NULL,\n   \"shipmode\" varchar(10) NOT NULL,\n   \"comment\" varchar(44) NOT NULL\n)"
-	if err != nil {
-		columns = []Column{{Name: "Create Table"}}
-		rows = []json.RawMessage{json.RawMessage(expectedDdl)}
-	}
 	var ddl string
-	assert.Nil(t, UnmarshalQueryData(rows, columns, &ddl))
+	expectedDdl := "CREATE TABLE tpch.sf1.lineitem (\n   \"orderkey\" bigint NOT NULL,\n   \"partkey\" bigint NOT NULL,\n   \"suppkey\" bigint NOT NULL,\n   \"linenumber\" integer NOT NULL,\n   \"quantity\" double NOT NULL,\n   \"extendedprice\" double NOT NULL,\n   \"discount\" double NOT NULL,\n   \"tax\" double NOT NULL,\n   \"returnflag\" varchar(1) NOT NULL,\n   \"linestatus\" varchar(1) NOT NULL,\n   \"shipdate\" date NOT NULL,\n   \"commitdate\" date NOT NULL,\n   \"receiptdate\" date NOT NULL,\n   \"shipinstruct\" varchar(25) NOT NULL,\n   \"shipmode\" varchar(10) NOT NULL,\n   \"comment\" varchar(44) NOT NULL\n)"
+
+	if err := QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE lineitem", &ddl); err != nil {
+		fmt.Println(err)
+		columnHeaders := []Column{{Name: "Create Table"}}
+		rows := []json.RawMessage{json.RawMessage(`["CREATE TABLE tpch.sf1.lineitem (\n   \"orderkey\" bigint NOT NULL,\n   \"partkey\" bigint NOT NULL,\n   \"suppkey\" bigint NOT NULL,\n   \"linenumber\" integer NOT NULL,\n   \"quantity\" double NOT NULL,\n   \"extendedprice\" double NOT NULL,\n   \"discount\" double NOT NULL,\n   \"tax\" double NOT NULL,\n   \"returnflag\" varchar(1) NOT NULL,\n   \"linestatus\" varchar(1) NOT NULL,\n   \"shipdate\" date NOT NULL,\n   \"commitdate\" date NOT NULL,\n   \"receiptdate\" date NOT NULL,\n   \"shipinstruct\" varchar(25) NOT NULL,\n   \"shipmode\" varchar(10) NOT NULL,\n   \"comment\" varchar(44) NOT NULL\n)"]`)}
+		assert.Nil(t, UnmarshalQueryData(rows, columnHeaders, &ddl))
+	}
 	assert.Equal(t, expectedDdl, ddl)
 }
 
 func TestPrestoUnmarshal(t *testing.T) {
-	rows, columns := getBuiltinRows(t)
+	rows, columnHeaders := getBuiltinRows(t)
 	var nilPtr *[]string
-	err := UnmarshalQueryData(rows, columns, nilPtr)
+	err := UnmarshalQueryData(rows, columnHeaders, nilPtr)
 	assert.ErrorIs(t, err, InvalidUnmarshalError) // nil pointer
 
-	tableStats := TableStats{}
-	err = UnmarshalQueryData(rows, columns, tableStats)
+	columnsStats := make([]ColumnStats, 8, 17)
+	err = UnmarshalQueryData(rows, columnHeaders, columnsStats)
 	assert.ErrorIs(t, err, InvalidUnmarshalError) // not a pointer
 
-	err = UnmarshalQueryData(rows, columns, &tableStats)
+	err = UnmarshalQueryData(rows, columnHeaders, &columnsStats[0])
 	assert.ErrorIs(t, err, InvalidUnmarshalError) // not an array/slice pointer
 
 	// UnmarshalQueryData into a []json.RawMessage
 	var decodedRows []json.RawMessage
-	err = UnmarshalQueryData(rows, columns, &decodedRows)
+	err = UnmarshalQueryData(rows, columnHeaders, &decodedRows)
 	assert.Nil(t, err)
 	assert.Equal(t, rows, decodedRows)
 
 	rowStrings := make([]string, 8)
-	err = UnmarshalQueryData(rows, columns, &rowStrings)
+	err = UnmarshalQueryData(rows, columnHeaders, &rowStrings)
 	assert.Nil(t, err)
 	assert.Equal(t, len(rows), len(rowStrings))
 	for i, row := range rowStrings {
@@ -70,7 +60,7 @@ func TestPrestoUnmarshal(t *testing.T) {
 	}
 
 	rowBytes := make([][]byte, 8)
-	err = UnmarshalQueryData(rows, columns, &rowBytes)
+	err = UnmarshalQueryData(rows, columnHeaders, &rowBytes)
 	assert.Nil(t, err)
 	assert.Equal(t, len(rows), len(rowBytes))
 	for i, row := range rowBytes {
@@ -78,9 +68,9 @@ func TestPrestoUnmarshal(t *testing.T) {
 	}
 
 	// UnmarshalQueryData into TableStats.Columns
-	err = UnmarshalQueryData(rows, columns, &tableStats.Columns)
+	err = UnmarshalQueryData(rows, columnHeaders, &columnsStats)
 	assert.Nil(t, err)
-	assert.Equal(t, len(rows), len(tableStats.Columns))
+	assert.Equal(t, len(rows), len(columnsStats))
 	newFloat64 := func(f float64) *float64 {
 		return &f
 	}
@@ -89,24 +79,24 @@ func TestPrestoUnmarshal(t *testing.T) {
 	}
 	zero := newFloat64(0)
 	assert.Equal(t, []ColumnStats{
-		{"orderkey", nil, newFloat64(1500254), zero, nil, newString("1"), newString("6000000"), nil},
-		{"partkey", nil, newFloat64(200044), zero, nil, newString("1"), newString("200000"), nil},
-		{"suppkey", nil, newFloat64(10000.0), zero, nil, newString("1"), newString("10000"), nil},
-		{"linenumber", nil, newFloat64(7.0), zero, nil, newString("1"), newString("7"), nil},
-		{"quantity", nil, newFloat64(50.0), zero, nil, newString("1.0"), newString("50.0"), nil},
-		{"extendedprice", nil, newFloat64(933985.0), zero, nil, newString("901.0"), newString("104949.5"), nil},
-		{"discount", nil, newFloat64(11.0), zero, nil, newString("0.0"), newString("0.1"), nil},
-		{"tax", nil, newFloat64(9.0), zero, nil, newString("0.0"), newString("0.08"), nil},
-		{"returnflag", newFloat64(6001215.0), newFloat64(3.0), zero, nil, nil, nil, nil},
-		{"linestatus", newFloat64(6001215.0), newFloat64(2.0), zero, nil, nil, nil, nil},
-		{"shipdate", nil, newFloat64(2526.0), zero, nil, newString("1992-01-02"), newString("1998-12-01"), nil},
-		{"commitdate", nil, newFloat64(2466.0), zero, nil, newString("1992-01-31"), newString("1998-10-31"), nil},
-		{"receiptdate", nil, newFloat64(2554.0), zero, nil, newString("1992-01-04"), newString("1998-12-31"), nil},
-		{"shipinstruct", newFloat64(7.2006409e7), newFloat64(4.0), zero, nil, nil, nil, nil},
-		{"shipmode", newFloat64(2.5717034e7), newFloat64(7.0), zero, nil, nil, nil, nil},
-		{"comment", newFloat64(1.58997209e8), newFloat64(4580252.0), zero, nil, nil, nil, nil},
-		{"", nil, nil, nil, newFloat64(6001215.0), nil, nil, nil},
-	}, tableStats.Columns)
+		{"orderkey", nil, newFloat64(1500254), zero, nil, newString("1"), newString("6000000"), nil, nil},
+		{"partkey", nil, newFloat64(200044), zero, nil, newString("1"), newString("200000"), nil, nil},
+		{"suppkey", nil, newFloat64(10000.0), zero, nil, newString("1"), newString("10000"), nil, nil},
+		{"linenumber", nil, newFloat64(7.0), zero, nil, newString("1"), newString("7"), nil, nil},
+		{"quantity", nil, newFloat64(50.0), zero, nil, newString("1.0"), newString("50.0"), nil, nil},
+		{"extendedprice", nil, newFloat64(933985.0), zero, nil, newString("901.0"), newString("104949.5"), nil, nil},
+		{"discount", nil, newFloat64(11.0), zero, nil, newString("0.0"), newString("0.1"), nil, nil},
+		{"tax", nil, newFloat64(9.0), zero, nil, newString("0.0"), newString("0.08"), nil, nil},
+		{"returnflag", newFloat64(6001215.0), newFloat64(3.0), zero, nil, nil, nil, nil, nil},
+		{"linestatus", newFloat64(6001215.0), newFloat64(2.0), zero, nil, nil, nil, nil, nil},
+		{"shipdate", nil, newFloat64(2526.0), zero, nil, newString("1992-01-02"), newString("1998-12-01"), nil, nil},
+		{"commitdate", nil, newFloat64(2466.0), zero, nil, newString("1992-01-31"), newString("1998-10-31"), nil, nil},
+		{"receiptdate", nil, newFloat64(2554.0), zero, nil, newString("1992-01-04"), newString("1998-12-31"), nil, nil},
+		{"shipinstruct", newFloat64(7.2006409e7), newFloat64(4.0), zero, nil, nil, nil, nil, nil},
+		{"shipmode", newFloat64(2.5717034e7), newFloat64(7.0), zero, nil, nil, nil, nil, nil},
+		{"comment", newFloat64(1.58997209e8), newFloat64(4580252.0), zero, nil, nil, nil, nil, nil},
+		{"", nil, nil, nil, newFloat64(6001215.0), nil, nil, nil, nil},
+	}, columnsStats)
 }
 
 func getRowsFromPresto(t *testing.T) ([]json.RawMessage, []Column) {
@@ -132,9 +122,9 @@ func getRowsFromPresto(t *testing.T) ([]json.RawMessage, []Column) {
 func getBuiltinRows(t *testing.T) ([]json.RawMessage, []Column) {
 	rows := make([]json.RawMessage, 0, 17)
 	assert.Nil(t, json.Unmarshal(rowsBytes, &rows))
-	columns := make([]Column, 0, 8)
-	assert.Nil(t, json.Unmarshal(columnMetadataBytes, &columns))
-	return rows, columns
+	columnHeaders := make([]Column, 0, 8)
+	assert.Nil(t, json.Unmarshal(columnHeaderBytes, &columnHeaders))
+	return rows, columnHeaders
 }
 
 var rowsBytes = []byte(`[["orderkey",null,1500254.0,0.0,null,"1","6000000",null],
@@ -155,7 +145,7 @@ var rowsBytes = []byte(`[["orderkey",null,1500254.0,0.0,null,"1","6000000",null]
 ["comment",1.58997209E8,4580252.0,0.0,null,null,null,null],
 [null,null,null,null,6001215.0,null,null,null]]`)
 
-var columnMetadataBytes = []byte(`[
+var columnHeaderBytes = []byte(`[
   {
     "name": "column_name",
     "type": "varchar",

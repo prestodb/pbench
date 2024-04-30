@@ -2,6 +2,7 @@ package save
 
 import (
 	"context"
+	"fmt"
 	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
@@ -54,6 +55,20 @@ func Run(_ *cobra.Command, args []string) {
 	}
 
 	for _, table := range args {
-		saveTable(ctx, client, table)
+		if ctx.Err() != nil {
+			break
+		}
+		ts := &TableSummary{Name: table}
+		if err := ts.QueryTableSummary(ctx, client); err != nil {
+			log.Error().Str("table_name", table).Err(err).Msg("failed to query table summary")
+			continue
+		}
+		filePath := filepath.Join(PrestoFlags.OutputPath,
+			fmt.Sprintf("%s_%s_%s.json", Catalog, Schema, table))
+		if err := ts.SaveToFile(filePath); err != nil {
+			log.Error().Str("table_name", table).Str("file_path", filePath).Err(err).Msg("failed to save table summary")
+		} else {
+			log.Info().Str("table_name", table).Str("file_path", filePath).Msg("table summary saved")
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package presto
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 var (
 	RawJsonMessageType    = reflect.TypeOf((*json.RawMessage)(nil)).Elem()
 	InvalidUnmarshalError = errors.New("unmarshall: receiving value")
+	structColumnMapCache  = make(map[reflect.Type]map[string]int)
 )
 
 // Get fields with presto field tag (column name) from v, map the column name to field index.
@@ -22,12 +24,16 @@ func buildColumnMap(t reflect.Type) map[string]int {
 	if t.Kind() != reflect.Struct {
 		return nil
 	}
+	if columnMap, cached := structColumnMapCache[t]; cached {
+		return columnMap
+	}
 	columnMap := make(map[string]int)
 	for i := 0; i < t.NumField(); i++ {
 		if columnName := t.Field(i).Tag.Get("presto"); columnName != "" {
 			columnMap[columnName] = i
 		}
 	}
+	structColumnMapCache[t] = columnMap
 	return columnMap
 }
 
@@ -125,9 +131,30 @@ func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
 				continue
 			}
 			fieldIndex := columnFieldIndexes[j]
+			if fieldIndex < 0 {
+				continue
+			}
 			field := vElement.Field(fieldIndex)
 			unmarshalScalar(colValue, field)
 		}
 	}
 	return nil
+}
+
+func QueryAndUnmarshal(ctx context.Context, client *Client, query string, v any) error {
+	clientResult, _, err := client.Query(ctx, query)
+	if err != nil {
+		return err
+	}
+	rows := make([]json.RawMessage, 0)
+	err = clientResult.Drain(ctx, func(qr *QueryResults) error {
+		if len(qr.Data) > 0 {
+			rows = append(rows, qr.Data...)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return UnmarshalQueryData(rows, clientResult.Columns, v)
 }
