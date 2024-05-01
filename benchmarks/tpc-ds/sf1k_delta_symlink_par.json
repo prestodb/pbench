@@ -1,0 +1,4 @@
+{
+  "description": "Specifies the schema for TPC-DS symlink Delta tables scale factor 1 TB.",
+  "schema": "tpcds_sf1000_partitioned_delta"
+}
