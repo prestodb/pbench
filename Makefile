@@ -50,5 +50,6 @@ sync:
 	cp -r clusters/* ../presto-performance/presto-deploy-cluster/clusters
 	rm -f ../presto-performance/presto-deploy-cluster/clusters/*.go
 
-clusters: pbench
+.PHONY: clusters
+clusters:
 	./pbench genconfig -t clusters/templates -p clusters/params.json clusters
