@@ -1,0 +1,72 @@
+version: '3.8'
+
+networks:
+  presto-swarm:
+
+services:
+  coordinator:
+    image: ${PRESTO_COORDINATOR_IMAGE}
+    deploy:
+      placement:
+        constraints:
+        - node.role == manager
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '{{ dec .VCPUPerWorker }}'
+          memory: {{ .ContainerMemoryGb }}G
+        reservations:
+          cpus: '{{ dec .VCPUPerWorker }}'
+          memory: {{ .ContainerMemoryGb }}G
+    ports:
+    - 80:8080
+    - 9404:9404
+    volumes:
+    - /home/centos/presto/catalog/hive-trino.properties:/etc/trino/catalog/hive.properties
+    - /home/centos/presto/catalog/jmx.properties:/etc/trino/catalog/jmx.properties
+    - /home/centos/presto/catalog/tpcds.properties:/etc/trino/catalog/tpcds.properties
+    - /home/centos/presto/catalog/tpch.properties:/etc/trino/catalog/tpch.properties
+    - /home/centos/presto/coordinator/config-trino.properties:/etc/trino/config.properties
+    - /home/centos/presto/coordinator/jvm-trino.config:/etc/trino/jvm.config
+    - /home/centos/presto/coordinator/node.properties:/etc/trino/node.properties
+    - /home/centos/presto/coordinator/session-property-config.json:/opt/presto-server/etc/session-property-config.json
+    - /home/centos/presto/coordinator/session-property-config.properties:/etc/trino/session-property-config.properties
+    - /home/centos/presto/log.properties:/etc/trino/log.properties
+    - /home/centos/presto/log4j-events.properties:/etc/trino/log4j-events.properties
+    - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      presto-swarm:
+
+  workers:
+    image: ${PRESTO_WORKER_IMAGE}
+    depends_on:
+    - coordinator
+    deploy:
+      placement:
+        constraints:
+        - node.role == worker
+      mode: replicated
+      replicas: ${NUMBER_OF_WORKERS}
+      resources:
+        limits:
+          cpus: '{{ dec .VCPUPerWorker }}'
+          memory: {{ .ContainerMemoryGb }}G
+        reservations:
+          cpus: '{{ dec .VCPUPerWorker }}'
+          memory: {{ .ContainerMemoryGb }}G
+    ports:
+    - 8080:8080
+    volumes:
+    - /home/centos/presto/catalog/hive-trino.properties:/etc/trino/catalog/hive.properties
+    - /home/centos/presto/catalog/jmx.properties:/etc/trino/catalog/jmx.properties
+    - /home/centos/presto/catalog/tpcds.properties:/etc/trino/catalog/tpcds.properties
+    - /home/centos/presto/catalog/tpch.properties:/etc/trino/catalog/tpch.properties
+    - /home/centos/presto/log.properties:/etc/trino/log.properties
+    - /home/centos/presto/log4j-events.properties:/etc/trino/log4j-events.properties
+    - /home/centos/presto/workers/config-trino.properties:/etc/trino/config.properties
+    - /home/centos/presto/workers/jvm-trino.config:/etc/trino/jvm.config
+    - /home/centos/presto/workers/node.properties:/etc/trino/node.properties
+    - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      presto-swarm:
