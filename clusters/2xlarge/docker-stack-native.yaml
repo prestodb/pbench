@@ -40,6 +40,8 @@ services:
     - /home/centos/presto/jmx-exporter-config.yaml:/opt/presto-server/etc/jmx-exporter-config.yaml
     - /home/centos/presto/log.properties:/opt/presto-server/etc/log.properties
     - /home/centos/presto/log4j-events.properties:/opt/presto-server/etc/log4j-events.properties
+    - /home/centos/presto/password-authenticator.properties:/opt/presto-server/etc/password-authenticator.properties
+    - /home/centos/presto/password.db:/opt/presto-server/etc/password.db
     - /home/centos/presto/entrypoint-java.sh:/opt/entrypoint-java.sh
     - /usr/bin/telegraf:/usr/bin/telegraf
     - /etc/telegraf:/etc/telegraf
