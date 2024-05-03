@@ -20,8 +20,8 @@ var loadJsonCmd = &cobra.Command{
 		if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
 			return err
 		}
-		if loadjson.GoRoutineCap < 1 || loadjson.GoRoutineCap > runtime.NumCPU() {
-			return fmt.Errorf("invalid Go routine cap: %d, it should be >= 1 and <= %d", loadjson.GoRoutineCap, runtime.NumCPU())
+		if loadjson.Parallelism < 1 || loadjson.Parallelism > runtime.NumCPU() {
+			return fmt.Errorf("invalid parallelism: %d, it should be >= 1 and <= %d", loadjson.Parallelism, runtime.NumCPU())
 		}
 		return nil
 	},
@@ -35,7 +35,7 @@ func init() {
 	loadJsonCmd.Flags().StringVarP(&loadjson.Comment, "comment", "c", "", `Add a comment to this run (optional)`)
 	loadJsonCmd.Flags().BoolVarP(&loadjson.RecordRun, "record-run", "r", false, "Record all the loaded JSON as a run")
 	loadJsonCmd.Flags().StringVarP(&loadjson.OutputPath, "output-path", "o", wd, "Output directory path")
-	loadJsonCmd.Flags().IntVarP(&loadjson.GoRoutineCap, "parallel", "p", runtime.NumCPU(), "Number of parallel threads to load json files")
+	loadJsonCmd.Flags().IntVarP(&loadjson.Parallelism, "parallelism", "p", runtime.NumCPU(), "Number of parallel threads to load json files")
 	loadJsonCmd.Flags().StringVar(&loadjson.InfluxCfgPath, "influx", "", "InfluxDB connection config for run recorder (optional)")
 	loadJsonCmd.Flags().StringVar(&loadjson.MySQLCfgPath, "mysql", "", "MySQL connection config for event listener and run recorder (optional)")
 }

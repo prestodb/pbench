@@ -25,7 +25,7 @@ var (
 	RecordRun     bool
 	MySQLCfgPath  string
 	InfluxCfgPath string
-	GoRoutineCap  int
+	Parallelism   int
 
 	runRecorders             = make([]stage.RunRecorder, 0, 3)
 	queryResults             = make([]*stage.QueryResult, 0, 8)
@@ -33,9 +33,9 @@ var (
 	mysqlDb                  *sql.DB
 	pseudoStage              *stage.Stage
 
-	goRoutineCapGuard chan struct{}
-	resultChan        = make(chan *stage.QueryResult)
-	runningTasks      sync.WaitGroup
+	parallelismGuard chan struct{}
+	resultChan       = make(chan *stage.QueryResult)
+	runningTasks     sync.WaitGroup
 )
 
 func Run(_ *cobra.Command, args []string) {
@@ -57,7 +57,7 @@ func Run(_ *cobra.Command, args []string) {
 		registerRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
 	}
 
-	log.Info().Int("parallel", GoRoutineCap).Send()
+	log.Info().Int("parallelism", Parallelism).Send()
 	ctx, cancel := context.WithCancel(context.Background())
 	timeToExit := make(chan os.Signal, 1)
 	signal.Notify(timeToExit, os.Interrupt, os.Kill)
@@ -89,8 +89,8 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	}
 
-	// Use this to make sure there will be no more than GoRoutineCap goroutines.
-	goRoutineCapGuard = make(chan struct{}, GoRoutineCap)
+	// Use this to make sure there will be no more than Parallelism goroutines.
+	parallelismGuard = make(chan struct{}, Parallelism)
 
 	// This is the task scheduler go routine. It feeds files to task runners with back pressure.
 	go func() {
@@ -124,7 +124,7 @@ func Run(_ *cobra.Command, args []string) {
 }
 
 func scheduleFile(ctx context.Context, path string) {
-	goRoutineCapGuard <- struct{}{}
+	parallelismGuard <- struct{}{}
 	runningTasks.Add(1)
 	go processFile(ctx, path)
 }
@@ -132,7 +132,7 @@ func scheduleFile(ctx context.Context, path string) {
 func processFile(ctx context.Context, path string) {
 	defer func() {
 		// Allow another task runner to start.
-		<-goRoutineCapGuard
+		<-parallelismGuard
 		runningTasks.Done()
 	}()
 

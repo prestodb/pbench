@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"pbench/cmd/save"
 	"pbench/utils"
+	"runtime"
 )
 
 // saveCmd represents the save command
@@ -33,4 +34,5 @@ func init() {
 	saveCmd.Flags().StringArrayVarP(&save.Session, "session", "", nil,
 		"Session property (property can be used multiple times; format is\nkey=value; use 'SHOW SESSION' in Presto CLI to see available properties)")
 	saveCmd.Flags().StringVarP(&save.InputFilePath, "file", "f", "", "CSV file to read catalog,schema,table.")
+	saveCmd.Flags().IntVarP(&save.Parallelism, "parallelism", "P", runtime.NumCPU(), "Number of parallel threads to save table summaries.")
 }
