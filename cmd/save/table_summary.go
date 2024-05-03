@@ -3,6 +3,7 @@ package save
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"pbench/presto"
 	"pbench/utils"
@@ -10,19 +11,22 @@ import (
 
 type TableSummary struct {
 	Name        string               `json:"name"`
+	Catalog     string               `json:"catalog"`
+	Schema      string               `json:"schema"`
 	Ddl         string               `json:"ddl"`
 	ColumnStats []presto.ColumnStats `json:"columnStats"`
 	RowCount    int                  `json:"rowCount"`
 }
 
 func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client) error {
-	if err := presto.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+s.Name, &s.Ddl); err != nil {
+	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
+	if err := presto.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl); err != nil {
 		return err
 	}
-	if err := presto.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+s.Name, &s.ColumnStats); err != nil {
+	if err := presto.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats); err != nil {
 		return err
 	}
-	if err := presto.QueryAndUnmarshal(ctx, client, "DESCRIBE "+s.Name, &s.ColumnStats); err != nil {
+	if err := presto.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats); err != nil {
 		return err
 	}
 	for i := len(s.ColumnStats) - 1; i >= 0; i-- {

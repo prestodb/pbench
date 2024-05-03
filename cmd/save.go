@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"pbench/cmd/save"
+	"pbench/utils"
 )
 
 // saveCmd represents the save command
@@ -11,8 +13,16 @@ var saveCmd = &cobra.Command{
 	Short:                 "Save table information for recreating the schema and data",
 	Long:                  `Save table information for recreating the schema and data`,
 	DisableFlagsInUseLine: true,
-	Args:                  cobra.MinimumNArgs(1),
-	Run:                   save.Run,
+	Args: func(cmd *cobra.Command, args []string) error {
+		utils.ExpandHomeDirectory(&save.PrestoFlags.OutputPath)
+		if save.InputFilePath != "" {
+			utils.ExpandHomeDirectory(&save.InputFilePath)
+		} else if len(args) < 1 {
+			return fmt.Errorf("requires at least 1 arg when -f is not used")
+		}
+		return nil
+	},
+	Run: save.Run,
 }
 
 func init() {
@@ -22,4 +32,5 @@ func init() {
 	saveCmd.Flags().StringVarP(&save.Schema, "schema", "", "", "Schema name")
 	saveCmd.Flags().StringArrayVarP(&save.Session, "session", "", nil,
 		"Session property (property can be used multiple times; format is\nkey=value; use 'SHOW SESSION' in Presto CLI to see available properties)")
+	saveCmd.Flags().StringVarP(&save.InputFilePath, "file", "f", "", "CSV file to read catalog,schema,table.")
 }

@@ -2,26 +2,30 @@ package save
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
+	"pbench/presto"
 	"pbench/utils"
 	"strings"
 	"time"
 )
 
 var (
-	PrestoFlags utils.PrestoFlags
-	Schema      string
-	Catalog     string
-	Session     []string
+	PrestoFlags   utils.PrestoFlags
+	Schema        string
+	Catalog       string
+	Session       []string
+	InputFilePath string
 )
 
 func Run(_ *cobra.Command, args []string) {
-	utils.ExpandHomeDirectory(&PrestoFlags.OutputPath)
 	PrestoFlags.OutputPath = filepath.Join(PrestoFlags.OutputPath,
 		"save_table_"+time.Now().Format(utils.DirectoryNameTimeFormat))
 	utils.PrepareOutputDirectory(PrestoFlags.OutputPath)
@@ -54,21 +58,52 @@ func Run(_ *cobra.Command, args []string) {
 		client.SessionParam(kv[0], kv[1])
 	}
 
-	for _, table := range args {
-		if ctx.Err() != nil {
-			break
+	if InputFilePath == "" {
+		for _, table := range args {
+			saveTable(ctx, client, Catalog, Schema, table)
 		}
-		ts := &TableSummary{Name: table}
-		if err := ts.QueryTableSummary(ctx, client); err != nil {
-			log.Error().Str("table_name", table).Err(err).Msg("failed to query table summary")
-			continue
+	} else {
+		inputFile, oErr := os.Open(InputFilePath)
+		if oErr != nil {
+			log.Fatal().Str("file_path", InputFilePath).Err(oErr).Msg("failed to open file")
 		}
-		filePath := filepath.Join(PrestoFlags.OutputPath,
-			fmt.Sprintf("%s_%s_%s.json", Catalog, Schema, table))
-		if err := ts.SaveToFile(filePath); err != nil {
-			log.Error().Str("table_name", table).Str("file_path", filePath).Err(err).Msg("failed to save table summary")
-		} else {
-			log.Info().Str("table_name", table).Str("file_path", filePath).Msg("table summary saved")
+		r := csv.NewReader(inputFile)
+		for {
+			record, err := r.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatal().Str("file_path", InputFilePath).Err(err).Msg("failed to parse file")
+			}
+			if l := len(record); l != 3 {
+				log.Error().Str("file_path", InputFilePath).Array("record", log.NewMarshaller(record)).Msgf("expected 3 columns, got %d", l)
+				continue
+			}
+			saveTable(ctx, client, record[0], record[1], record[2])
 		}
+		_ = inputFile.Close()
+	}
+}
+
+func saveTable(ctx context.Context, client *presto.Client, catalog, schema, table string) {
+	logTableInfo := func(e *zerolog.Event) *zerolog.Event {
+		e.Str("catalog", catalog).Str("schema", schema).Str("table_name", table)
+		return e
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	ts := &TableSummary{Catalog: catalog, Schema: schema, Name: table}
+	if err := ts.QueryTableSummary(ctx, client); err != nil {
+		logTableInfo(log.Error()).Err(err).Msg("failed to query table summary")
+		return
+	}
+	filePath := filepath.Join(PrestoFlags.OutputPath,
+		fmt.Sprintf("%s_%s_%s.json", catalog, schema, table))
+	if err := ts.SaveToFile(filePath); err != nil {
+		logTableInfo(log.Error()).Str("file_path", filePath).Err(err).Msg("failed to save table summary")
+	} else {
+		logTableInfo(log.Info()).Str("file_path", filePath).Msg("table summary saved")
 	}
 }
