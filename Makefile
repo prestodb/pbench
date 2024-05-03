@@ -3,16 +3,18 @@ ARCH=$(shell uname -m)
 BINARY=pbench
 PLATFORMS=darwin linux
 ARCHITECTURES=amd64 arm64
+TAGS=
+GO=go build -tags=$(TAGS)
 
 .PHONY: $(BINARY)
 $(BINARY): pre clean
-	go build -o $(BINARY)_$(OS)_$(ARCH)
+	$(GO) -o $(BINARY)_$(OS)_$(ARCH)
 
 .PHONY: all
 all: pre clean
 	$(foreach GOOS, $(PLATFORMS),\
     	$(foreach GOARCH, $(ARCHITECTURES),\
-    		$(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); go build -v -o $(BINARY)_$(GOOS)_$(GOARCH))))
+    		$(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); $(GO) -o $(BINARY)_$(GOOS)_$(GOARCH))))
 
 pre:
 ifeq "$(shell which go)" ""
@@ -43,7 +45,7 @@ tar: clean all
 	rm -rf release
 
 upload:
-	$(shell export GOOS=linux; export GOARCH=amd64; go build -v -o $(BINARY)_linux_amd64)
+	$(shell export GOOS=linux; export GOARCH=amd64; $(GO) -o $(BINARY)_linux_amd64)
 	aws s3 cp $(BINARY)_linux_amd64 s3://presto-deploy-infra-and-cluster-a9d5d14
 
 sync:

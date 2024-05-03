@@ -1,3 +1,5 @@
+//go:build influx
+
 package stage
 
 import (
@@ -17,7 +19,7 @@ type InfluxRunRecorder struct {
 	mismatch     int
 }
 
-func NewInfluxRunRecorder(cfgPath string) *InfluxRunRecorder {
+func NewInfluxRunRecorder(cfgPath string) RunRecorder {
 	if cfgPath == "" {
 		return nil
 	}
