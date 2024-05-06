@@ -7,38 +7,6 @@ import (
 	"time"
 )
 
-type Value struct {
-	Value   any  `json:"value,omitempty"`
-	Unknown bool `json:"unknown,omitempty"`
-}
-
-type Range struct {
-	Min float64 `json:"min,omitempty"`
-	Max float64 `json:"max,omitempty"`
-}
-
-type Float64Time struct {
-	time.Time
-}
-
-func (t *Float64Time) UnmarshalJSON(bytes []byte) error {
-	var v any
-	if err := json.Unmarshal(bytes, &v); err != nil {
-		return err
-	}
-	switch value := v.(type) {
-	case float64:
-		t.Time = time.UnixMilli(int64(value * 1000))
-		return nil
-	default:
-		return fmt.Errorf("invalid Float64Time")
-	}
-}
-
-func (t *Float64Time) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.Time)
-}
-
 // QueryLog was generated using https://mholt.github.io/json-to-go/
 type QueryLog struct {
 	InstanceID          string `json:"instanceId,omitempty"`
@@ -54,7 +22,7 @@ type QueryLog struct {
 			//QueryState string `json:"queryState,omitempty"`
 			//URI                    string `json:"uri,omitempty"`
 			//Plan                   string `json:"plan,omitempty"`
-			JSONPlan string `json:"jsonPlan,omitempty"`
+			//JSONPlan string `json:"jsonPlan,omitempty"`
 			//GraphvizPlan           string `json:"graphvizPlan,omitempty"`
 			//Payload                string `json:"payload,omitempty"`
 			//RuntimeOptimizedStages []any  `json:"runtimeOptimizedStages,omitempty"`
@@ -141,15 +109,15 @@ type QueryLog struct {
 			//Output any `json:"output,omitempty"`
 		} `json:"ioMetadata,omitempty"`
 		FailureInfo any `json:"failureInfo,omitempty"`
-		Warnings    []struct {
-			WarningCode struct {
-				Code int    `json:"code,omitempty"`
-				Name string `json:"name,omitempty"`
-			} `json:"warningCode,omitempty"`
-			Message string `json:"message,omitempty"`
-		} `json:"warnings,omitempty"`
-		QueryType   string `json:"queryType,omitempty"`
-		FailedTasks []any  `json:"failedTasks,omitempty"`
+		//Warnings    []struct {
+		//	WarningCode struct {
+		//		Code int    `json:"code,omitempty"`
+		//		Name string `json:"name,omitempty"`
+		//	} `json:"warningCode,omitempty"`
+		//	Message string `json:"message,omitempty"`
+		//} `json:"warnings,omitempty"`
+		QueryType string `json:"queryType,omitempty"`
+		//FailedTasks []any  `json:"failedTasks,omitempty"`
 		//StageStatistics []struct {
 		//	StageID                 int    `json:"stageId,omitempty"`
 		//	StageExecutionID        int    `json:"stageExecutionId,omitempty"`
@@ -259,4 +227,36 @@ type QueryLog struct {
 	WallTimeMillis       query_json.Duration `json:"wallTimeMillis,omitempty"`
 	QueuedTimeMillis     query_json.Duration `json:"queuedTimeMillis,omitempty"`
 	AnalysisTimeMillis   query_json.Duration `json:"analysisTimeMillis,omitempty"`
+}
+
+type Value struct {
+	Value   any  `json:"value,omitempty"`
+	Unknown bool `json:"unknown,omitempty"`
+}
+
+type Range struct {
+	Min float64 `json:"min,omitempty"`
+	Max float64 `json:"max,omitempty"`
+}
+
+type Float64Time struct {
+	time.Time
+}
+
+func (t *Float64Time) UnmarshalJSON(bytes []byte) error {
+	var v any
+	if err := json.Unmarshal(bytes, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case float64:
+		t.Time = time.UnixMilli(int64(value * 1000))
+		return nil
+	default:
+		return fmt.Errorf("invalid Float64Time")
+	}
+}
+
+func (t *Float64Time) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Time)
 }
