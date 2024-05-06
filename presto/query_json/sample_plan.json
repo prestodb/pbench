@@ -1,0 +1,971 @@
+{
+  "0": {
+    "plan": {
+      "id": "41",
+      "name": "Output",
+      "identifier": "[branded_car_enrollment.target_id]",
+      "details": "branded_car_enrollment.target_id := car_id (22:5)\n",
+      "children": [
+        {
+          "id": "1556",
+          "name": "TopN",
+          "identifier": "[5000 by (car_id ASC_NULLS_LAST)]",
+          "details": "",
+          "children": [
+            {
+              "id": "2147",
+              "name": "LocalExchange",
+              "identifier": "[SINGLE] ()",
+              "details": "",
+              "children": [
+                {
+                  "id": "1878",
+                  "name": "RemoteSource",
+                  "identifier": "[1]",
+                  "details": "",
+                  "children": [],
+                  "remoteSources": [
+                    "1"
+                  ],
+                  "estimates": []
+                }
+              ],
+              "remoteSources": [],
+              "estimates": [
+                {
+                  "outputRowCount": "NaN",
+                  "totalSize": "NaN",
+                  "confident": false,
+                  "variableStatistics": {}
+                }
+              ]
+            }
+          ],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "1": {
+    "plan": {
+      "id": "1555",
+      "name": "TopNPartial",
+      "identifier": "[5000 by (car_id ASC_NULLS_LAST)]",
+      "details": "",
+      "children": [
+        {
+          "id": "33",
+          "name": "Aggregate(FINAL)[car_id]",
+          "identifier": "",
+          "details": "",
+          "children": [
+            {
+              "id": "2200",
+              "name": "LocalExchange",
+              "identifier": "[HASH][$hashvalue] (car_id)",
+              "details": "",
+              "children": [
+                {
+                  "id": "2382",
+                  "name": "Project",
+                  "identifier": "[projectLocality = LOCAL]",
+                  "details": "$hashvalue_109 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(car_id), BIGINT'0')) (22:5)\n",
+                  "children": [
+                    {
+                      "id": "2198",
+                      "name": "Aggregate(PARTIAL)[car_id]",
+                      "identifier": "",
+                      "details": "",
+                      "children": [
+                        {
+                          "id": "1936",
+                          "name": "FilterProject",
+                          "identifier": "[filterPredicate = ((((IS_NULL(array_join_54)) OR (not(array_join_54 LIKE VARCHAR'%bajaji%'))) AND ((IS_NULL(array_join_54)) OR (not(array_join_54 LIKE VARCHAR'%Bajaji%')))) AND (((IS_NULL(array_join_54)) OR (not(array_join_54 LIKE VARCHAR'%Boda%'))) AND ((IS_NULL(array_join_54)) OR (not(array_join_54 LIKE VARCHAR'%Bodas%'))))) AND ((((IS_NULL(array_join_54)) OR (not(array_join_54 LIKE VARCHAR'%boda%'))) AND ((IS_NULL(array_join_54)) OR (not(array_join_54 LIKE VARCHAR'%bodas%')))) AND ((IS_NULL(array_join_54)) OR (not(array_join_54 LIKE VARCHAR'%TukTuk%')))), projectLocality = LOCAL]",
+                          "details": "",
+                          "children": [
+                            {
+                              "id": "29",
+                              "name": "LeftJoin",
+                              "identifier": "[(\"car_id\" = \"expr_72\")][$hashvalue_89, $hashvalue_90]",
+                              "details": "Distribution: PARTITIONED\n",
+                              "children": [
+                                {
+                                  "id": "2375",
+                                  "name": "Project",
+                                  "identifier": "[projectLocality = LOCAL]",
+                                  "details": "$hashvalue_89 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(car_id), BIGINT'0')) (26:33)\n",
+                                  "children": [
+                                    {
+                                      "id": "8",
+                                      "name": "LeftJoin",
+                                      "identifier": "[(\"country\" = \"code\")][$hashvalue_85, $hashvalue_86]",
+                                      "details": "Distribution: PARTITIONED\n",
+                                      "children": [
+                                        {
+                                          "id": "2373",
+                                          "name": "Project",
+                                          "identifier": "[projectLocality = LOCAL]",
+                                          "details": "$hashvalue_85 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(country), BIGINT'0')) (25:96)\n",
+                                          "children": [
+                                            {
+                                              "id": "4",
+                                              "name": "RightJoin",
+                                              "identifier": "[(\"expr_3\" = \"city_id\")][$hashvalue_80, $hashvalue_82]",
+                                              "details": "Distribution: PARTITIONED\n",
+                                              "children": [
+                                                {
+                                                  "id": "1866",
+                                                  "name": "RemoteSource",
+                                                  "identifier": "[2]",
+                                                  "details": "",
+                                                  "children": [],
+                                                  "remoteSources": [
+                                                    "2"
+                                                  ],
+                                                  "estimates": []
+                                                },
+                                                {
+                                                  "id": "2139",
+                                                  "name": "LocalExchange",
+                                                  "identifier": "[HASH][$hashvalue_82] (city_id)",
+                                                  "details": "",
+                                                  "children": [
+                                                    {
+                                                      "id": "1867",
+                                                      "name": "RemoteSource",
+                                                      "identifier": "[3]",
+                                                      "details": "",
+                                                      "children": [],
+                                                      "remoteSources": [
+                                                        "3"
+                                                      ],
+                                                      "estimates": []
+                                                    }
+                                                  ],
+                                                  "remoteSources": [],
+                                                  "estimates": [
+                                                    {
+                                                      "outputRowCount": 1.0,
+                                                      "totalSize": "NaN",
+                                                      "confident": true,
+                                                      "variableStatistics": {
+                                                        "car_id<bigint>": {
+                                                          "lowValue": 4653780.0,
+                                                          "highValue": 4653780.0,
+                                                          "nullsFraction": 0.0,
+                                                          "averageRowSize": "NaN",
+                                                          "distinctValuesCount": 1.0
+                                                        },
+                                                        "city_id<bigint>": {
+                                                          "lowValue": 706.0,
+                                                          "highValue": 706.0,
+                                                          "nullsFraction": 0.0,
+                                                          "averageRowSize": "NaN",
+                                                          "distinctValuesCount": 1.0
+                                                        },
+                                                        "country<varchar>": {
+                                                          "lowValue": "-Infinity",
+                                                          "highValue": "Infinity",
+                                                          "nullsFraction": 0.0,
+                                                          "averageRowSize": 0.0,
+                                                          "distinctValuesCount": 1.0
+                                                        }
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              ],
+                                              "remoteSources": [],
+                                              "estimates": [
+                                                {
+                                                  "outputRowCount": "NaN",
+                                                  "totalSize": "NaN",
+                                                  "confident": false,
+                                                  "variableStatistics": {}
+                                                }
+                                              ]
+                                            }
+                                          ],
+                                          "remoteSources": [],
+                                          "estimates": [
+                                            {
+                                              "outputRowCount": "NaN",
+                                              "totalSize": "NaN",
+                                              "confident": false,
+                                              "variableStatistics": {}
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "id": "2140",
+                                          "name": "LocalExchange",
+                                          "identifier": "[HASH][$hashvalue_86] (code)",
+                                          "details": "",
+                                          "children": [
+                                            {
+                                              "id": "1868",
+                                              "name": "RemoteSource",
+                                              "identifier": "[4]",
+                                              "details": "",
+                                              "children": [],
+                                              "remoteSources": [
+                                                "4"
+                                              ],
+                                              "estimates": []
+                                            }
+                                          ],
+                                          "remoteSources": [],
+                                          "estimates": [
+                                            {
+                                              "outputRowCount": 1.0,
+                                              "totalSize": "NaN",
+                                              "confident": true,
+                                              "variableStatistics": {
+                                                "code<varchar>": {
+                                                  "lowValue": "-Infinity",
+                                                  "highValue": "Infinity",
+                                                  "nullsFraction": 0.0,
+                                                  "averageRowSize": 2.0,
+                                                  "distinctValuesCount": 1.0
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ],
+                                      "remoteSources": [],
+                                      "estimates": [
+                                        {
+                                          "outputRowCount": "NaN",
+                                          "totalSize": "NaN",
+                                          "confident": false,
+                                          "variableStatistics": {}
+                                        }
+                                      ]
+                                    }
+                                  ],
+                                  "remoteSources": [],
+                                  "estimates": [
+                                    {
+                                      "outputRowCount": "NaN",
+                                      "totalSize": "NaN",
+                                      "confident": false,
+                                      "variableStatistics": {}
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "2145",
+                                  "name": "LocalExchange",
+                                  "identifier": "[HASH][$hashvalue_90] (expr_72)",
+                                  "details": "",
+                                  "children": [
+                                    {
+                                      "id": "1877",
+                                      "name": "RemoteSource",
+                                      "identifier": "[5]",
+                                      "details": "",
+                                      "children": [],
+                                      "remoteSources": [
+                                        "5"
+                                      ],
+                                      "estimates": []
+                                    }
+                                  ],
+                                  "remoteSources": [],
+                                  "estimates": [
+                                    {
+                                      "outputRowCount": "NaN",
+                                      "totalSize": "NaN",
+                                      "confident": false,
+                                      "variableStatistics": {}
+                                    }
+                                  ]
+                                }
+                              ],
+                              "remoteSources": [],
+                              "estimates": [
+                                {
+                                  "outputRowCount": "NaN",
+                                  "totalSize": "NaN",
+                                  "confident": false,
+                                  "variableStatistics": {}
+                                }
+                              ]
+                            }
+                          ],
+                          "remoteSources": [],
+                          "estimates": [
+                            {
+                              "outputRowCount": "NaN",
+                              "totalSize": "NaN",
+                              "confident": false,
+                              "variableStatistics": {}
+                            },
+                            {
+                              "outputRowCount": "NaN",
+                              "totalSize": "NaN",
+                              "confident": false,
+                              "variableStatistics": {}
+                            }
+                          ]
+                        }
+                      ],
+                      "remoteSources": [],
+                      "estimates": [
+                        {
+                          "outputRowCount": "NaN",
+                          "totalSize": "NaN",
+                          "confident": false,
+                          "variableStatistics": {}
+                        }
+                      ]
+                    }
+                  ],
+                  "remoteSources": [],
+                  "estimates": [
+                    {
+                      "outputRowCount": "NaN",
+                      "totalSize": "NaN",
+                      "confident": false,
+                      "variableStatistics": {}
+                    }
+                  ]
+                }
+              ],
+              "remoteSources": [],
+              "estimates": [
+                {
+                  "outputRowCount": "NaN",
+                  "totalSize": "NaN",
+                  "confident": false,
+                  "variableStatistics": {}
+                }
+              ]
+            }
+          ],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "2": {
+    "plan": {
+      "id": "2371",
+      "name": "Project",
+      "identifier": "[projectLocality = LOCAL]",
+      "details": "$hashvalue_81 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr_3), BIGINT'0')) (24:87)\n",
+      "children": [
+        {
+          "id": "3",
+          "name": "ScanFilterProject",
+          "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=ng_public, tableName=admin_system_city, analyzePartitionValues=Optional.empty}', layout='Optional[ng_public.admin_system_city{domains={id=[ [[\"706\"]] ]}}]'}, filterPredicate = ((id) = (INTEGER'706')) AND ((BIGINT'706') = (CAST(id AS bigint))), projectLocality = LOCAL]",
+          "details": "expr_3 := CAST(id AS bigint) (24:12)\nLAYOUT: ng_public.admin_system_city{domains={id=[ [[\"706\"]] ]}}\nid := id:int:19:REGULAR (24:11)\n",
+          "children": [],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            },
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            },
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "3": {
+    "plan": {
+      "id": "2372",
+      "name": "ScanProject",
+      "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=looker_scratch, tableName=LR_SH2E81713104009327_branded_car_enrollment, analyzePartitionValues=Optional.empty}', layout='Optional[looker_scratch.LR_SH2E81713104009327_branded_car_enrollment{domains={car_id=[ [[\"1\", <max>)] ], country=[ [[\"gh\"]] ], cohort=[ [[\"Branded_Verified\"]] ]}}]'}, projectLocality = LOCAL]",
+      "details": "$hashvalue_84 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(city_id), BIGINT'0')) (23:6)\nLAYOUT: looker_scratch.LR_SH2E81713104009327_branded_car_enrollment{domains={car_id=[ [[\"1\", <max>)] ], country=[ [[\"gh\"]] ], cohort=[ [[\"Branded_Verified\"]] ]}}\ncountry := country:string:1:REGULAR (23:6)\n    :: [[\"gh\"]]\ncity_id := city_id:bigint:-13:PARTITION_KEY (23:6)\n    :: [[\"706\"]]\ncar_id := car_id:bigint:0:REGULAR (23:6)\n    :: [[\"1\", <max>)]\ncohort:varchar(16):2:REGULAR\n    :: [[\"Branded_Verified\"]]\n",
+      "children": [],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": 1.0,
+          "totalSize": 62.0,
+          "confident": true,
+          "variableStatistics": {
+            "car_id<bigint>": {
+              "lowValue": 4653780.0,
+              "highValue": 4653780.0,
+              "nullsFraction": 0.0,
+              "averageRowSize": "NaN",
+              "distinctValuesCount": 1.0
+            },
+            "city_id<bigint>": {
+              "lowValue": 706.0,
+              "highValue": 706.0,
+              "nullsFraction": 0.0,
+              "averageRowSize": "NaN",
+              "distinctValuesCount": 1.0
+            },
+            "country<varchar>": {
+              "lowValue": "-Infinity",
+              "highValue": "Infinity",
+              "nullsFraction": 0.0,
+              "averageRowSize": 0.0,
+              "distinctValuesCount": 1.0
+            }
+          }
+        },
+        {
+          "outputRowCount": 1.0,
+          "totalSize": "NaN",
+          "confident": true,
+          "variableStatistics": {
+            "car_id<bigint>": {
+              "lowValue": 4653780.0,
+              "highValue": 4653780.0,
+              "nullsFraction": 0.0,
+              "averageRowSize": "NaN",
+              "distinctValuesCount": 1.0
+            },
+            "city_id<bigint>": {
+              "lowValue": 706.0,
+              "highValue": 706.0,
+              "nullsFraction": 0.0,
+              "averageRowSize": "NaN",
+              "distinctValuesCount": 1.0
+            },
+            "country<varchar>": {
+              "lowValue": "-Infinity",
+              "highValue": "Infinity",
+              "nullsFraction": 0.0,
+              "averageRowSize": 0.0,
+              "distinctValuesCount": 1.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  "4": {
+    "plan": {
+      "id": "2374",
+      "name": "ScanProject",
+      "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=looker_scratch, tableName=LR_SHOSW1713111405917_admin_system_country, analyzePartitionValues=Optional.empty}', layout='Optional[looker_scratch.LR_SHOSW1713111405917_admin_system_country{domains={code=[ [[\"gh\"]] ]}}]'}, projectLocality = LOCAL]",
+      "details": "$hashvalue_88 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(code), BIGINT'0')) (25:11)\nLAYOUT: looker_scratch.LR_SHOSW1713111405917_admin_system_country{domains={code=[ [[\"gh\"]] ]}}\ncode := code:string:2:REGULAR (25:11)\n    :: [[\"gh\"]]\n",
+      "children": [],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": 1.0,
+          "totalSize": 756.5469387755103,
+          "confident": true,
+          "variableStatistics": {
+            "code<varchar>": {
+              "lowValue": "-Infinity",
+              "highValue": "Infinity",
+              "nullsFraction": 0.0,
+              "averageRowSize": 2.0,
+              "distinctValuesCount": 1.0
+            }
+          }
+        },
+        {
+          "outputRowCount": 1.0,
+          "totalSize": "NaN",
+          "confident": true,
+          "variableStatistics": {
+            "code<varchar>": {
+              "lowValue": "-Infinity",
+              "highValue": "Infinity",
+              "nullsFraction": 0.0,
+              "averageRowSize": 2.0,
+              "distinctValuesCount": 1.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  "5": {
+    "plan": {
+      "id": "2381",
+      "name": "Project",
+      "identifier": "[projectLocality = LOCAL]",
+      "details": "$hashvalue_108 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr_72), BIGINT'0')) (26:66)\n",
+      "children": [
+        {
+          "id": "28",
+          "name": "Project",
+          "identifier": "[projectLocality = LOCAL]",
+          "details": "expr_72 := CAST(id_17 AS bigint) (3:10)\narray_join_54 := array_join(array_agg_51, VARCHAR';') (6:10)\n",
+          "children": [
+            {
+              "id": "21",
+              "name": "Aggregate[id_17][$hashvalue_92]",
+              "identifier": "",
+              "details": "array_agg_51 := \"presto.default.array_agg\"((name_35)) ORDER BY OrderingScheme {orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]', orderings='{name_35=ASC_NULLS_LAST}'} (6:21)\n",
+              "children": [
+                {
+                  "id": "2144",
+                  "name": "LocalExchange",
+                  "identifier": "[HASH][$hashvalue_92] (id_17)",
+                  "details": "",
+                  "children": [
+                    {
+                      "id": "1876",
+                      "name": "RemoteSource",
+                      "identifier": "[6]",
+                      "details": "",
+                      "children": [],
+                      "remoteSources": [
+                        "6"
+                      ],
+                      "estimates": []
+                    }
+                  ],
+                  "remoteSources": [],
+                  "estimates": [
+                    {
+                      "outputRowCount": "NaN",
+                      "totalSize": "NaN",
+                      "confident": false,
+                      "variableStatistics": {}
+                    }
+                  ]
+                }
+              ],
+              "remoteSources": [],
+              "estimates": [
+                {
+                  "outputRowCount": "NaN",
+                  "totalSize": "NaN",
+                  "confident": false,
+                  "variableStatistics": {}
+                }
+              ]
+            }
+          ],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "6": {
+    "plan": {
+      "id": "2380",
+      "name": "Project",
+      "identifier": "[projectLocality = LOCAL]",
+      "details": "$hashvalue_107 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(id_17), BIGINT'0')) (19:9)\n",
+      "children": [
+        {
+          "id": "230",
+          "name": "Aggregate(FINAL)[id_17, name_35][$hashvalue_94]",
+          "identifier": "",
+          "details": "",
+          "children": [
+            {
+              "id": "2209",
+              "name": "LocalExchange",
+              "identifier": "[HASH][$hashvalue_94] (id_17, name_35)",
+              "details": "",
+              "children": [
+                {
+                  "id": "2215",
+                  "name": "RemoteSource",
+                  "identifier": "[7]",
+                  "details": "",
+                  "children": [],
+                  "remoteSources": [
+                    "7"
+                  ],
+                  "estimates": []
+                }
+              ],
+              "remoteSources": [],
+              "estimates": [
+                {
+                  "outputRowCount": "NaN",
+                  "totalSize": "NaN",
+                  "confident": false,
+                  "variableStatistics": {}
+                }
+              ]
+            }
+          ],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "7": {
+    "plan": {
+      "id": "2213",
+      "name": "Aggregate(PARTIAL)[id_17, name_35][$hashvalue_106]",
+      "identifier": "",
+      "details": "",
+      "children": [
+        {
+          "id": "2379",
+          "name": "Project",
+          "identifier": "[projectLocality = LOCAL]",
+          "details": "$hashvalue_106 := combine_hash(combine_hash(BIGINT'0', COALESCE($operator$hash_code(id_17), BIGINT'0')), COALESCE($operator$hash_code(name_35), BIGINT'0')) (19:9)\n",
+          "children": [
+            {
+              "id": "17",
+              "name": "LeftJoin",
+              "identifier": "[(\"car_tag_id\" = \"expr_42\")][$hashvalue_96, $hashvalue_103]",
+              "details": "Distribution: PARTITIONED\n",
+              "children": [
+                {
+                  "id": "1873",
+                  "name": "RemoteSource",
+                  "identifier": "[8]",
+                  "details": "",
+                  "children": [],
+                  "remoteSources": [
+                    "8"
+                  ],
+                  "estimates": []
+                },
+                {
+                  "id": "2142",
+                  "name": "LocalExchange",
+                  "identifier": "[HASH][$hashvalue_103] (expr_42)",
+                  "details": "",
+                  "children": [
+                    {
+                      "id": "1874",
+                      "name": "RemoteSource",
+                      "identifier": "[11]",
+                      "details": "",
+                      "children": [],
+                      "remoteSources": [
+                        "11"
+                      ],
+                      "estimates": []
+                    }
+                  ],
+                  "remoteSources": [],
+                  "estimates": [
+                    {
+                      "outputRowCount": "NaN",
+                      "totalSize": "NaN",
+                      "confident": false,
+                      "variableStatistics": {}
+                    }
+                  ]
+                }
+              ],
+              "remoteSources": [],
+              "estimates": [
+                {
+                  "outputRowCount": "NaN",
+                  "totalSize": "NaN",
+                  "confident": false,
+                  "variableStatistics": {}
+                }
+              ]
+            }
+          ],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "8": {
+    "plan": {
+      "id": "2377",
+      "name": "Project",
+      "identifier": "[projectLocality = LOCAL]",
+      "details": "$hashvalue_102 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(car_tag_id), BIGINT'0')) (9:17)\n",
+      "children": [
+        {
+          "id": "13",
+          "name": "InnerJoin",
+          "identifier": "[(\"expr_29\" = \"car_id_23\")][$hashvalue_97, $hashvalue_99]",
+          "details": "Distribution: PARTITIONED\n",
+          "children": [
+            {
+              "id": "1871",
+              "name": "RemoteSource",
+              "identifier": "[9]",
+              "details": "",
+              "children": [],
+              "remoteSources": [
+                "9"
+              ],
+              "estimates": []
+            },
+            {
+              "id": "2141",
+              "name": "LocalExchange",
+              "identifier": "[HASH][$hashvalue_99] (car_id_23)",
+              "details": "",
+              "children": [
+                {
+                  "id": "1872",
+                  "name": "RemoteSource",
+                  "identifier": "[10]",
+                  "details": "",
+                  "children": [],
+                  "remoteSources": [
+                    "10"
+                  ],
+                  "estimates": []
+                }
+              ],
+              "remoteSources": [],
+              "estimates": [
+                {
+                  "outputRowCount": "NaN",
+                  "totalSize": "NaN",
+                  "confident": false,
+                  "variableStatistics": {}
+                }
+              ]
+            }
+          ],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "9": {
+    "plan": {
+      "id": "2376",
+      "name": "Project",
+      "identifier": "[projectLocality = LOCAL]",
+      "details": "$hashvalue_98 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr_29), BIGINT'0')) (10:26)\n",
+      "children": [
+        {
+          "id": "11",
+          "name": "ScanFilterProject",
+          "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=ng_public, tableName=fleet_car, analyzePartitionValues=Optional.empty}', layout='Optional[ng_public.fleet_car{domains={id=[ [[\"1\", <max>)] ]}}]'}, filterPredicate = ((id_17) >= (INTEGER'1')) AND ((CAST(id_17 AS bigint)) >= (BIGINT'1')), projectLocality = LOCAL]",
+          "details": "expr_29 := CAST(id_17 AS bigint) (8:13)\nLAYOUT: ng_public.fleet_car{domains={id=[ [[\"1\", <max>)] ]}}\nid_17 := id:int:11:REGULAR (8:12)\ncreated_date:date:-13:PARTITION_KEY\n    :: [[\"2014-07-24\", \"2024-04-14\"]]\n",
+          "children": [],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            },
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            },
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "10": {
+    "plan": {
+      "id": "668",
+      "name": "ScanFilterProject",
+      "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=ng_public, tableName=fleet_car_tag_binding, analyzePartitionValues=Optional.empty}', layout='Optional[ng_public.fleet_car_tag_binding{}]'}, filterPredicate = (lower(state)) = (VARCHAR'active'), projectLocality = LOCAL]",
+      "details": "$hashvalue_101 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(car_id_23), BIGINT'0')) (9:17)\nLAYOUT: ng_public.fleet_car_tag_binding{}\ncar_id_23 := car_id:bigint:0:REGULAR (9:17)\nstate := state:string:4:REGULAR (9:17)\ncar_tag_id := car_tag_id:bigint:1:REGULAR (9:17)\n",
+      "children": [],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        },
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        },
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  },
+  "11": {
+    "plan": {
+      "id": "2378",
+      "name": "Project",
+      "identifier": "[projectLocality = LOCAL]",
+      "details": "$hashvalue_105 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr_42), BIGINT'0')) (12:12)\n",
+      "children": [
+        {
+          "id": "16",
+          "name": "ScanProject",
+          "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=ng_public, tableName=fleet_car_tag, analyzePartitionValues=Optional.empty}', layout='Optional[ng_public.fleet_car_tag{}]'}, projectLocality = LOCAL]",
+          "details": "expr_42 := CAST(id_33 AS bigint) (11:18)\nLAYOUT: ng_public.fleet_car_tag{}\nname_35 := name:string:5:REGULAR (11:17)\nid_33 := id:int:2:REGULAR (11:17)\ncreated_date:date:-13:PARTITION_KEY\n    :: [[\"2016-03-30\", \"2024-04-14\"]]\n",
+          "children": [],
+          "remoteSources": [],
+          "estimates": [
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            },
+            {
+              "outputRowCount": "NaN",
+              "totalSize": "NaN",
+              "confident": false,
+              "variableStatistics": {}
+            }
+          ]
+        }
+      ],
+      "remoteSources": [],
+      "estimates": [
+        {
+          "outputRowCount": "NaN",
+          "totalSize": "NaN",
+          "confident": false,
+          "variableStatistics": {}
+        }
+      ]
+    }
+  }
+}

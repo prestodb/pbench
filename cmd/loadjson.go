@@ -17,12 +17,13 @@ var loadJsonCmd = &cobra.Command{
 	Long:                  `Load query JSON files into event listener database and run recorders`,
 	DisableFlagsInUseLine: true,
 	Args: func(cmd *cobra.Command, args []string) error {
-		if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
-			return err
+		if len(args) < 1 {
+			return fmt.Errorf("requires at least 1 arg, only received %d", len(args))
 		}
 		if loadjson.Parallelism < 1 || loadjson.Parallelism > runtime.NumCPU() {
 			return fmt.Errorf("invalid parallelism: %d, it should be >= 1 and <= %d", loadjson.Parallelism, runtime.NumCPU())
 		}
+		utils.ExpandHomeDirectory(&loadjson.OutputPath)
 		return nil
 	},
 	Run: loadjson.Run,

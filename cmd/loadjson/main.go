@@ -39,7 +39,6 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
-	utils.ExpandHomeDirectory(&OutputPath)
 	OutputPath = filepath.Join(OutputPath, RunName)
 	utils.PrepareOutputDirectory(OutputPath)
 
