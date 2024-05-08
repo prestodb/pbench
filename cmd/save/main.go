@@ -106,6 +106,7 @@ func Run(_ *cobra.Command, args []string) {
 		close(done)
 	}()
 	<-done
+	close(timeToExit)
 }
 
 func saveTable(ctx context.Context, client *presto.Client, catalog, schema, table string) {

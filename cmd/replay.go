@@ -33,5 +33,5 @@ func init() {
 	wd, _ := os.Getwd()
 	replayCmd.Flags().StringVarP(&replay.RunName, "name", "n", fmt.Sprintf("replay_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "replay_<current time>")`)
 	replayCmd.Flags().StringVarP(&replay.OutputPath, "output-path", "o", wd, "Output directory path")
-	replayCmd.Flags().IntVarP(&replay.Parallelism, "parallelism", "p", runtime.NumCPU(), "Number of parallel threads to load json files")
+	replayCmd.Flags().IntVarP(&replay.Parallelism, "parallel", "P", runtime.NumCPU(), "Number of parallel threads to load json files")
 }
