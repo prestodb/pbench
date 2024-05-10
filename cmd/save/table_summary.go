@@ -35,6 +35,9 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 			return nil
 		}
 	}
+	if err := presto.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount); err != nil {
+		return err
+	}
 	return nil
 }
 
