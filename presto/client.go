@@ -108,8 +108,22 @@ func (c *Client) GetSessionParams() string {
 
 func (c *Client) ClearSessionParams() *Client {
 	c.delHeader(SessionHeader)
-	c.sessionParams = make(map[string]any)
+	clear(c.sessionParams)
 	return c
+}
+
+func (c *Client) GenerateSessionParamsHeaderValue(params map[string]any) string {
+	buf := strings.Builder{}
+	for k, v := range params {
+		if vstr, ok := v.(string); ok {
+			v = url.QueryEscape(vstr)
+		}
+		if buf.Len() > 0 {
+			buf.WriteString(",")
+		}
+		buf.WriteString(fmt.Sprintf("%s=%v", k, v))
+	}
+	return buf.String()
 }
 
 func (c *Client) SessionParam(key string, value any) *Client {
@@ -122,17 +136,7 @@ func (c *Client) SessionParam(key string, value any) *Client {
 		c.delHeader(SessionHeader)
 		return c
 	}
-	buf := strings.Builder{}
-	for k, v := range c.sessionParams {
-		if vstr, ok := v.(string); ok {
-			v = url.QueryEscape(vstr)
-		}
-		if buf.Len() > 0 {
-			buf.WriteString(",")
-		}
-		buf.WriteString(fmt.Sprintf("%s=%v", k, v))
-	}
-	c.setHeader(SessionHeader, buf.String())
+	c.setHeader(SessionHeader, c.GenerateSessionParamsHeaderValue(c.sessionParams))
 	return c
 }
 

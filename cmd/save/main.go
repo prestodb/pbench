@@ -80,12 +80,12 @@ func Run(_ *cobra.Command, args []string) {
 			if oErr != nil {
 				log.Fatal().Str("file_path", InputFilePath).Err(oErr).Msg("failed to open file")
 			}
-			r := csv.NewReader(inputFile)
+			reader := csv.NewReader(inputFile)
 			for {
 				if ctx.Err() != nil {
 					break
 				}
-				record, err := r.Read()
+				record, err := reader.Read()
 				if err == io.EOF {
 					break
 				}
