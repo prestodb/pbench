@@ -54,6 +54,7 @@ func Run(_ *cobra.Command, args []string) {
 	go QueryFrameScheduler(ctx)
 
 	reader := csv.NewReader(csvFile)
+	reader.FieldsPerRecord = 9
 	_, _ = reader.Read() // skip header
 	for lineNumber := 1; ; lineNumber++ {
 		fields, err := reader.Read()
