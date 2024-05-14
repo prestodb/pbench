@@ -1,20 +1,28 @@
-package query_json
+package plan_node_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
+	"pbench/presto/plan_node"
 	"testing"
 )
 
 func TestPlanTree(t *testing.T) {
 	bytes, err := os.ReadFile("sample_plan.json")
 	assert.Nil(t, err)
-	planTree := make(PlanTree)
+	planTree := make(plan_node.PlanTree)
 	assert.Nil(t, json.Unmarshal(bytes, &planTree))
-	fmt.Println(planTree)
+	assert.Nil(t, planTree.Traverse(context.Background(), func(ctx context.Context, node *plan_node.PlanNode) error {
+		if node.Details != "" {
+			fmt.Print(node.Details)
+			fmt.Println("------")
+		}
+		return nil
+	}, plan_node.PlanTreeBFSTraverse))
 }
 
 func TestJsonFloat64(t *testing.T) {
@@ -25,17 +33,17 @@ func TestJsonFloat64(t *testing.T) {
               "averageRowSize": 2.0,
               "distinctValuesCount": "NaN"
             }`
-	expected := VariableStatistics{
-		LowValue:            JsonFloat64(math.Inf(-1)),
-		HighValue:           JsonFloat64(math.Inf(1)),
-		NullsFraction:       JsonFloat64(0),
-		AverageRowSize:      JsonFloat64(2.0),
-		DistinctValuesCount: JsonFloat64(math.NaN()),
+	expected := plan_node.VariableStatistics{
+		LowValue:            plan_node.JsonFloat64(math.Inf(-1)),
+		HighValue:           plan_node.JsonFloat64(math.Inf(1)),
+		NullsFraction:       plan_node.JsonFloat64(0),
+		AverageRowSize:      plan_node.JsonFloat64(2.0),
+		DistinctValuesCount: plan_node.JsonFloat64(math.NaN()),
 	}
 	b, err := json.Marshal(&expected)
 	assert.Nil(t, err)
 	assert.Equal(t, `{"lowValue":"-Infinity","highValue":"Infinity","nullsFraction":0,"averageRowSize":2,"distinctValuesCount":"NaN"}`, string(b))
-	actual := VariableStatistics{}
+	actual := plan_node.VariableStatistics{}
 	err = json.Unmarshal([]byte(content), &actual)
 	assert.Nil(t, err)
 	assert.True(t, math.IsInf(float64(actual.LowValue), -1))
