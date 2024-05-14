@@ -19,13 +19,14 @@ import (
 )
 
 var (
-	RunName       string
-	Comment       string
-	OutputPath    string
-	RecordRun     bool
-	MySQLCfgPath  string
-	InfluxCfgPath string
-	Parallelism   int
+	RunName         string
+	Comment         string
+	OutputPath      string
+	RecordRun       bool
+	MySQLCfgPath    string
+	InfluxCfgPath   string
+	ExtractPlanJson bool
+	Parallelism     int
 
 	runRecorders             = make([]stage.RunRecorder, 0, 3)
 	queryResults             = make([]*stage.QueryResult, 0, 8)
@@ -191,20 +192,33 @@ func processFile(ctx context.Context, path string) {
 		})
 	}
 
-	if mysqlDb != nil {
+	if mysqlDb != nil || ExtractPlanJson {
 		// OutputStage is in a tree structure, and we need to flatten it for its ORM to be correctly parsed.
 		// There are many other derived metrics, so we need to do soe preprocessing before sending it to the database.
-		err := queryInfo.PrepareForInsert()
-		if err == nil {
-			err = utils.SqlInsertObject(ctx, mysqlDb, queryInfo,
-				"presto_query_creation_info",
-				"presto_query_operator_stats",
-				"presto_query_plans",
-				"presto_query_stage_stats",
-				"presto_query_statistics",
-			)
+		if err := queryInfo.PrepareForInsert(); err != nil {
+			log.Error().Err(err).Str("path", path).Msg("failed to pre-process query info JSON")
+			return
 		}
-		if err != nil {
+	}
+	if ExtractPlanJson {
+		planJsonFilePath := filepath.Join(OutputPath, fileName[0:len(fileName)-len(filepath.Ext(fileName))]+".plan.json")
+		if jsonFile, createErr := os.Create(planJsonFilePath); createErr == nil {
+			if _, writeErr := jsonFile.WriteString(queryInfo.AssembledQueryPlanJson); writeErr != nil {
+				log.Error().Err(writeErr).Str("path", planJsonFilePath).Msg("failed to write plan json file")
+			} else {
+				log.Info().Str("path", planJsonFilePath).Msg("wrote plan json file")
+			}
+			_ = jsonFile.Close()
+		}
+	}
+	if mysqlDb != nil {
+		if err := utils.SqlInsertObject(ctx, mysqlDb, queryInfo,
+			"presto_query_creation_info",
+			"presto_query_operator_stats",
+			"presto_query_plans",
+			"presto_query_stage_stats",
+			"presto_query_statistics",
+		); err != nil {
 			log.Error().Err(err).Str("path", path).Msg("failed to insert event listener record")
 			return
 		}
