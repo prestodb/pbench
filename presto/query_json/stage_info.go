@@ -44,11 +44,11 @@ type StageGcInfo struct {
 	StageExecutionId int `json:"stageExecutionId"`
 }
 
-type WrappedPlan struct {
+type RawPlanWrapper struct {
 	Plan json.RawMessage `json:"plan"`
 }
 
-func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[string]WrappedPlan) error {
+func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[string]RawPlanWrapper) error {
 	if s == nil {
 		return nil
 	}
@@ -64,8 +64,8 @@ func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[stri
 	s.StageExecutionId = stats.GcInfo.StageExecutionId
 	*flattened = append(*flattened, s)
 
-	// WrappedPlan is only needed for formatting the json.
-	queryPlan[strconv.Itoa(len(queryPlan))] = WrappedPlan{
+	// RawPlanWrapper is only needed for formatting the json.
+	queryPlan[strconv.Itoa(len(queryPlan))] = RawPlanWrapper{
 		Plan: json.RawMessage(s.Plan.JsonRepresentation),
 	}
 

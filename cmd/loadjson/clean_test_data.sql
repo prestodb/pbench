@@ -21,3 +21,8 @@ DELETE FROM presto_query_operator_stats WHERE query_id LIKE 'json041724%';
 DELETE FROM presto_query_plans WHERE query_id LIKE 'json041724%';
 DELETE FROM presto_query_stage_stats WHERE query_id LIKE 'json041724%';
 DELETE FROM presto_query_statistics WHERE query_id LIKE 'json041724%';
+
+DELETE q, r
+FROM pbench_queries q
+         JOIN pbench_runs r ON q.run_id = r.run_id
+WHERE r.run_name LIKE 'json041724-0426';

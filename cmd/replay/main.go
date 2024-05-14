@@ -20,7 +20,7 @@ var (
 	RunName     string
 	PrestoFlags utils.PrestoFlags
 
-	queryFrameChan = make(chan *QueryFrame, 100)
+	queryFrameChan = make(chan *QueryFrame, 128)
 	done           = make(chan any)
 	runningTasks   sync.WaitGroup
 )
@@ -68,7 +68,7 @@ func Run(_ *cobra.Command, args []string) {
 		}
 		frame, err := NewQueryFrame(fields)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to parse frame")
+			log.Error().Err(err).Int("line_num", lineNumber).Msg("failed to parse frame")
 			continue
 		}
 		queryFrameChan <- frame
@@ -107,7 +107,7 @@ func QueryFrameScheduler(ctx context.Context) {
 			}
 		}
 		if ctx.Err() != nil {
-			for _ = range queryFrameChan { // drain the backlog
+			for range queryFrameChan { // drain the backlog
 			}
 			break
 		}

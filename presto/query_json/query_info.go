@@ -79,7 +79,7 @@ func (q *QueryInfo) PrepareForInsert() error {
 	q.Session.PrepareForInsert()
 
 	q.FlattenedStageList = make([]*StageInfo, 0, 8)
-	AssembledQueryPlan := make(map[string]WrappedPlan)
+	AssembledQueryPlan := make(map[string]RawPlanWrapper)
 	// Stages from the query JSON are nested and query plans are enclosed within each stage.
 	// Event listener tables, however, expect them to be flattened as lists. Therefore, we need to preprocessing here.
 	if err := q.OutputStage.PrepareForInsert(&q.FlattenedStageList, AssembledQueryPlan); err != nil {

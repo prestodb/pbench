@@ -53,8 +53,8 @@ func Run(_ *cobra.Command, args []string) {
 	mysqlDb = utils.InitMySQLConnFromCfg(MySQLCfgPath)
 	if RecordRun {
 		registerRunRecorder(stage.NewFileBasedRunRecorder())
-		registerRunRecorder(stage.NewMySQLRunRecorderWithDb(mysqlDb))
 		registerRunRecorder(stage.NewInfluxRunRecorder(InfluxCfgPath))
+		registerRunRecorder(stage.NewMySQLRunRecorderWithDb(mysqlDb))
 	}
 
 	log.Info().Int("parallelism", Parallelism).Send()
