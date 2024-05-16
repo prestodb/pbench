@@ -16,7 +16,7 @@ func TestPlanTree(t *testing.T) {
 	assert.Nil(t, err)
 	planTree := make(plan_node.PlanTree)
 	assert.Nil(t, json.Unmarshal(bytes, &planTree))
-	details := make(map[string]*plan_node.PlanNodeDetail)
+	details := make(map[string]*plan_node.PlanNodeDetails)
 	count := 0
 	assert.Nil(t, planTree.Traverse(context.Background(), func(ctx context.Context, node *plan_node.PlanNode) error {
 		fmt.Println(node.Identifier)

@@ -10,7 +10,7 @@ type (
 	Value interface {
 		value()
 	}
-	Stmt interface {
+	PlanNodeDetailStmt interface {
 		stmt()
 	}
 	Bound uint8
@@ -47,14 +47,14 @@ var (
 			TypeCastedValue{},
 			CatchAllValue{},
 		),
-		participle.Union[Stmt](
+		participle.Union[PlanNodeDetailStmt](
 			Layout{},
 			Distribution{},
 			HiveColumnHandle{},
 			Assignment{},
 		),
 	}
-	PlanNodeDetailParser = participle.MustBuild[PlanNodeDetail](PlanNodeDetailParserOptions...)
+	PlanNodeDetailParser = participle.MustBuild[PlanNodeDetails](PlanNodeDetailParserOptions...)
 )
 
 // See presto-common/src/main/java/com/facebook/presto/common/predicate/Marker.java
@@ -138,6 +138,6 @@ type Assignment struct {
 
 func (a Assignment) stmt() {}
 
-type PlanNodeDetail struct {
-	Stmts []Stmt `parser:"(@@ EOL)+"`
+type PlanNodeDetails struct {
+	Stmts []PlanNodeDetailStmt `parser:"(@@ EOL)+"`
 }
