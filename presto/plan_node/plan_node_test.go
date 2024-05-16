@@ -16,13 +16,22 @@ func TestPlanTree(t *testing.T) {
 	assert.Nil(t, err)
 	planTree := make(plan_node.PlanTree)
 	assert.Nil(t, json.Unmarshal(bytes, &planTree))
+	details := make(map[string]*plan_node.PlanNodeDetail)
+	count := 0
 	assert.Nil(t, planTree.Traverse(context.Background(), func(ctx context.Context, node *plan_node.PlanNode) error {
+		fmt.Println(node.Identifier)
 		if node.Details != "" {
-			fmt.Print(node.Details)
-			fmt.Println("------")
+			count++
+			id := fmt.Sprintf("%s_%s", node.Id, node.Name)
+			//fmt.Printf("%s\n%s-----\n", id, node.Details)
+			ast, parseErr := plan_node.PlanNodeDetailParser.ParseString(id, node.Details)
+			if assert.Nil(t, parseErr) {
+				details[id] = ast
+			}
 		}
 		return nil
-	}, plan_node.PlanTreeBFSTraverse))
+	}, plan_node.PlanTreeDFSTraverse))
+	fmt.Println(count, len(details))
 }
 
 func TestJsonFloat64(t *testing.T) {
