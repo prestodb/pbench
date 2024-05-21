@@ -1,0 +1,27 @@
+{
+  "query_files": [
+    "../queries/query_02.sql",
+    "../queries/query_09.sql",
+    "../queries/query_05.sql",
+    "../queries/query_04.sql",
+    "../queries/query_18.sql",
+    "../queries/query_01.sql",
+    "../queries/query_20.sql",
+    "../queries/query_15.sql",
+    "../queries/query_16.sql",
+    "../queries/query_17.sql",
+    "../queries/query_07.sql",
+    "../queries/query_21.sql",
+    "../queries/query_13.sql",
+    "../queries/query_14.sql",
+    "../queries/query_19.sql",
+    "../queries/query_08.sql",
+    "../queries/query_22.sql",
+    "../queries/query_11.sql",
+    "../queries/query_10.sql",
+    "../queries/query_03.sql",
+    "../queries/query_12.sql",
+    "../queries/query_06.sql"
+  ],
+  "start_on_new_client": true
+}

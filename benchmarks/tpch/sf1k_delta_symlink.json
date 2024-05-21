@@ -1,0 +1,4 @@
+{
+  "description": "Specifies the schema for TPCH symlink Delta tables scale factor 1 TB.",
+  "schema": "tpch_sf1000_parquet_delta"
+}

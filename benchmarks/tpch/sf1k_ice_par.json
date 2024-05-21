@@ -1,0 +1,8 @@
+{
+  "description": "Specifies the catalog and the schema for TPCH Iceberg scale factor 1 TB partitioned.",
+  "catalog": "iceberg",
+  "schema": "tpch_sf1000_parquet_partitioned_iceberg",
+  "session_params": {
+    "iceberg.hive_statistics_merge_strategy": "NUMBER_OF_DISTINCT_VALUES,TOTAL_SIZE_IN_BYTES"
+  }
+}
