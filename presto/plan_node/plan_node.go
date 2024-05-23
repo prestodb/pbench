@@ -88,9 +88,7 @@ func (n *PlanNode) Traverse(ctx context.Context, fn PlanNodeTraverseFunction, pl
 		return err
 	}
 	if traverseMode == PlanTreeBFSTraverse {
-		if err := visitChild(); err != nil {
-			return err
-		}
+		return visitChild()
 	}
 	return nil
 }

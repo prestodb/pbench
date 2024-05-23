@@ -36,14 +36,14 @@ func TestPrestoUnmarshal(t *testing.T) {
 	rows, columnHeaders := getBuiltinRows(t)
 	var nilPtr *[]string
 	err := UnmarshalQueryData(rows, columnHeaders, nilPtr)
-	assert.ErrorIs(t, err, InvalidUnmarshalError) // nil pointer
+	assert.ErrorIs(t, err, UnmarshalError) // nil pointer
 
 	columnsStats := make([]ColumnStats, 8, 17)
 	err = UnmarshalQueryData(rows, columnHeaders, columnsStats)
-	assert.ErrorIs(t, err, InvalidUnmarshalError) // not a pointer
+	assert.ErrorIs(t, err, UnmarshalError) // not a pointer
 
 	err = UnmarshalQueryData(rows, columnHeaders, &columnsStats[0])
-	assert.ErrorIs(t, err, InvalidUnmarshalError) // not an array/slice pointer
+	assert.ErrorIs(t, err, UnmarshalError) // not an array/slice pointer
 
 	// UnmarshalQueryData into a []json.RawMessage
 	var decodedRows []json.RawMessage

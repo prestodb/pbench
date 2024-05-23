@@ -9,10 +9,10 @@ import (
 )
 
 func TestTableSummary_QueryTableSummary(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	client, _ := presto.NewClient("http://localhost:8080", false)
 	client.Catalog("tpch").Schema("sf1")
-	ts := &TableSummary{Name: "lineitem"}
+	ts := &TableSummary{Catalog: "tpch", Schema: "sf1", Name: "lineitem"}
 	assert.Nil(t, ts.QueryTableSummary(context.Background(), client))
 	fmt.Println(ts)
 }

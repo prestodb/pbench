@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	RawJsonMessageType    = reflect.TypeOf((*json.RawMessage)(nil)).Elem()
-	InvalidUnmarshalError = errors.New("unmarshall: receiving value")
-	structColumnMapCache  = make(map[reflect.Type]map[string]int)
+	RawJsonMessageType   = reflect.TypeOf((*json.RawMessage)(nil)).Elem()
+	UnmarshalError       = errors.New("unmarshall: receiving value")
+	structColumnMapCache = make(map[reflect.Type]map[string]int)
 )
 
 // Get fields with presto field tag (column name) from v, map the column name to field index.
@@ -54,7 +54,39 @@ func unmarshalScalar(data any, v reflect.Value) {
 	dv := reflect.ValueOf(data)
 	if dv.CanConvert(vt) {
 		v.Set(dv.Convert(vt))
+	} else if v.Kind() == reflect.String {
+		v.SetString(fmt.Sprint(dv.Interface()))
 	}
+}
+
+func unmarshalRow(rawRowData json.RawMessage, v reflect.Value, columnFieldIndexes []int) error {
+	rawRowDataValue := reflect.ValueOf(rawRowData)
+	vType := v.Type()
+	if rawRowDataValue.CanConvert(vType) {
+		if v.CanSet() {
+			v.Set(rawRowDataValue.Convert(vType))
+			return nil
+		}
+		return fmt.Errorf("%w cannot be set", UnmarshalError)
+	}
+
+	row := make([]any, len(columnFieldIndexes))
+	// deserialize column values.
+	if err := json.Unmarshal(rawRowData, &row); err != nil {
+		return err
+	}
+	for j, colValue := range row {
+		if colValue == nil {
+			continue
+		}
+		fieldIndex := columnFieldIndexes[j]
+		if fieldIndex < 0 {
+			continue
+		}
+		field := v.Field(fieldIndex)
+		unmarshalScalar(colValue, field)
+	}
+	return nil
 }
 
 func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
@@ -63,16 +95,30 @@ func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
 	}
 	vPtr := reflect.ValueOf(v)
 	if vPtr.Kind() != reflect.Pointer {
-		return fmt.Errorf("%w must be a pointer, but it is %T", InvalidUnmarshalError, v)
+		return fmt.Errorf("%w must be a pointer, but it is %T", UnmarshalError, v)
 	} else if vPtr.IsNil() {
-		return fmt.Errorf("%w must not be nil", InvalidUnmarshalError)
+		vPtr.Set(reflect.New(vPtr.Elem().Type()))
 	}
 
-	vArray := vPtr.Elem()
-	vArrayKind := vArray.Kind()
-	if vArrayKind != reflect.Slice && vArrayKind != reflect.Array {
+	vArrayOrStruct := vPtr.Elem()
+	vKind, vType := vArrayOrStruct.Kind(), vArrayOrStruct.Type()
+	dataArray := reflect.ValueOf(data)
+	// map from column name to field index
+	var columnMap map[string]int
+	if vKind == reflect.Slice || vKind == reflect.Array {
+		vElemType := vType.Elem()
+		// If dest is also []json.RawMessage, just return
+		if vElemType == RawJsonMessageType {
+			vArrayOrStruct.Set(dataArray)
+			return nil
+		}
+		columnMap = buildColumnMap(vElemType)
+	} else if vKind == reflect.Struct {
+		columnMap = buildColumnMap(vType)
+	} else {
+		// Then this is a scalar value!
 		if len(data) > 1 {
-			return fmt.Errorf("%w must be a pointer to an array or slice, but it is a pointer to %v", InvalidUnmarshalError, vArray.Type())
+			return fmt.Errorf("%w must be a pointer to an array, slice, or struct. But it is a pointer to %v", UnmarshalError, vArrayOrStruct.Type())
 		} else {
 			var cols []any
 			if err := json.Unmarshal(data[0], &cols); err != nil {
@@ -81,22 +127,12 @@ func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
 			if len(cols) == 0 {
 				return nil
 			}
-			unmarshalScalar(cols[0], reflect.ValueOf(v))
+			unmarshalScalar(cols[0], vPtr)
 			return nil
 		}
 	}
 
-	dataArray := reflect.ValueOf(data)
-	vElementType := vArray.Type().Elem()
-	// If dest is also []json.RawMessage, just return
-	if vElementType == RawJsonMessageType {
-		vArray.Set(dataArray)
-		return nil
-	}
-
-	columnMap := buildColumnMap(vElementType)
-	columnCount := len(columns)
-	columnFieldIndexes := make([]int, 0, columnCount)
+	columnFieldIndexes := make([]int, 0, len(columns))
 	for _, column := range columns {
 		if fieldIndex, ok := columnMap[column.Name]; ok {
 			columnFieldIndexes = append(columnFieldIndexes, fieldIndex)
@@ -104,39 +140,25 @@ func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
 			columnFieldIndexes = append(columnFieldIndexes, -1)
 		}
 	}
-	for i := 0; i < dataArray.Len(); i++ {
-		if vArrayKind == reflect.Slice {
-			if i >= vArray.Cap() {
-				vArray.Grow(1)
-			}
-			if i >= vArray.Len() {
-				vArray.SetLen(i + 1)
-			}
-		}
 
-		vElement := vArray.Index(i)
-		dataElement := dataArray.Index(i)
-		if dataElement.CanConvert(vElementType) {
-			vElement.Set(dataElement.Convert(vElementType))
-			continue
-		}
+	if vKind == reflect.Slice || vKind == reflect.Array {
+		for i := 0; i < len(data); i++ {
+			if vKind == reflect.Slice {
+				if i >= vArrayOrStruct.Cap() {
+					vArrayOrStruct.Grow(1)
+				}
+				if i >= vArrayOrStruct.Len() {
+					vArrayOrStruct.SetLen(i + 1)
+				}
+			}
 
-		row := make([]any, columnCount)
-		// deserialize column values.
-		if err := json.Unmarshal(data[i], &row); err != nil {
-			return err
-		}
-		for j, colValue := range row {
-			if colValue == nil {
-				continue
+			vElem := vArrayOrStruct.Index(i)
+			if err := unmarshalRow(data[i], vElem, columnFieldIndexes); err != nil {
+				return err
 			}
-			fieldIndex := columnFieldIndexes[j]
-			if fieldIndex < 0 {
-				continue
-			}
-			field := vElement.Field(fieldIndex)
-			unmarshalScalar(colValue, field)
 		}
+	} else if err := unmarshalRow(data[0], vArrayOrStruct, columnFieldIndexes); err != nil { // struct
+		return err
 	}
 	return nil
 }
