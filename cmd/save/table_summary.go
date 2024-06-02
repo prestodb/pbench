@@ -135,12 +135,9 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 			continue
 		}
 
-		statsQueryBuilder := strings.Builder{}
-		statsQueryBuilder.WriteString("SELECT ")
-		statsQueryBuilder.WriteString(strings.Join(statistics, ", "))
-		statsQueryBuilder.WriteString(" FROM " + fullyQualifiedTableName)
-		log.Debug().Str("query", statsQueryBuilder.String()).Send()
-		if err := presto.QueryAndUnmarshal(ctx, client, statsQueryBuilder.String(), stat); err != nil {
+		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(statistics, ", "), fullyQualifiedTableName)
+		log.Debug().Str("query", query).Send()
+		if err := presto.QueryAndUnmarshal(ctx, client, query, stat); err != nil {
 			return err
 		}
 		if stat.NullsFraction == nil {

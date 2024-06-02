@@ -127,7 +127,6 @@ func saveTable(ctx context.Context, client *presto.Client, catalog, schema, tabl
 		ts := &TableSummary{Catalog: catalog, Schema: schema, Name: table}
 		if err := ts.QueryTableSummary(ctx, client); err != nil {
 			logTableInfo(log.Error()).Err(err).Msg("failed to query table summary")
-			return
 		}
 		filePath := filepath.Join(PrestoFlags.OutputPath,
 			fmt.Sprintf("%s_%s_%s.json", catalog, schema, table))
