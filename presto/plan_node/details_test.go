@@ -178,7 +178,7 @@ func TestParseAssignment(t *testing.T) {
 			"expr_3 := CAST(id AS bigint) (24:12)",
 			`array_agg_51 := "presto.default.array_agg"((name_35)) ORDER BY OrderingScheme {orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]', orderings='{name_35=ASC_NULLS_LAST}'} (6:21)`,
 			`branded_car_enrollment.target_id := car_id (22:5)`,
-			//`expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)`,
+			`expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)`,
 		},
 		[]plan_node.Assignment{
 			{ // case 0
@@ -258,6 +258,37 @@ func TestParseAssignment(t *testing.T) {
 				Loc: &plan_node.SourceLocation{
 					RowNumber:    22,
 					ColumnNumber: 5,
+				},
+			},
+			{ // case 6
+				Identifier: plan_node.IdentRef{Ident: "expr_5"},
+				AssignedValue: &plan_node.MathExpr{
+					LeftOp: &plan_node.MathExpr{
+						LeftOp: &plan_node.IdentRef{Ident: "b"},
+						Op:     "+",
+						RightOp: &plan_node.TypedValue{
+							DataType:     "INTEGER",
+							ValueLiteral: "1",
+						},
+					},
+					Op: "-",
+					RightOp: &plan_node.MathExpr{
+						LeftOp: &plan_node.TypedValue{
+							DataType:     "INTEGER",
+							ValueLiteral: "2",
+						},
+						Op: "*",
+						RightOp: &plan_node.FunctionCall{
+							FunctionName: "abs",
+							Parameters: []plan_node.Value{
+								&plan_node.IdentRef{Ident: "c"},
+							},
+						},
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    10,
+					ColumnNumber: 6,
 				},
 			},
 		})

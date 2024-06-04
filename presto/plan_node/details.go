@@ -48,6 +48,7 @@ var (
 			&IdentRef{},
 			&TypedValue{},
 			&TypeCastedValue{},
+			&MathExpr{},
 			&CatchAllValue{},
 		),
 		participle.Union[PlanNodeDetailStmt](
@@ -169,4 +170,15 @@ func (a *Assignment) stmt() {}
 
 type PlanNodeDetails struct {
 	Stmts []PlanNodeDetailStmt `parser:"(@@ EOL)+"`
+}
+
+type MathExpr struct {
+	LeftOp  Value  `parser:"'(' @@ ')'"`
+	Op      string `parser:"@('+' | '-' | '*' | '/' | '%')"`
+	RightOp Value  `parser:"'(' @@ ')'"`
+}
+
+func (m *MathExpr) value() {}
+func (m *MathExpr) String() string {
+	return fmt.Sprintf("(%s) %s (%s)", m.LeftOp.String(), m.Op, m.RightOp.String())
 }
