@@ -33,12 +33,12 @@ func TestParseJoinPredicates(t *testing.T) {
 		[]plan_node.JoinPredicates{
 			{Predicates: []plan_node.JoinPredicate{
 				{
-					LeftColumn:  "ws_item_sk_252",
-					RightColumn: "wr_item_sk",
+					Left:  "ws_item_sk_252",
+					Right: "wr_item_sk",
 				},
 				{
-					LeftColumn:  "ws_order_number_266",
-					RightColumn: "wr_order_number",
+					Left:  "ws_order_number_266",
+					Right: "wr_order_number",
 				},
 			}},
 		})

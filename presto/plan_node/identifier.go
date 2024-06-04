@@ -50,8 +50,8 @@ func ParseHiveTableHandle(literal string) *HiveTableHandle {
 }
 
 type JoinPredicate struct {
-	LeftColumn  string `parser:"'(' @String"`
-	RightColumn string `parser:"'=' @String ')'"`
+	Left  string `parser:"'(' @String"`
+	Right string `parser:"'=' @String ')'"`
 }
 
 type JoinPredicates struct {

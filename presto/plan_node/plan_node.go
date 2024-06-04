@@ -109,6 +109,75 @@ func (t PlanTree) Traverse(ctx context.Context, fn PlanNodeTraverseFunction, mod
 	return NoRootPlanNodeError
 }
 
+func traceValue(assignmentMap map[string]Value, tableHandle *HiveTableHandle, value Value) Value {
+	switch typed := value.(type) {
+	case *HiveColumnHandle:
+		if typed.Table == nil {
+			typed.Table = tableHandle
+		}
+	case *TypeCastedValue:
+		typed.OriginalValue = traceValue(assignmentMap, tableHandle, typed.OriginalValue)
+	case *IdentRef:
+		if assignedValue, exists := assignmentMap[typed.Ident]; exists {
+			return traceValue(assignmentMap, tableHandle, assignedValue)
+		} else {
+			return value
+		}
+	case *FunctionCall:
+		for i := 0; i < len(typed.Parameters); i++ {
+			typed.Parameters[i] = traceValue(assignmentMap, tableHandle, typed.Parameters[i])
+		}
+	case *MathExpr:
+		typed.Left = traceValue(assignmentMap, tableHandle, typed.Left)
+		typed.Right = traceValue(assignmentMap, tableHandle, typed.Right)
+	}
+	return value
+}
+
+func (t PlanTree) ParseJoins() ([]Join, error) {
+	assignmentMap := make(map[string]Value)
+	joins := make([]Join, 0)
+	if err := t.Traverse(context.Background(), func(ctx context.Context, node *PlanNode) error {
+		tableHandle := ParseHiveTableHandle(node.Identifier)
+		id := fmt.Sprintf("%s_%s", node.Id, node.Name)
+		if node.Details != "" {
+			ast, parseErr := PlanNodeDetailParser.ParseString(id, node.Details)
+			if parseErr != nil {
+				return parseErr
+			}
+			// Must scan backwards.
+			for i := len(ast.Stmts) - 1; i >= 0; i-- {
+				if assignment, ok := ast.Stmts[i].(*Assignment); ok {
+					assignmentMap[assignment.Identifier.Ident] = traceValue(assignmentMap, tableHandle, assignment.AssignedValue)
+				}
+			}
+		}
+		if IsJoin[node.Name] {
+			preds, parseErr := PlanNodeJoinPredicatesParser.ParseString(id, node.Identifier)
+			if parseErr != nil {
+				return parseErr
+			}
+			for _, pred := range preds.Predicates {
+				joins = append(joins, Join{
+					JoinType:   node.Name,
+					LeftValue:  assignmentMap[pred.Left],
+					RightValue: assignmentMap[pred.Right],
+				})
+			}
+		}
+		return nil
+	}, PlanTreeDFSTraverse); err != nil {
+		return nil, err
+	}
+	return joins, nil
+}
+
+type Join struct {
+	JoinType   string
+	LeftValue  Value
+	RightValue Value
+}
+
 type PlanEstimate struct {
 	OutputRowCount     JsonFloat64                   `json:"outputRowCount"`
 	TotalSize          JsonFloat64                   `json:"totalSize"`

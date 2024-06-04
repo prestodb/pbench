@@ -173,12 +173,12 @@ type PlanNodeDetails struct {
 }
 
 type MathExpr struct {
-	LeftOp  Value  `parser:"'(' @@ ')'"`
-	Op      string `parser:"@('+' | '-' | '*' | '/' | '%')"`
-	RightOp Value  `parser:"'(' @@ ')'"`
+	Left  Value  `parser:"'(' @@ ')'"`
+	Op    string `parser:"@('+' | '-' | '*' | '/' | '%')"`
+	Right Value  `parser:"'(' @@ ')'"`
 }
 
 func (m *MathExpr) value() {}
 func (m *MathExpr) String() string {
-	return fmt.Sprintf("(%s) %s (%s)", m.LeftOp.String(), m.Op, m.RightOp.String())
+	return fmt.Sprintf("(%s) %s (%s)", m.Left.String(), m.Op, m.Right.String())
 }

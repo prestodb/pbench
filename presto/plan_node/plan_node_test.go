@@ -1,75 +1,37 @@
 package plan_node_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
 	"pbench/presto/plan_node"
-	"strings"
 	"testing"
 )
 
-func traceValue(assignmentMap map[string]plan_node.Value, tableHandle *plan_node.HiveTableHandle, value plan_node.Value) plan_node.Value {
-	switch typed := value.(type) {
-	case *plan_node.HiveColumnHandle:
-		if typed.Table == nil {
-			typed.Table = tableHandle
+func testParseJoin(t *testing.T, fileName, expected string) {
+	t.Helper()
+	t.Run(fileName, func(t *testing.T) {
+		bytes, err := os.ReadFile(fileName)
+		if !assert.Nil(t, err) {
+			t.FailNow()
 		}
-	case *plan_node.TypeCastedValue:
-		typed.OriginalValue = traceValue(assignmentMap, tableHandle, typed.OriginalValue)
-	case *plan_node.IdentRef:
-		return traceValue(assignmentMap, tableHandle, assignmentMap[typed.Ident])
-	case *plan_node.FunctionCall:
-		for i := 0; i < len(typed.Parameters); i++ {
-			typed.Parameters[i] = traceValue(assignmentMap, tableHandle, typed.Parameters[i])
+		planTree := make(plan_node.PlanTree)
+		if !assert.Nil(t, json.Unmarshal(bytes, &planTree)) {
+			t.FailNow()
 		}
-	}
-	return value
+		joins, parseErr := planTree.ParseJoins()
+		if assert.Nil(t, parseErr) {
+			assert.Equal(t, expected, fmt.Sprint(joins))
+		}
+	})
 }
 
-func TestPlanTree(t *testing.T) {
-	bytes, err := os.ReadFile("sample_plan.json")
-	if !assert.Nil(t, err) {
-		t.FailNow()
-	}
-	planTree := make(plan_node.PlanTree)
-	if !assert.Nil(t, json.Unmarshal(bytes, &planTree)) {
-		t.FailNow()
-	}
-	assignmentMap := make(map[string]plan_node.Value)
-	assert.Nil(t, planTree.Traverse(context.Background(), func(ctx context.Context, node *plan_node.PlanNode) error {
-		tableHandle := plan_node.ParseHiveTableHandle(node.Identifier)
-		id := fmt.Sprintf("%s_%s", node.Id, node.Name)
-		if node.Details != "" {
-			ast, parseErr := plan_node.PlanNodeDetailParser.ParseString(id, node.Details)
-			if !assert.Nil(t, parseErr) {
-				t.FailNow()
-			}
-			for i := len(ast.Stmts) - 1; i >= 0; i-- {
-				if assignment, ok := ast.Stmts[i].(*plan_node.Assignment); ok {
-					assignmentMap[assignment.Identifier.Ident] = traceValue(assignmentMap, tableHandle, assignment.AssignedValue)
-				}
-			}
-		}
-		if plan_node.IsJoin[node.Name] {
-			preds, parseErr := plan_node.PlanNodeJoinPredicatesParser.ParseString(id, node.Identifier)
-			if !assert.Nil(t, parseErr) {
-				t.FailNow()
-			}
-			b := strings.Builder{}
-			for _, pred := range preds.Predicates {
-				b.WriteString(assignmentMap[pred.LeftColumn].String())
-				b.WriteString(" x ")
-				b.WriteString(assignmentMap[pred.RightColumn].String())
-				b.WriteString("\n")
-			}
-			fmt.Printf("%s\n%s\n", id, b.String())
-		}
-		return nil
-	}, plan_node.PlanTreeDFSTraverse))
+func TestParseJoin(t *testing.T) {
+	testParseJoin(t, "sample.plan.json",
+		`[{RightJoin CAST(glue.ng_public.admin_system_city.id AS bigint) glue.lks.LR_branded_car_enrollment.city_id} {LeftJoin glue.lks.LR_branded_car_enrollment.country glue.lks.LR_admin_system_country.code} {InnerJoin CAST(glue.ng_public.fleet_car.id AS bigint) glue.ng_public.fleet_car_tag_binding.car_id} {LeftJoin glue.ng_public.fleet_car_tag_binding.car_tag_id CAST(glue.ng_public.fleet_car_tag.id AS bigint)} {LeftJoin glue.lks.LR_branded_car_enrollment.car_id CAST(glue.ng_public.fleet_car.id AS bigint)}]`)
+	testParseJoin(t, "arithmetics.plan.json", `[{InnerJoin (hive.test_join.t1.a) + (INTEGER '2') ((hive.test_join.t2.b) + (INTEGER '1')) - ((INTEGER '2') * (abs(hive.test_join.t2.c)))}]`)
 }
 
 func TestJsonFloat64(t *testing.T) {

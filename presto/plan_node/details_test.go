@@ -263,22 +263,22 @@ func TestParseAssignment(t *testing.T) {
 			{ // case 6
 				Identifier: plan_node.IdentRef{Ident: "expr_5"},
 				AssignedValue: &plan_node.MathExpr{
-					LeftOp: &plan_node.MathExpr{
-						LeftOp: &plan_node.IdentRef{Ident: "b"},
-						Op:     "+",
-						RightOp: &plan_node.TypedValue{
+					Left: &plan_node.MathExpr{
+						Left: &plan_node.IdentRef{Ident: "b"},
+						Op:   "+",
+						Right: &plan_node.TypedValue{
 							DataType:     "INTEGER",
 							ValueLiteral: "1",
 						},
 					},
 					Op: "-",
-					RightOp: &plan_node.MathExpr{
-						LeftOp: &plan_node.TypedValue{
+					Right: &plan_node.MathExpr{
+						Left: &plan_node.TypedValue{
 							DataType:     "INTEGER",
 							ValueLiteral: "2",
 						},
 						Op: "*",
-						RightOp: &plan_node.FunctionCall{
+						Right: &plan_node.FunctionCall{
 							FunctionName: "abs",
 							Parameters: []plan_node.Value{
 								&plan_node.IdentRef{Ident: "c"},

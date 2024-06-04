@@ -434,8 +434,8 @@
     "plan": {
       "id": "2372",
       "name": "ScanProject",
-      "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=looker_scratch, tableName=LR_SH2E81713104009327_branded_car_enrollment, analyzePartitionValues=Optional.empty}', layout='Optional[looker_scratch.LR_SH2E81713104009327_branded_car_enrollment{domains={car_id=[ [[\"1\", <max>)] ], country=[ [[\"gh\"]] ], cohort=[ [[\"Branded_Verified\"]] ]}}]'}, projectLocality = LOCAL]",
-      "details": "$hashvalue_84 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(city_id), BIGINT'0')) (23:6)\nLAYOUT: looker_scratch.LR_SH2E81713104009327_branded_car_enrollment{domains={car_id=[ [[\"1\", <max>)] ], country=[ [[\"gh\"]] ], cohort=[ [[\"Branded_Verified\"]] ]}}\ncountry := country:string:1:REGULAR (23:6)\n    :: [[\"gh\"]]\ncity_id := city_id:bigint:-13:PARTITION_KEY (23:6)\n    :: [[\"706\"]]\ncar_id := car_id:bigint:0:REGULAR (23:6)\n    :: [[\"1\", <max>)]\ncohort:varchar(16):2:REGULAR\n    :: [[\"Branded_Verified\"]]\n",
+      "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=lks, tableName=LR_branded_car_enrollment, analyzePartitionValues=Optional.empty}', layout='Optional[lks.LR_branded_car_enrollment{domains={car_id=[ [[\"1\", <max>)] ], country=[ [[\"gh\"]] ], cohort=[ [[\"Branded_Verified\"]] ]}}]'}, projectLocality = LOCAL]",
+      "details": "$hashvalue_84 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(city_id), BIGINT'0')) (23:6)\nLAYOUT: lks.LR_branded_car_enrollment{domains={car_id=[ [[\"1\", <max>)] ], country=[ [[\"gh\"]] ], cohort=[ [[\"Branded_Verified\"]] ]}}\ncountry := country:string:1:REGULAR (23:6)\n    :: [[\"gh\"]]\ncity_id := city_id:bigint:-13:PARTITION_KEY (23:6)\n    :: [[\"706\"]]\ncar_id := car_id:bigint:0:REGULAR (23:6)\n    :: [[\"1\", <max>)]\ncohort:varchar(16):2:REGULAR\n    :: [[\"Branded_Verified\"]]\n",
       "children": [],
       "remoteSources": [],
       "estimates": [
@@ -502,8 +502,8 @@
     "plan": {
       "id": "2374",
       "name": "ScanProject",
-      "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=looker_scratch, tableName=LR_SHOSW1713111405917_admin_system_country, analyzePartitionValues=Optional.empty}', layout='Optional[looker_scratch.LR_SHOSW1713111405917_admin_system_country{domains={code=[ [[\"gh\"]] ]}}]'}, projectLocality = LOCAL]",
-      "details": "$hashvalue_88 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(code), BIGINT'0')) (25:11)\nLAYOUT: looker_scratch.LR_SHOSW1713111405917_admin_system_country{domains={code=[ [[\"gh\"]] ]}}\ncode := code:string:2:REGULAR (25:11)\n    :: [[\"gh\"]]\n",
+      "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=lks, tableName=LR_admin_system_country, analyzePartitionValues=Optional.empty}', layout='Optional[lks.LR_admin_system_country{domains={code=[ [[\"gh\"]] ]}}]'}, projectLocality = LOCAL]",
+      "details": "$hashvalue_88 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(code), BIGINT'0')) (25:11)\nLAYOUT: lks.LR_admin_system_country{domains={code=[ [[\"gh\"]] ]}}\ncode := code:string:2:REGULAR (25:11)\n    :: [[\"gh\"]]\n",
       "children": [],
       "remoteSources": [],
       "estimates": [
