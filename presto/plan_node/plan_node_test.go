@@ -8,30 +8,68 @@ import (
 	"math"
 	"os"
 	"pbench/presto/plan_node"
+	"strings"
 	"testing"
 )
 
+func traceValue(assignmentMap map[string]plan_node.Value, tableHandle *plan_node.HiveTableHandle, value plan_node.Value) plan_node.Value {
+	switch typed := value.(type) {
+	case *plan_node.HiveColumnHandle:
+		if typed.Table == nil {
+			typed.Table = tableHandle
+		}
+	case *plan_node.TypeCastedValue:
+		typed.OriginalValue = traceValue(assignmentMap, tableHandle, typed.OriginalValue)
+	case *plan_node.IdentRef:
+		return traceValue(assignmentMap, tableHandle, assignmentMap[typed.Ident])
+	case *plan_node.FunctionCall:
+		for i := 0; i < len(typed.Parameters); i++ {
+			typed.Parameters[i] = traceValue(assignmentMap, tableHandle, typed.Parameters[i])
+		}
+	}
+	return value
+}
+
 func TestPlanTree(t *testing.T) {
 	bytes, err := os.ReadFile("sample_plan.json")
-	assert.Nil(t, err)
+	if !assert.Nil(t, err) {
+		t.FailNow()
+	}
 	planTree := make(plan_node.PlanTree)
-	assert.Nil(t, json.Unmarshal(bytes, &planTree))
-	details := make(map[string]*plan_node.PlanNodeDetails)
-	count := 0
+	if !assert.Nil(t, json.Unmarshal(bytes, &planTree)) {
+		t.FailNow()
+	}
+	assignmentMap := make(map[string]plan_node.Value)
 	assert.Nil(t, planTree.Traverse(context.Background(), func(ctx context.Context, node *plan_node.PlanNode) error {
-		fmt.Println(node.Identifier)
+		tableHandle := plan_node.ParseHiveTableHandle(node.Identifier)
+		id := fmt.Sprintf("%s_%s", node.Id, node.Name)
 		if node.Details != "" {
-			count++
-			id := fmt.Sprintf("%s_%s", node.Id, node.Name)
-			//fmt.Printf("%s\n%s-----\n", id, node.Details)
 			ast, parseErr := plan_node.PlanNodeDetailParser.ParseString(id, node.Details)
-			if assert.Nil(t, parseErr) {
-				details[id] = ast
+			if !assert.Nil(t, parseErr) {
+				t.FailNow()
 			}
+			for i := len(ast.Stmts) - 1; i >= 0; i-- {
+				if assignment, ok := ast.Stmts[i].(*plan_node.Assignment); ok {
+					assignmentMap[assignment.Identifier.Ident] = traceValue(assignmentMap, tableHandle, assignment.AssignedValue)
+				}
+			}
+		}
+		if plan_node.IsJoin[node.Name] {
+			preds, parseErr := plan_node.PlanNodeJoinPredicatesParser.ParseString(id, node.Identifier)
+			if !assert.Nil(t, parseErr) {
+				t.FailNow()
+			}
+			b := strings.Builder{}
+			for _, pred := range preds.Predicates {
+				b.WriteString(assignmentMap[pred.LeftColumn].String())
+				b.WriteString(" x ")
+				b.WriteString(assignmentMap[pred.RightColumn].String())
+				b.WriteString("\n")
+			}
+			fmt.Printf("%s\n%s\n", id, b.String())
 		}
 		return nil
 	}, plan_node.PlanTreeDFSTraverse))
-	fmt.Println(count, len(details))
 }
 
 func TestJsonFloat64(t *testing.T) {

@@ -8,12 +8,12 @@ import (
 	"testing"
 )
 
-func testParsing[T any](t *testing.T, testLiterals []string, expected []T) {
+func testParsing[T any](t *testing.T, options []participle.Option, testLiterals []string, expected []T) {
 	t.Helper()
 	if !assert.Equalf(t, len(testLiterals), len(expected), "length of testLiterals and expected should be same") {
 		t.FailNow()
 	}
-	parser := participle.MustBuild[T](plan_node.PlanNodeDetailParserOptions...)
+	parser := participle.MustBuild[T](options...)
 	for i, literal := range testLiterals {
 		testName := fmt.Sprintf("case_%d", i)
 		t.Run(testName, func(t *testing.T) {
@@ -26,7 +26,7 @@ func testParsing[T any](t *testing.T, testLiterals []string, expected []T) {
 }
 
 func TestParseLayout(t *testing.T) {
-	testParsing[plan_node.Layout](t,
+	testParsing[plan_node.Layout](t, plan_node.PlanNodeDetailParserOptions,
 		[]string{
 			`LAYOUT: schema.table{domains={id=[ [["706"]] ]}}`,
 			`LAYOUT: schema.SH2E81713104009327{domains={car_id=[ [["1", <max>)] ], country=[ [["gh"]] ], cohort=[ [["Random Text"]] ]}}`,
@@ -38,7 +38,7 @@ func TestParseLayout(t *testing.T) {
 }
 
 func TestParseHiveColumnHandle(t *testing.T) {
-	testParsing[plan_node.HiveColumnHandle](t,
+	testParsing[plan_node.HiveColumnHandle](t, plan_node.PlanNodeDetailParserOptions,
 		[]string{
 			"cohort:varchar(16):2:REGULAR",
 			"city_id:bigint:-13:PARTITION_KEY (23:6)",
@@ -113,7 +113,7 @@ func TestParseHiveColumnHandle(t *testing.T) {
 }
 
 func TestParseTypedValue(t *testing.T) {
-	testParsing[plan_node.TypedValue](t,
+	testParsing[plan_node.TypedValue](t, plan_node.PlanNodeDetailParserOptions,
 		[]string{
 			`BIGINT'0'`,
 			`REAL'3.14'`,
@@ -125,7 +125,7 @@ func TestParseTypedValue(t *testing.T) {
 }
 
 func TestParseRange(t *testing.T) {
-	testParsing[plan_node.Range](t,
+	testParsing[plan_node.Range](t, plan_node.PlanNodeDetailParserOptions,
 		[]string{
 			`["1", <max>)`,
 			`(<min>, "2024"]`,
@@ -169,7 +169,7 @@ func TestParseRange(t *testing.T) {
 }
 
 func TestParseAssignment(t *testing.T) {
-	testParsing[plan_node.Assignment](t,
+	testParsing[plan_node.Assignment](t, plan_node.PlanNodeDetailParserOptions,
 		[]string{
 			`$hashvalue_108 := $hashvalue_109`,
 			`country := country:string:1:REGULAR (23:6)
@@ -178,15 +178,16 @@ func TestParseAssignment(t *testing.T) {
 			"expr_3 := CAST(id AS bigint) (24:12)",
 			`array_agg_51 := "presto.default.array_agg"((name_35)) ORDER BY OrderingScheme {orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]', orderings='{name_35=ASC_NULLS_LAST}'} (6:21)`,
 			`branded_car_enrollment.target_id := car_id (22:5)`,
+			//`expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)`,
 		},
 		[]plan_node.Assignment{
 			{ // case 0
 				Identifier:    plan_node.IdentRef{Ident: "$hashvalue_108"},
-				AssignedValue: plan_node.IdentRef{Ident: "$hashvalue_109"},
+				AssignedValue: &plan_node.IdentRef{Ident: "$hashvalue_109"},
 			},
 			{ // case 1
 				Identifier: plan_node.IdentRef{Ident: "country"},
-				AssignedValue: plan_node.HiveColumnHandle{
+				AssignedValue: &plan_node.HiveColumnHandle{
 					ColumnName:  plan_node.IdentRef{Ident: "country"},
 					DataType:    "string",
 					ColumnIndex: 1,
@@ -205,23 +206,23 @@ func TestParseAssignment(t *testing.T) {
 			},
 			{ // case 2
 				Identifier: plan_node.IdentRef{Ident: "$hashvalue_109"},
-				AssignedValue: plan_node.FunctionCall{
+				AssignedValue: &plan_node.FunctionCall{
 					FunctionName: "combine_hash",
 					Parameters: []plan_node.Value{
-						plan_node.TypedValue{
+						&plan_node.TypedValue{
 							DataType:     "BIGINT",
 							ValueLiteral: "0",
 						},
-						plan_node.FunctionCall{
+						&plan_node.FunctionCall{
 							FunctionName: "COALESCE",
 							Parameters: []plan_node.Value{
-								plan_node.FunctionCall{
+								&plan_node.FunctionCall{
 									FunctionName: "$operator$hash_code",
 									Parameters: []plan_node.Value{
-										plan_node.IdentRef{Ident: "car_id"},
+										&plan_node.IdentRef{Ident: "car_id"},
 									},
 								},
-								plan_node.TypedValue{
+								&plan_node.TypedValue{
 									DataType:     "BIGINT",
 									ValueLiteral: "0",
 								},
@@ -236,8 +237,8 @@ func TestParseAssignment(t *testing.T) {
 			},
 			{ // case 3
 				Identifier: plan_node.IdentRef{Ident: "expr_3"},
-				AssignedValue: plan_node.TypeCastedValue{
-					OriginalValue: plan_node.IdentRef{Ident: "id"},
+				AssignedValue: &plan_node.TypeCastedValue{
+					OriginalValue: &plan_node.IdentRef{Ident: "id"},
 					CastedType:    "bigint",
 				},
 				Loc: &plan_node.SourceLocation{
@@ -247,13 +248,13 @@ func TestParseAssignment(t *testing.T) {
 			},
 			{ // case 4
 				Identifier: plan_node.IdentRef{Ident: "array_agg_51"},
-				AssignedValue: plan_node.CatchAllValue{
+				AssignedValue: &plan_node.CatchAllValue{
 					Value: "\"presto.default.array_agg\"((name_35))ORDERBYOrderingScheme{orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]',orderings='{name_35=ASC_NULLS_LAST}'}(6:21)"},
 				Loc: nil,
 			},
 			{ // case 5
 				Identifier:    plan_node.IdentRef{Ident: "branded_car_enrollment.target_id"},
-				AssignedValue: plan_node.IdentRef{Ident: "car_id"},
+				AssignedValue: &plan_node.IdentRef{Ident: "car_id"},
 				Loc: &plan_node.SourceLocation{
 					RowNumber:    22,
 					ColumnNumber: 5,
@@ -263,7 +264,7 @@ func TestParseAssignment(t *testing.T) {
 }
 
 func TestIdent(t *testing.T) {
-	testParsing[plan_node.IdentRef](t,
+	testParsing[plan_node.IdentRef](t, plan_node.PlanNodeDetailParserOptions,
 		[]string{
 			"branded_car_enrollment.target_id",
 		},
@@ -273,7 +274,7 @@ func TestIdent(t *testing.T) {
 }
 
 func TestParseFunctionCall(t *testing.T) {
-	testParsing[plan_node.FunctionCall](t,
+	testParsing[plan_node.FunctionCall](t, plan_node.PlanNodeDetailParserOptions,
 		[]string{
 			//`combine_hash(BIGINT'0', COALESCE($operator$hash_code(country), BIGINT'0'))`,
 			`array_join(array_agg_51, VARCHAR';')`,
@@ -284,8 +285,8 @@ func TestParseFunctionCall(t *testing.T) {
 			{
 				FunctionName: "array_join",
 				Parameters: []plan_node.Value{
-					plan_node.IdentRef{Ident: "array_agg_51"},
-					plan_node.TypedValue{DataType: "VARCHAR", ValueLiteral: ";"},
+					&plan_node.IdentRef{Ident: "array_agg_51"},
+					&plan_node.TypedValue{DataType: "VARCHAR", ValueLiteral: ";"},
 				},
 			},
 		})

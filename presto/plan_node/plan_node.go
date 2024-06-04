@@ -26,6 +26,11 @@ var (
 	nodeDepthCtxKey              = struct{}{}
 	NoRootPlanNodeError          = errors.New("no root plan node found")
 	NonExistentRemoteSourceError = errors.New("non-existent remote source")
+	IsJoin                       = map[string]bool{
+		LeftJoin:  true,
+		RightJoin: true,
+		InnerJoin: true,
+	}
 )
 
 type PlanNodeTraverseFunction func(ctx context.Context, node *PlanNode) error
@@ -93,7 +98,7 @@ func (n *PlanNode) Traverse(ctx context.Context, fn PlanNodeTraverseFunction, pl
 	return nil
 }
 
-type PlanTree map[string]struct {
+type PlanTree map[string]*struct {
 	Plan PlanNode `json:"plan"`
 }
 

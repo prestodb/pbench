@@ -1,0 +1,331 @@
+{
+    "0": {
+        "plan": {
+            "id": "9",
+            "name": "Output",
+            "identifier": "[t1_id, t1_a, t2_id, t2_b, t2_c]",
+            "details": "t1_id := id (2:5)\nt1_a := a (3:5)\nt2_id := id_0 (4:5)\nt2_b := b (5:5)\nt2_c := c (6:5)\n",
+            "children": [
+                {
+                    "id": "368",
+                    "name": "RemoteSource",
+                    "identifier": "[1]",
+                    "details": "",
+                    "children": [],
+                    "remoteSources": [
+                        "1"
+                    ],
+                    "estimates": []
+                }
+            ],
+            "remoteSources": [],
+            "estimates": [
+                {
+                    "outputRowCount": "NaN",
+                    "totalSize": "NaN",
+                    "confident": false,
+                    "variableStatistics": {},
+                    "joinNodeStatsEstimate": {
+                        "nullJoinBuildKeyCount": "NaN",
+                        "joinBuildKeyCount": "NaN",
+                        "nullJoinProbeKeyCount": "NaN",
+                        "joinProbeKeyCount": "NaN"
+                    },
+                    "tableWriterNodeStatsEstimate": {
+                        "taskCountIfScaledWriter": "NaN"
+                    },
+                    "partialAggregationStatsEstimate": {
+                        "inputBytes": "NaN",
+                        "outputBytes": "NaN",
+                        "inputRowCount": "NaN",
+                        "outputRowCount": "NaN"
+                    }
+                }
+            ]
+        }
+    },
+    "1": {
+        "plan": {
+            "id": "4",
+            "name": "InnerJoin",
+            "identifier": "[(\"expr\" = \"expr_5\")][$hashvalue, $hashvalue_27]",
+            "details": "Distribution: PARTITIONED\n",
+            "children": [
+                {
+                    "id": "366",
+                    "name": "RemoteSource",
+                    "identifier": "[2]",
+                    "details": "",
+                    "children": [],
+                    "remoteSources": [
+                        "2"
+                    ],
+                    "estimates": []
+                },
+                {
+                    "id": "409",
+                    "name": "LocalExchange",
+                    "identifier": "[HASH][$hashvalue_27] (expr_5)",
+                    "details": "",
+                    "children": [
+                        {
+                            "id": "367",
+                            "name": "RemoteSource",
+                            "identifier": "[3]",
+                            "details": "",
+                            "children": [],
+                            "remoteSources": [
+                                "3"
+                            ],
+                            "estimates": []
+                        }
+                    ],
+                    "remoteSources": [],
+                    "estimates": [
+                        {
+                            "outputRowCount": 3.0,
+                            "totalSize": "NaN",
+                            "confident": true,
+                            "variableStatistics": {
+                                "expr_5\u003cinteger\u003e": {
+                                    "lowValue": "NaN",
+                                    "highValue": "NaN",
+                                    "nullsFraction": 1.0,
+                                    "averageRowSize": "NaN",
+                                    "distinctValuesCount": "NaN"
+                                }
+                            },
+                            "joinNodeStatsEstimate": {
+                                "nullJoinBuildKeyCount": "NaN",
+                                "joinBuildKeyCount": "NaN",
+                                "nullJoinProbeKeyCount": "NaN",
+                                "joinProbeKeyCount": "NaN"
+                            },
+                            "tableWriterNodeStatsEstimate": {
+                                "taskCountIfScaledWriter": "NaN"
+                            },
+                            "partialAggregationStatsEstimate": {
+                                "inputBytes": "NaN",
+                                "outputBytes": "NaN",
+                                "inputRowCount": "NaN",
+                                "outputRowCount": "NaN"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "remoteSources": [],
+            "estimates": [
+                {
+                    "outputRowCount": "NaN",
+                    "totalSize": "NaN",
+                    "confident": false,
+                    "variableStatistics": {},
+                    "joinNodeStatsEstimate": {
+                        "nullJoinBuildKeyCount": "NaN",
+                        "joinBuildKeyCount": "NaN",
+                        "nullJoinProbeKeyCount": "NaN",
+                        "joinProbeKeyCount": "NaN"
+                    },
+                    "tableWriterNodeStatsEstimate": {
+                        "taskCountIfScaledWriter": "NaN"
+                    },
+                    "partialAggregationStatsEstimate": {
+                        "inputBytes": "NaN",
+                        "outputBytes": "NaN",
+                        "inputRowCount": "NaN",
+                        "outputRowCount": "NaN"
+                    }
+                }
+            ]
+        }
+    },
+    "2": {
+        "plan": {
+            "id": "446",
+            "name": "Project",
+            "identifier": "[projectLocality = LOCAL]",
+            "details": "$hashvalue_26 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr), BIGINT'0')) (10:16)\n",
+            "children": [
+                {
+                    "id": "2",
+                    "name": "ScanProject",
+                    "identifier": "[table = TableHandle {connectorId='hive', connectorHandle='HiveTableHandle{schemaName=test_join, tableName=t1, analyzePartitionValues=Optional.empty}', layout='Optional[test_join.t1{}]'}, projectLocality = LOCAL]",
+                    "details": "expr := (a) + (INTEGER'2') (8:6)\nLAYOUT: test_join.t1{}\nid := id:int:0:REGULAR (8:5)\na := a:int:1:REGULAR (8:5)\n",
+                    "children": [],
+                    "remoteSources": [],
+                    "estimates": [
+                        {
+                            "outputRowCount": 3.0,
+                            "totalSize": 30.0,
+                            "confident": true,
+                            "variableStatistics": {},
+                            "joinNodeStatsEstimate": {
+                                "nullJoinBuildKeyCount": "NaN",
+                                "joinBuildKeyCount": "NaN",
+                                "nullJoinProbeKeyCount": "NaN",
+                                "joinProbeKeyCount": "NaN"
+                            },
+                            "tableWriterNodeStatsEstimate": {
+                                "taskCountIfScaledWriter": "NaN"
+                            },
+                            "partialAggregationStatsEstimate": {
+                                "inputBytes": "NaN",
+                                "outputBytes": "NaN",
+                                "inputRowCount": "NaN",
+                                "outputRowCount": "NaN"
+                            }
+                        },
+                        {
+                            "outputRowCount": 3.0,
+                            "totalSize": "NaN",
+                            "confident": true,
+                            "variableStatistics": {},
+                            "joinNodeStatsEstimate": {
+                                "nullJoinBuildKeyCount": "NaN",
+                                "joinBuildKeyCount": "NaN",
+                                "nullJoinProbeKeyCount": "NaN",
+                                "joinProbeKeyCount": "NaN"
+                            },
+                            "tableWriterNodeStatsEstimate": {
+                                "taskCountIfScaledWriter": "NaN"
+                            },
+                            "partialAggregationStatsEstimate": {
+                                "inputBytes": "NaN",
+                                "outputBytes": "NaN",
+                                "inputRowCount": "NaN",
+                                "outputRowCount": "NaN"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "remoteSources": [],
+            "estimates": [
+                {
+                    "outputRowCount": 3.0,
+                    "totalSize": "NaN",
+                    "confident": true,
+                    "variableStatistics": {},
+                    "joinNodeStatsEstimate": {
+                        "nullJoinBuildKeyCount": "NaN",
+                        "joinBuildKeyCount": "NaN",
+                        "nullJoinProbeKeyCount": "NaN",
+                        "joinProbeKeyCount": "NaN"
+                    },
+                    "tableWriterNodeStatsEstimate": {
+                        "taskCountIfScaledWriter": "NaN"
+                    },
+                    "partialAggregationStatsEstimate": {
+                        "inputBytes": "NaN",
+                        "outputBytes": "NaN",
+                        "inputRowCount": "NaN",
+                        "outputRowCount": "NaN"
+                    }
+                }
+            ]
+        }
+    },
+    "3": {
+        "plan": {
+            "id": "447",
+            "name": "Project",
+            "identifier": "[projectLocality = LOCAL]",
+            "details": "$hashvalue_29 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr_5), BIGINT'0')) (10:33)\n",
+            "children": [
+                {
+                    "id": "3",
+                    "name": "ScanProject",
+                    "identifier": "[table = TableHandle {connectorId='hive', connectorHandle='HiveTableHandle{schemaName=test_join, tableName=t2, analyzePartitionValues=Optional.empty}', layout='Optional[test_join.t2{}]'}, projectLocality = LOCAL]",
+                    "details": "expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)\nLAYOUT: test_join.t2{}\nc := c:int:2:REGULAR (10:5)\nid_0 := id:int:0:REGULAR (10:5)\nb := b:int:1:REGULAR (10:5)\n",
+                    "children": [],
+                    "remoteSources": [],
+                    "estimates": [
+                        {
+                            "outputRowCount": 3.0,
+                            "totalSize": 45.0,
+                            "confident": true,
+                            "variableStatistics": {},
+                            "joinNodeStatsEstimate": {
+                                "nullJoinBuildKeyCount": "NaN",
+                                "joinBuildKeyCount": "NaN",
+                                "nullJoinProbeKeyCount": "NaN",
+                                "joinProbeKeyCount": "NaN"
+                            },
+                            "tableWriterNodeStatsEstimate": {
+                                "taskCountIfScaledWriter": "NaN"
+                            },
+                            "partialAggregationStatsEstimate": {
+                                "inputBytes": "NaN",
+                                "outputBytes": "NaN",
+                                "inputRowCount": "NaN",
+                                "outputRowCount": "NaN"
+                            }
+                        },
+                        {
+                            "outputRowCount": 3.0,
+                            "totalSize": "NaN",
+                            "confident": true,
+                            "variableStatistics": {
+                                "expr_5\u003cinteger\u003e": {
+                                    "lowValue": "NaN",
+                                    "highValue": "NaN",
+                                    "nullsFraction": 1.0,
+                                    "averageRowSize": "NaN",
+                                    "distinctValuesCount": "NaN"
+                                }
+                            },
+                            "joinNodeStatsEstimate": {
+                                "nullJoinBuildKeyCount": "NaN",
+                                "joinBuildKeyCount": "NaN",
+                                "nullJoinProbeKeyCount": "NaN",
+                                "joinProbeKeyCount": "NaN"
+                            },
+                            "tableWriterNodeStatsEstimate": {
+                                "taskCountIfScaledWriter": "NaN"
+                            },
+                            "partialAggregationStatsEstimate": {
+                                "inputBytes": "NaN",
+                                "outputBytes": "NaN",
+                                "inputRowCount": "NaN",
+                                "outputRowCount": "NaN"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "remoteSources": [],
+            "estimates": [
+                {
+                    "outputRowCount": 3.0,
+                    "totalSize": "NaN",
+                    "confident": true,
+                    "variableStatistics": {
+                        "expr_5\u003cinteger\u003e": {
+                            "lowValue": "NaN",
+                            "highValue": "NaN",
+                            "nullsFraction": 1.0,
+                            "averageRowSize": "NaN",
+                            "distinctValuesCount": "NaN"
+                        }
+                    },
+                    "joinNodeStatsEstimate": {
+                        "nullJoinBuildKeyCount": "NaN",
+                        "joinBuildKeyCount": "NaN",
+                        "nullJoinProbeKeyCount": "NaN",
+                        "joinProbeKeyCount": "NaN"
+                    },
+                    "tableWriterNodeStatsEstimate": {
+                        "taskCountIfScaledWriter": "NaN"
+                    },
+                    "partialAggregationStatsEstimate": {
+                        "inputBytes": "NaN",
+                        "outputBytes": "NaN",
+                        "inputRowCount": "NaN",
+                        "outputRowCount": "NaN"
+                    }
+                }
+            ]
+        }
+    }
+}
