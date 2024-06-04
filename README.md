@@ -6,7 +6,7 @@ PBench is a benchmark runner intended as a replacement to [Benchto](https://gith
 * query log collection
 * flexible definition of bookmarks
 
-For a detailed explanation of PBench’s design and architecture, see [Comprehensive Performance Benchmarking, Monitoring, and Reporting Infrastructure for Presto and Prestissimo](https://github.com/prestodb/pbench/blob/main/ComprehensivePerformanceBenchmarking.pdf).
+For a detailed explanation of PBench’s design and architecture, see [Comprehensive Performance Benchmarking, Monitoring, and Reporting Infrastructure for Presto and Prestissimo](https://github.com/prestodb/pbench/wiki/ComprehensivePerformanceBenchmarking.pdf).
 
 [QuickStart](../../wiki/QuickStart)
 
