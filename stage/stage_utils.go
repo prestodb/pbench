@@ -27,7 +27,7 @@ var DefaultNewClientFn = func() *presto.Client {
 	return client
 }
 
-func (s *Stage) MergeWith(other *Stage) *Stage {
+func (s *Stage) MergeWith(other *Stage, wd string) *Stage {
 	s.Id = other.Id
 	if other.Catalog != nil {
 		s.Catalog = other.Catalog
@@ -49,7 +49,14 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 		s.TimeZone = other.TimeZone
 	}
 	s.Queries = append(s.Queries, other.Queries...)
-	s.QueryFiles = append(s.QueryFiles, other.QueryFiles...)
+	for _, queryFile := range other.QueryFiles {
+		log.Info().Msg(fmt.Sprintf("%s||||%s", queryFile, wd))
+		absPath, err := filepath.Abs(filepath.Join(wd, queryFile))
+		if err != nil {
+			log.Fatal().Err(err).Msg(fmt.Sprintf("query file does not exist: %s", absPath))
+		}
+		s.QueryFiles = append(s.QueryFiles, absPath)
+	}
 	if s.ExpectedRowCounts == nil {
 		s.ExpectedRowCounts = make(map[string][]int)
 	}

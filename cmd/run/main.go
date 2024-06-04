@@ -51,7 +51,8 @@ func Run(_ *cobra.Command, args []string) {
 	}
 	for _, path := range args {
 		if st, err := processStagePath(path); err == nil {
-			mainStage.MergeWith(st)
+			stageWd := filepath.Dir(path)
+			mainStage.MergeWith(st, stageWd)
 			if defaultRunNameBuilder != nil {
 				if defaultRunNameBuilder.Len() > 0 {
 					defaultRunNameBuilder.WriteByte('_')
@@ -104,7 +105,7 @@ func processStagePath(path string) (st *stage.Stage, returnErr error) {
 			fullPath := filepath.Join(path, entry.Name())
 			newStage, err := processStagePath(fullPath)
 			if err == nil {
-				st.MergeWith(newStage)
+				st.MergeWith(newStage, filepath.Dir(fullPath))
 			}
 		}
 		return st, nil

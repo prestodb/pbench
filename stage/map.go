@@ -84,6 +84,7 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 		if !filepath.IsAbs(queryFile) {
 			queryFile = filepath.Join(stage.BaseDir, queryFile)
 		}
+		
 		if _, err := os.Stat(queryFile); err != nil {
 			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stage.Id, queryFile, err)
 		}
