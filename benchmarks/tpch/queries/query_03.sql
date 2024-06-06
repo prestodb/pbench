@@ -21,4 +21,4 @@ GROUP BY
 ORDER BY
     revenue DESC,
     o.orderdate
-    LIMIT 10
+    LIMIT 10;
