@@ -45,7 +45,7 @@ tar: clean all
 	rm -rf release
 
 upload:
-	$(shell export GOOS=linux; export GOARCH=amd64; $(GO) -o $(BINARY)_linux_amd64)
+	$(shell export GOOS=linux; export GOARCH=amd64; $(GO) -tags=influx -o $(BINARY)_linux_amd64)
 	aws s3 cp $(BINARY)_linux_amd64 s3://presto-deploy-infra-and-cluster-a9d5d14
 
 sync:
