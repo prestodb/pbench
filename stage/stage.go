@@ -357,7 +357,7 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 
 func (s *Stage) runShellScripts(ctx context.Context) error {
 	for i, script := range s.ShellScripts {
-		cmd := exec.CommandContext(ctx, "/bin/sh", "-c", script)
+		cmd := exec.CommandContext(ctx, "/bin/bash", "-c", script)
 		cmd.Dir = s.BaseDir
 		outBuf, errBuf := new(bytes.Buffer), new(bytes.Buffer)
 		cmd.Stdout, cmd.Stderr = outBuf, errBuf
