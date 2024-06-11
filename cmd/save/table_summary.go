@@ -50,6 +50,14 @@ var (
 		MapType:       true,
 		RowType:       true,
 	}
+	/*
+		Before Presto 0.283, max_data_size_for_stats and sum_data_size_for_stats were called
+		"$internal$max_data_size_for_stats" and "$internal$sum_data_size_for_stats"
+		See https://github.com/prestodb/presto/commit/b65b50032258eb4a2a8a9269d74f54737e767387
+		We don't know which name to use until the first query that uses those functions are run.
+		We keep a flag for this as soon as we know, so we do not generate more failing queries.
+	*/
+	internalFunctionPrefix = ""
 )
 
 type TableSummary struct {
@@ -61,16 +69,27 @@ type TableSummary struct {
 	RowCount    *int                 `json:"rowCount,omitempty"`
 }
 
-func handleQueryError(err error, abortOnError bool) {
+func handleQueryError(err error, abortOnError bool) (retry bool) {
 	if err == nil {
 		return
 	}
-	var queryError *presto.QueryError
-	if abortOnError || errors.Is(err, syscall.ECONNREFUSED) ||
-		(errors.As(err, &queryError) && strings.HasSuffix(queryError.Message, "does not exist")) {
+	if abortOnError || errors.Is(err, syscall.ECONNREFUSED) {
 		panic(err)
 	}
+	var queryError *presto.QueryError
+	if errors.As(err, &queryError) {
+		if strings.HasSuffix(queryError.Message, "does not exist") {
+			// table/schema/catalog does not exist, then no need to run more queries that will fail.
+			panic(err)
+		}
+		if internalFunctionPrefix == "" && strings.HasSuffix(queryError.Message, "data_size_for_stats not registered") {
+			internalFunctionPrefix = "$internal$"
+			log.Info().Msg(`using "$internal$max_data_size_for_stats" and "$internal$sum_data_size_for_stats" for later queries`)
+			retry = true
+		}
+	}
 	log.Error().Err(err).Msg("failed to query stats")
+	return
 }
 
 func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client) {
@@ -124,9 +143,9 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 		if rawDataType == BooleanType {
 			statistics = append(statistics, fmt.Sprintf("count_if(%s) AS true_values_count", stat.ColumnName))
 		} else if IsSizable[rawDataType] {
-			statistics = append(statistics, fmt.Sprintf("max_data_size_for_stats(%s) AS max_data_size", stat.ColumnName))
+			statistics = append(statistics, fmt.Sprintf("\"%smax_data_size_for_stats\"(%s) AS max_data_size", internalFunctionPrefix, stat.ColumnName))
 			if stat.DataSize == nil {
-				statistics = append(statistics, fmt.Sprintf("sum_data_size_for_stats(%s) AS data_size", stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("\"%ssum_data_size_for_stats\"(%s) AS data_size", internalFunctionPrefix, stat.ColumnName))
 			}
 			if stat.DistinctValuesCount == nil && (rawDataType == VarcharType || rawDataType == CharType) {
 				statistics = append(statistics, fmt.Sprintf("approx_distinct(%s) AS distinct_values_count", stat.ColumnName))
@@ -148,8 +167,11 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 		}
 
 		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(statistics, ", "), fullyQualifiedTableName)
-		handleQueryError(presto.QueryAndUnmarshal(ctx, client, query, stat), false)
-		if stat.NullsFraction == nil {
+		err := presto.QueryAndUnmarshal(ctx, client, query, stat)
+		if retry := handleQueryError(err, false); retry {
+			i--
+		}
+		if err == nil && stat.NullsFraction == nil {
 			nullsFraction := 1 - *stat.NonNullValuesCount/float64(*s.RowCount)
 			stat.NullsFraction = &nullsFraction
 		}
