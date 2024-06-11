@@ -1,7 +1,6 @@
 package presto
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
@@ -19,8 +18,7 @@ func (q *QueryError) String() string {
 	if q == nil {
 		return "nil QueryError"
 	}
-	byt, _ := json.MarshalIndent(q, "", "    ")
-	return string(byt)
+	return fmt.Sprintf("%s: %s", q.ErrorName, q.Message)
 }
 
 func (q *QueryError) Error() string {

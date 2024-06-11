@@ -3,12 +3,14 @@ package save
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"pbench/log"
 	"pbench/presto"
 	"pbench/utils"
 	"strings"
+	"syscall"
 )
 
 const (
@@ -59,18 +61,30 @@ type TableSummary struct {
 	RowCount    *int                 `json:"rowCount,omitempty"`
 }
 
-func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client) error {
-	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
-	if err := presto.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl); err != nil {
-		return err
+func handleQueryError(err error, abortOnError bool) {
+	if err == nil {
+		return
 	}
-	if err := presto.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats); err != nil {
-		return err
+	var queryError *presto.QueryError
+	if abortOnError || errors.Is(err, syscall.ECONNREFUSED) ||
+		(errors.As(err, &queryError) && strings.HasSuffix(queryError.Message, "does not exist")) {
+		panic(err)
 	}
-	if err := presto.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats); err != nil {
-		return err
-	}
+	log.Error().Err(err).Msg("failed to query stats")
+}
 
+func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client) {
+	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Msgf("querying table summary for %s aborted due to %v", fullyQualifiedTableName, err)
+		}
+	}()
+
+	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl), true)
+	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats), true)
+	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats), true)
 	// Find the row count from the table summary row (usually the last row)
 	for i := len(s.ColumnStats) - 1; i >= 0; i-- {
 		if stats := s.ColumnStats[i]; stats.ColumnName == "" && stats.RowCount != nil {
@@ -81,14 +95,12 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 	}
 	// Unlikely but if the row count is still NULL, then do SELECT COUNT(*)
 	if s.RowCount == nil {
-		if err := presto.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount); err != nil {
-			return err
-		}
+		handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount), true)
 	}
 
 	// Zero rows, no need to do anything more.
 	if *s.RowCount == 0 {
-		return nil
+		return
 	}
 
 	/* Find supported stats for each column type. References:
@@ -136,17 +148,12 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 		}
 
 		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(statistics, ", "), fullyQualifiedTableName)
-		log.Debug().Str("query", query).Send()
-		if err := presto.QueryAndUnmarshal(ctx, client, query, stat); err != nil {
-			return err
-		}
+		handleQueryError(presto.QueryAndUnmarshal(ctx, client, query, stat), false)
 		if stat.NullsFraction == nil {
 			nullsFraction := 1 - *stat.NonNullValuesCount/float64(*s.RowCount)
 			stat.NullsFraction = &nullsFraction
 		}
 	}
-
-	return nil
 }
 
 func (s *TableSummary) SaveToFile(path string) error {
