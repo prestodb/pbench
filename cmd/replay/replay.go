@@ -1,9 +1,9 @@
-package cmd
+package replay
 
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"pbench/cmd/replay"
+	"pbench/cmd"
 	"pbench/utils"
 	"time"
 )
@@ -21,15 +21,15 @@ We also expect the queries in this CSV file are sorted by "create_time" in ascen
 		if len(args) != 1 {
 			return fmt.Errorf("requires 1 arg, only received %d", len(args))
 		}
-		utils.ExpandHomeDirectory(&replay.PrestoFlags.OutputPath)
+		utils.ExpandHomeDirectory(&PrestoFlags.OutputPath)
 		utils.ExpandHomeDirectory(&args[0])
 		return nil
 	},
-	Run: replay.Run,
+	Run: Run,
 }
 
 func init() {
-	rootCmd.AddCommand(replayCmd)
-	replay.PrestoFlags.InstallPrestoFlags(replayCmd)
-	replayCmd.Flags().StringVarP(&replay.RunName, "name", "n", fmt.Sprintf("replay_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "replay_<current time>")`)
+	cmd.RootCmd.AddCommand(replayCmd)
+	PrestoFlags.InstallPrestoFlags(replayCmd)
+	replayCmd.Flags().StringVarP(&RunName, "name", "n", fmt.Sprintf("replay_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "replay_<current time>")`)
 }

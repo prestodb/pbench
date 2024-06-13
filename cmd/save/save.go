@@ -1,9 +1,9 @@
-package cmd
+package save
 
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"pbench/cmd/save"
+	"pbench/cmd"
 	"pbench/utils"
 	"runtime"
 )
@@ -15,24 +15,24 @@ var saveCmd = &cobra.Command{
 	Long:                  `Save table information for recreating the schema and data`,
 	DisableFlagsInUseLine: true,
 	Args: func(cmd *cobra.Command, args []string) error {
-		utils.ExpandHomeDirectory(&save.PrestoFlags.OutputPath)
-		if save.InputFilePath != "" {
-			utils.ExpandHomeDirectory(&save.InputFilePath)
+		utils.ExpandHomeDirectory(&PrestoFlags.OutputPath)
+		if InputFilePath != "" {
+			utils.ExpandHomeDirectory(&InputFilePath)
 		} else if len(args) < 1 {
 			return fmt.Errorf("requires at least 1 arg when -f is not used")
 		}
 		return nil
 	},
-	Run: save.Run,
+	Run: Run,
 }
 
 func init() {
-	rootCmd.AddCommand(saveCmd)
-	save.PrestoFlags.InstallPrestoFlags(saveCmd)
-	saveCmd.Flags().StringVarP(&save.Catalog, "catalog", "", "", "Catalog name")
-	saveCmd.Flags().StringVarP(&save.Schema, "schema", "", "", "Schema name")
-	saveCmd.Flags().StringArrayVarP(&save.Session, "session", "", nil,
+	cmd.RootCmd.AddCommand(saveCmd)
+	PrestoFlags.InstallPrestoFlags(saveCmd)
+	saveCmd.Flags().StringVarP(&Catalog, "catalog", "", "", "Catalog name")
+	saveCmd.Flags().StringVarP(&Schema, "schema", "", "", "Schema name")
+	saveCmd.Flags().StringArrayVarP(&Session, "session", "", nil,
 		"Session property (property can be used multiple times; format is\nkey=value; use 'SHOW SESSION' in Presto CLI to see available properties)")
-	saveCmd.Flags().StringVarP(&save.InputFilePath, "file", "f", "", "CSV file to read catalog,schema,table.")
-	saveCmd.Flags().IntVarP(&save.Parallelism, "parallel", "P", runtime.NumCPU(), "Number of parallel threads to save table summaries.")
+	saveCmd.Flags().StringVarP(&InputFilePath, "file", "f", "", "CSV file to read catalog,schema,table.")
+	saveCmd.Flags().IntVarP(&Parallelism, "parallel", "P", runtime.NumCPU(), "Number of parallel threads to save table summaries.")
 }
