@@ -3,6 +3,7 @@ package save
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"os"
 	"pbench/cmd"
 	"pbench/utils"
 	"runtime"
@@ -15,7 +16,7 @@ var saveCmd = &cobra.Command{
 	Long:                  `Save table information for recreating the schema and data`,
 	DisableFlagsInUseLine: true,
 	Args: func(cmd *cobra.Command, args []string) error {
-		utils.ExpandHomeDirectory(&PrestoFlags.OutputPath)
+		utils.ExpandHomeDirectory(&OutputPath)
 		if InputFilePath != "" {
 			utils.ExpandHomeDirectory(&InputFilePath)
 		} else if len(args) < 1 {
@@ -29,6 +30,8 @@ var saveCmd = &cobra.Command{
 func init() {
 	cmd.RootCmd.AddCommand(saveCmd)
 	PrestoFlags.InstallPrestoFlags(saveCmd)
+	wd, _ := os.Getwd()
+	saveCmd.Flags().StringVarP(&OutputPath, "output-path", "o", wd, "Output directory path")
 	saveCmd.Flags().StringVarP(&Catalog, "catalog", "", "", "Catalog name")
 	saveCmd.Flags().StringVarP(&Schema, "schema", "", "", "Schema name")
 	saveCmd.Flags().StringArrayVarP(&Session, "session", "", nil,

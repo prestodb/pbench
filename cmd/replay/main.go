@@ -18,6 +18,7 @@ import (
 
 var (
 	RunName     string
+	OutputPath  string
 	PrestoFlags utils.PrestoFlags
 
 	queryFrameChan = make(chan *QueryFrame, 128)
@@ -26,11 +27,11 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
-	PrestoFlags.OutputPath = filepath.Join(PrestoFlags.OutputPath, RunName)
-	utils.PrepareOutputDirectory(PrestoFlags.OutputPath)
+	OutputPath = filepath.Join(OutputPath, RunName)
+	utils.PrepareOutputDirectory(OutputPath)
 
 	// also start to write logs to the output directory from this point on.
-	logPath := filepath.Join(PrestoFlags.OutputPath, "replay.log")
+	logPath := filepath.Join(OutputPath, "replay.log")
 	flushLog := utils.InitLogFile(logPath)
 	defer flushLog()
 

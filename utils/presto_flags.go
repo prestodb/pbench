@@ -2,7 +2,6 @@ package utils
 
 import (
 	"github.com/spf13/cobra"
-	"os"
 	"pbench/presto"
 )
 
@@ -12,7 +11,6 @@ type NewPrestoClientFn func() *presto.Client
 
 type PrestoFlags struct {
 	ServerUrl  string
-	OutputPath string
 	IsTrino    bool
 	ForceHttps bool
 	UserName   string
@@ -20,9 +18,7 @@ type PrestoFlags struct {
 }
 
 func (pf *PrestoFlags) InstallPrestoFlags(cmd *cobra.Command) {
-	wd, _ := os.Getwd()
 	cmd.Flags().StringVarP(&pf.ServerUrl, "server", "s", DefaultServerUrl, "Presto server address")
-	cmd.Flags().StringVarP(&pf.OutputPath, "output-path", "o", wd, "Output directory path")
 	cmd.Flags().BoolVarP(&pf.IsTrino, "trino", "", false, "Use Trino protocol")
 	cmd.Flags().BoolVarP(&pf.ForceHttps, "force-https", "", false, "Force all API requests to use HTTPS")
 	cmd.Flags().StringVarP(&pf.UserName, "user", "u", presto.DefaultUser, "Presto user name")

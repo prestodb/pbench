@@ -20,6 +20,7 @@ import (
 
 var (
 	PrestoFlags   utils.PrestoFlags
+	OutputPath    string
 	Schema        string
 	Catalog       string
 	Session       []string
@@ -32,12 +33,12 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
-	PrestoFlags.OutputPath = filepath.Join(PrestoFlags.OutputPath,
+	OutputPath = filepath.Join(OutputPath,
 		"save_table_"+time.Now().Format(utils.DirectoryNameTimeFormat))
-	utils.PrepareOutputDirectory(PrestoFlags.OutputPath)
+	utils.PrepareOutputDirectory(OutputPath)
 
 	// also start to write logs to the output directory from this point on.
-	logPath := filepath.Join(PrestoFlags.OutputPath, "save_table.log")
+	logPath := filepath.Join(OutputPath, "save_table.log")
 	flushLog := utils.InitLogFile(logPath)
 	defer flushLog()
 
@@ -126,7 +127,7 @@ func saveTable(ctx context.Context, client *presto.Client, catalog, schema, tabl
 		}
 		ts := &TableSummary{Catalog: catalog, Schema: schema, Name: table}
 		ts.QueryTableSummary(ctx, client)
-		filePath := filepath.Join(PrestoFlags.OutputPath,
+		filePath := filepath.Join(OutputPath,
 			fmt.Sprintf("%s_%s_%s.json", catalog, schema, table))
 		if err := ts.SaveToFile(filePath); err != nil {
 			logTableInfo(log.Error()).Str("file_path", filePath).Err(err).Msg("failed to save table summary")

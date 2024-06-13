@@ -18,6 +18,7 @@ var (
 	Name          string
 	Comment       string
 	PrestoFlags   utils.PrestoFlags
+	OutputPath    string
 	RandSeed      int64
 	RandSkip      int
 	InfluxCfgPath string
@@ -30,7 +31,7 @@ func Run(_ *cobra.Command, args []string) {
 	if parseErr != nil {
 		log.Fatal().Err(parseErr).Str("server_url", PrestoFlags.ServerUrl).Msg("failed to parse server URL")
 	}
-	utils.ExpandHomeDirectory(&PrestoFlags.OutputPath)
+	utils.ExpandHomeDirectory(&OutputPath)
 	mainStage := &stage.Stage{
 		States: &stage.SharedStageStates{
 			RunName:      Name,
@@ -39,7 +40,7 @@ func Run(_ *cobra.Command, args []string) {
 			RandSkip:     RandSkip,
 			ServerFQDN:   parsedServerUrl.Host,
 			RunStartTime: time.Now(),
-			OutputPath:   PrestoFlags.OutputPath,
+			OutputPath:   OutputPath,
 		},
 	}
 

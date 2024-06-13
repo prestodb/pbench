@@ -2,6 +2,7 @@ package run
 
 import (
 	"github.com/spf13/cobra"
+	"os"
 	"pbench/cmd"
 	"time"
 )
@@ -21,6 +22,8 @@ func init() {
 	runCmd.Flags().StringVarP(&Name, "name", "n", "", `Assign a name to this run. (default: "<main stage name>-<current time>")`)
 	runCmd.Flags().StringVarP(&Comment, "comment", "c", "", `Add a comment to this run (optional)`)
 	PrestoFlags.InstallPrestoFlags(runCmd)
+	wd, _ := os.Getwd()
+	runCmd.Flags().StringVarP(&OutputPath, "output-path", "o", wd, "Output directory path")
 	runCmd.Flags().Int64VarP(&RandSeed, "seed", "e", time.Now().UnixMicro(), "Random seed for randomized execution")
 	runCmd.Flags().IntVarP(&RandSkip, "rand-skip", "k", 0, "Skip the first N random selections from the sequence (optional)")
 	runCmd.Flags().StringVar(&InfluxCfgPath, "influx", "", "InfluxDB connection config for run recorder (optional)")
