@@ -17,7 +17,7 @@ type PrestoFlags struct {
 	Password   string
 }
 
-func (pf *PrestoFlags) InstallPrestoFlags(cmd *cobra.Command) {
+func (pf *PrestoFlags) Install(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&pf.ServerUrl, "server", "s", DefaultServerUrl, "Presto server address")
 	cmd.Flags().BoolVarP(&pf.IsTrino, "trino", "", false, "Use Trino protocol")
 	cmd.Flags().BoolVarP(&pf.ForceHttps, "force-https", "", false, "Force all API requests to use HTTPS")
@@ -38,4 +38,42 @@ func (pf *PrestoFlags) NewPrestoClient() *presto.Client {
 		client.ForceHttps()
 	}
 	return client
+}
+
+type PrestoFlagsArray struct {
+	ServerUrl  []string
+	IsTrino    []bool
+	ForceHttps []bool
+	UserName   []string
+	Password   []string
+}
+
+func (a *PrestoFlagsArray) Install(cmd *cobra.Command) {
+	cmd.Flags().StringArrayVarP(&a.ServerUrl, "server", "s", []string{DefaultServerUrl}, "Presto server address")
+	cmd.Flags().BoolSliceVarP(&a.IsTrino, "trino", "", []bool{false}, "Use Trino protocol")
+	cmd.Flags().BoolSliceVarP(&a.ForceHttps, "force-https", "", []bool{false}, "Force all API requests to use HTTPS")
+	cmd.Flags().StringArrayVarP(&a.UserName, "user", "u", []string{presto.DefaultUser}, "Presto user name")
+	cmd.Flags().StringArrayVarP(&a.Password, "password", "p", []string{""}, "Presto user password (optional)")
+}
+
+func (a *PrestoFlagsArray) Assemble() []PrestoFlags {
+	ret := make([]PrestoFlags, 0, len(a.ServerUrl))
+	for _, url := range a.ServerUrl {
+		ret = append(ret, PrestoFlags{
+			ServerUrl: url,
+		})
+	}
+	for i, isTrino := range a.IsTrino {
+		ret[i].IsTrino = isTrino
+	}
+	for i, forceHttp := range a.ForceHttps {
+		ret[i].ForceHttps = forceHttp
+	}
+	for i, userName := range a.UserName {
+		ret[i].UserName = userName
+	}
+	for i, password := range a.Password {
+		ret[i].Password = password
+	}
+	return ret
 }

@@ -1,28 +1,28 @@
-package genconfig
+package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"pbench/cmd"
+	"pbench/cmd/genconfig"
 )
 
 var genConfigCmd = &cobra.Command{
 	Use:                   `genconfig [flags] [directory to search recursively for config.json]`,
 	DisableFlagsInUseLine: true,
-	Run:                   Run,
+	Run:                   genconfig.Run,
 	Args:                  cobra.ExactArgs(1),
 	Short:                 "Generate benchmark cluster configurations",
 }
 
 func init() {
-	cmd.RootCmd.AddCommand(genConfigCmd)
-	genConfigCmd.Flags().StringVarP(&TemplatePath, "template-dir",
+	RootCmd.AddCommand(genConfigCmd)
+	genConfigCmd.Flags().StringVarP(&genconfig.TemplatePath, "template-dir",
 		"t", "", "Specifies the template directory. Use built-in template if not specified.")
-	genConfigCmd.Flags().StringVarP(&ParameterPath, "parameter-file",
+	genConfigCmd.Flags().StringVarP(&genconfig.ParameterPath, "parameter-file",
 		"p", "", "Specifies the parameter file. Use built-in defaults if not specified.")
 	genConfigCmd.AddCommand(&cobra.Command{
 		Use:                   "default",
 		Short:                 "Print the built-in default generator parameter file.",
 		DisableFlagsInUseLine: true,
-		Run:                   PrintDefaultParams,
+		Run:                   genconfig.PrintDefaultParams,
 	})
 }
