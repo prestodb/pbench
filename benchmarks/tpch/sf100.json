@@ -1,4 +1,4 @@
 {
   "description": "Specifies the schema for TPCH scale factor 100 GB.",
-  "schema": "tpch_sf100_parquet"
+  "schema": "tpch_sf100_parquet_v2"
 }
