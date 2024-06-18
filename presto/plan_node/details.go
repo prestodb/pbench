@@ -41,7 +41,7 @@ var (
 	PlanNodeDetailParserOptions = []participle.Option{
 		participle.Lexer(planNodeDetailLexer),
 		participle.CaseInsensitive("DataType", "Cast", "As"),
-		participle.Elide("Whitespace"),
+		participle.Elide("Whitespace", "EOL"),
 		participle.Union[Value](
 			&HiveColumnHandle{},
 			&FunctionCall{},
