@@ -1,0 +1,4 @@
+{
+  "description": "Specifies the schema for TPC-DS scale factor 10 TB DWRF.",
+  "schema": "tpcds_sf10000_dwrf"
+}
