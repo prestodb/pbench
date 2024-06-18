@@ -179,6 +179,7 @@ func TestParseAssignment(t *testing.T) {
 			`array_agg_51 := "presto.default.array_agg"((name_35)) ORDER BY OrderingScheme {orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]', orderings='{name_35=ASC_NULLS_LAST}'} (6:21)`,
 			`branded_car_enrollment.target_id := car_id (22:5)`,
 			`expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)`,
+			`date_format_5 := date_format(CAST(CAST(period_hour_local_date AS date) AS timestamp), VARCHAR'%Y-%m-%d') (8:12)`,
 		},
 		[]plan_node.Assignment{
 			{ // case 0
@@ -289,6 +290,29 @@ func TestParseAssignment(t *testing.T) {
 				Loc: &plan_node.SourceLocation{
 					RowNumber:    10,
 					ColumnNumber: 6,
+				},
+			},
+			{ // case 7
+				Identifier: plan_node.IdentRef{Ident: "date_format_5"},
+				AssignedValue: &plan_node.FunctionCall{
+					FunctionName: "date_format",
+					Parameters: []plan_node.Value{
+						&plan_node.TypeCastedValue{
+							OriginalValue: &plan_node.TypeCastedValue{
+								OriginalValue: &plan_node.IdentRef{Ident: "period_hour_local_date"},
+								CastedType:    "date",
+							},
+							CastedType: "timestamp",
+						},
+						&plan_node.TypedValue{
+							DataType:     "VARCHAR",
+							ValueLiteral: "%Y-%m-%d",
+						},
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    8,
+					ColumnNumber: 12,
 				},
 			},
 		})

@@ -24,9 +24,9 @@ type (
 var (
 	planNodeDetailLexer = lexer.MustStateful(lexer.Rules{
 		"Root": {
-			{"DataType", `(?i)BIGINT|INTEGER|SMALLINT|TINYINT|REAL|DECIMAL|VARCHAR|DATE`, nil},
-			{"Cast", `(?i)CAST`, nil},
-			{"As", `(?i)AS`, nil},
+			{"DataType", `(?i)\b(BIGINT|INTEGER|SMALLINT|TINYINT|REAL|DECIMAL|VARCHAR|DATE|TIMESTAMP)\b`, nil},
+			{"Cast", `(?i)\bCAST\b`, nil},
+			{"As", `(?i)\bAS\b`, nil},
 			{"Ident", `[a-zA-Z_$][\w.$]*`, nil},
 			{"Int", `-?\d+`, nil},
 			{"Assign", `:=`, nil},
