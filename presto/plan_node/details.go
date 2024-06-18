@@ -24,9 +24,9 @@ type (
 var (
 	planNodeDetailLexer = lexer.MustStateful(lexer.Rules{
 		"Root": {
-			{"DataType", `(?i)\b(BIGINT|INTEGER|SMALLINT|TINYINT|REAL|DECIMAL|VARCHAR|DATE|TIMESTAMP)\b`, nil},
-			{"Cast", `(?i)\bCAST\b`, nil},
-			{"As", `(?i)\bAS\b`, nil},
+			{"DataType", `(?i)(BIGINT|INTEGER|SMALLINT|TINYINT|REAL|DECIMAL|VARCHAR|DATE|TIMESTAMP)\b`, nil},
+			{"Cast", `(?i)CAST\b`, nil},
+			{"As", `(?i)AS\b`, nil},
 			{"Ident", `[a-zA-Z_$][\w.$]*`, nil},
 			{"Int", `-?\d+`, nil},
 			{"Assign", `:=`, nil},
@@ -41,7 +41,7 @@ var (
 	PlanNodeDetailParserOptions = []participle.Option{
 		participle.Lexer(planNodeDetailLexer),
 		participle.CaseInsensitive("DataType", "Cast", "As"),
-		participle.Elide("Whitespace", "EOL"),
+		participle.Elide("Whitespace"),
 		participle.Union[Value](
 			&HiveColumnHandle{},
 			&FunctionCall{},

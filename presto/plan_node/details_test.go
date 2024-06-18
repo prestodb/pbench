@@ -179,8 +179,7 @@ func TestParseAssignment(t *testing.T) {
 			`array_agg_51 := "presto.default.array_agg"((name_35)) ORDER BY OrderingScheme {orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]', orderings='{name_35=ASC_NULLS_LAST}'} (6:21)`,
 			`branded_car_enrollment.target_id := car_id (22:5)`,
 			`expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)`,
-			`date_format_5 := date_format(CAST(CAST(period_hour_local_date AS date) AS timestamp), VARCHAR'%Y-%m-%d') (8:12)
-`,
+			`date_format_5 := date_format(CAST(CAST(period_hour_local_date AS date) AS timestamp), VARCHAR'%Y-%m-%d') (8:12)`,
 		},
 		[]plan_node.Assignment{
 			{ // case 0
