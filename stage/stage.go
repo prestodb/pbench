@@ -225,7 +225,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.prepareClient()
 	s.propagateStates()
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
-		if *s.RandomExecution {
+		if s.RandomExecution != nil && *s.RandomExecution {
 			returnErr = s.runRandomly(ctx)
 		} else {
 			returnErr = s.runSequentially(ctx)
