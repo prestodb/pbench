@@ -271,11 +271,15 @@ func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
 }
 
 func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowCountStartIndex *int, fileAlias *string) error {
-	queryFileAbsPath := queryFile
-	if !filepath.IsAbs(queryFileAbsPath) {
-		queryFileAbsPath = filepath.Join(s.BaseDir, queryFileAbsPath)
+	file, err := os.Open(queryFile)
+	if fileAlias == nil {
+		if relPath, relErr := filepath.Rel(s.BaseDir, queryFile); relErr == nil {
+			fileAlias = &relPath
+		} else {
+			fileAlias = &queryFile
+		}
 	}
-	file, err := os.Open(queryFileAbsPath)
+
 	var queries []string
 	if err == nil {
 		queries, err = presto.SplitQueries(file)
@@ -292,9 +296,7 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 		}
 		return err
 	}
-	if fileAlias == nil {
-		fileAlias = &queryFile
-	}
+
 	if expectedRowCountStartIndex != nil {
 		err = s.runQueries(ctx, queries, fileAlias, *expectedRowCountStartIndex)
 		*expectedRowCountStartIndex += len(queries)
@@ -345,7 +347,11 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			}
 		} else {
 			queryFile := s.QueryFiles[idx-len(s.Queries)]
-			fileAlias := fmt.Sprintf("rand_%d/%s", i, queryFile)
+			fileAlias := queryFile
+			if relPath, relErr := filepath.Rel(s.BaseDir, queryFile); relErr == nil {
+				fileAlias = relPath
+			}
+			fileAlias = fmt.Sprintf("rand_%d_%s", i, fileAlias)
 			if err := s.runQueryFile(ctx, queryFile, nil, &fileAlias); err != nil {
 				return err
 			}

@@ -7,7 +7,10 @@ import (
 	"errors"
 )
 
-func NewInfluxRunRecorder(_ string) RunRecorder {
+func NewInfluxRunRecorder(cfgPath string) RunRecorder {
+	if cfgPath == "" {
+		return nil
+	}
 	return &NotSupportedRecorder{}
 }
 

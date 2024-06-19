@@ -57,6 +57,15 @@ func ReadStageFromFile(filePath string) (*Stage, error) {
 	if err = json.Unmarshal(bytes, stage); err != nil {
 		return nil, fmt.Errorf("failed to parse json %s: %w", filePath, err)
 	}
+	for i, queryFile := range stage.QueryFiles {
+		if !filepath.IsAbs(queryFile) {
+			queryFile = filepath.Join(stage.BaseDir, queryFile)
+			stage.QueryFiles[i] = queryFile
+		}
+		if _, err = os.Stat(queryFile); err != nil {
+			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stage.Id, queryFile, err)
+		}
+	}
 	log.Debug().Str("id", stage.Id).Str("path", filePath).Msg("read stage file")
 	return stage, nil
 }
@@ -79,14 +88,6 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 	if ok {
 		log.Debug().Msgf("%s already parsed, returned", stage.Id)
 		return stageFound, nil
-	}
-	for _, queryFile := range stage.QueryFiles {
-		if !filepath.IsAbs(queryFile) {
-			queryFile = filepath.Join(stage.BaseDir, queryFile)
-		}
-		if _, err := os.Stat(queryFile); err != nil {
-			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stage.Id, queryFile, err)
-		}
 	}
 	for i, nextStagePath := range stage.NextStagePaths {
 		if !filepath.IsAbs(nextStagePath) {

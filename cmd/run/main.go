@@ -59,6 +59,8 @@ func Run(_ *cobra.Command, args []string) {
 				}
 				defaultRunNameBuilder.WriteString(st.Id)
 			}
+		} else {
+			os.Exit(-1)
 		}
 	}
 	if defaultRunNameBuilder != nil {
@@ -68,8 +70,7 @@ func Run(_ *cobra.Command, args []string) {
 	}
 	log.Info().Str("run_name", mainStage.States.RunName).Send()
 
-	_, _, err := stage.ParseStageGraph(mainStage)
-	if err != nil {
+	if _, _, err := stage.ParseStageGraph(mainStage); err != nil {
 		log.Fatal().Err(err).Msg("failed to parse benchmark stage graph")
 	}
 
@@ -103,9 +104,10 @@ func processStagePath(path string) (st *stage.Stage, returnErr error) {
 				continue
 			}
 			fullPath := filepath.Join(path, entry.Name())
-			newStage, err := processStagePath(fullPath)
-			if err == nil {
+			if newStage, err := processStagePath(fullPath); err == nil {
 				st.MergeWith(newStage)
+			} else {
+				return nil, err
 			}
 		}
 		return st, nil
