@@ -60,8 +60,12 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 			delete(s.ExpectedRowCounts, k)
 		}
 	}
-	s.RandomExecution = other.RandomExecution
-	s.RandomlyExecuteUntil = other.RandomlyExecuteUntil
+	if other.RandomExecution != nil {
+		s.RandomExecution = other.RandomExecution
+	}
+	if other.RandomlyExecuteUntil != nil {
+		s.RandomlyExecuteUntil = other.RandomlyExecuteUntil
+	}
 	if other.ColdRuns > 0 {
 		s.ColdRuns = other.ColdRuns
 	}
@@ -205,6 +209,12 @@ func (s *Stage) propagateStates() {
 		}
 		if nextStage.TimeZone == nil {
 			nextStage.TimeZone = s.TimeZone
+		}
+		if nextStage.RandomExecution == nil {
+			nextStage.RandomExecution = s.RandomExecution
+		}
+		if nextStage.RandomlyExecuteUntil == nil {
+			nextStage.RandomlyExecuteUntil = s.RandomlyExecuteUntil
 		}
 		for k, v := range s.SessionParams {
 			if v == nil {

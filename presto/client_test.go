@@ -14,6 +14,9 @@ func TestQuery(t *testing.T) {
 	// This test requires Presto hive query runner.
 	client, err := presto.NewClient("http://127.0.0.1:8080", false)
 	assert.Nil(t, err)
+	if _, _, err = client.GetClusterInfo(context.Background()); err != nil {
+		t.Skip("local cluster is not ready")
+	}
 	qr, _, err := client.
 		User("ethan").
 		Catalog("tpch").
@@ -42,4 +45,20 @@ func TestQuery(t *testing.T) {
 	_, err = client.GetQueryInfo(context.Background(), qr.Id, false, buf)
 	assert.Nil(t, err)
 	assert.Greater(t, buf.Len(), 0)
+}
+
+func TestGenerateQueryParameter(t *testing.T) {
+	stringValue := "was it clear (already)?"
+	serializedQuery := presto.GenerateHttpQueryParameter(&struct {
+		StringField *string `query:"stringField"`
+		BoolField   bool    `query:"boolField"`
+		IntField    int     `query:"intField"`
+		BoolPtr     *bool   `query:"boolPtr"`
+		StringPtr   *string `query:"stringPtr"`
+	}{
+		StringField: &stringValue,
+		BoolField:   true,
+		IntField:    123,
+	})
+	assert.Equal(t, `stringField=was+it+clear+%28already%29%3F&boolField=true&intField=123`, serializedQuery)
 }

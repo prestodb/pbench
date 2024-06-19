@@ -48,10 +48,10 @@ type Stage struct {
 	// When RandomExecution is turned on, we randomly pick queries to run until a certain number of queries/a specific
 	// duration has passed. Expected row counts will not be checked in this mode because we cannot figure out the correct
 	// expected row count offset.
-	RandomExecution bool `json:"random_execution,omitempty"`
+	RandomExecution *bool `json:"random_execution,omitempty"`
 	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
 	// before exiting.
-	RandomlyExecuteUntil string `json:"randomly_execute_until,omitempty"`
+	RandomlyExecuteUntil *string `json:"randomly_execute_until,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
 	ColdRuns int `json:"cold_runs,omitempty"`
 	// If not set, the default is 0.
@@ -225,7 +225,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.prepareClient()
 	s.propagateStates()
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
-		if s.RandomExecution {
+		if *s.RandomExecution {
 			returnErr = s.runRandomly(ctx)
 		} else {
 			returnErr = s.runSequentially(ctx)
@@ -306,17 +306,17 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 
 func (s *Stage) runRandomly(ctx context.Context) error {
 	var continueExecution func(queryCount int) bool
-	if dur, parseErr := time.ParseDuration(s.RandomlyExecuteUntil); parseErr == nil {
+	if dur, parseErr := time.ParseDuration(*s.RandomlyExecuteUntil); parseErr == nil {
 		endTime := time.Now().Add(dur)
 		continueExecution = func(_ int) bool {
 			return time.Now().Before(endTime)
 		}
-	} else if count, atoiErr := strconv.Atoi(s.RandomlyExecuteUntil); atoiErr == nil {
+	} else if count, atoiErr := strconv.Atoi(*s.RandomlyExecuteUntil); atoiErr == nil {
 		continueExecution = func(queryCount int) bool {
 			return queryCount <= count
 		}
 	} else {
-		err := fmt.Errorf("failed to parse randomly_execute_until %s", s.RandomlyExecuteUntil)
+		err := fmt.Errorf("failed to parse randomly_execute_until %s", *s.RandomlyExecuteUntil)
 		if *s.AbortOnError {
 			s.States.exitCode.CompareAndSwap(0, 5)
 			return err

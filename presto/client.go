@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"pbench/log"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -57,6 +58,37 @@ func NewClient(serverUrl string, isTrino bool) (*Client, error) {
 	}
 	client.User(DefaultUser)
 	return client, nil
+}
+
+func derefValue(v *reflect.Value) reflect.Kind {
+	k := v.Kind()
+	for k == reflect.Pointer || k == reflect.Interface {
+		*v = v.Elem()
+		k = v.Kind()
+	}
+	return k
+}
+
+func GenerateHttpQueryParameter(v any) string {
+	rv := reflect.ValueOf(v)
+	if rvk := derefValue(&rv); rvk != reflect.Struct {
+		return ""
+	}
+	queryBuilder := strings.Builder{}
+	vt := rv.Type()
+	for i := 0; i < vt.NumField(); i++ {
+		fv, ft := rv.Field(i), vt.Field(i)
+		if fvk := derefValue(&fv); fvk == reflect.Invalid || !fv.CanInterface() {
+			continue
+		}
+		if tag := ft.Tag.Get("query"); tag != "" {
+			if queryBuilder.Len() > 0 {
+				queryBuilder.WriteString("&")
+			}
+			queryBuilder.WriteString(fmt.Sprintf("%s=%s", url.QueryEscape(tag), url.QueryEscape(fmt.Sprint(fv.Interface()))))
+		}
+	}
+	return queryBuilder.String()
 }
 
 func (c *Client) setHeader(key, value string) {
