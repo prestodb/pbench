@@ -20,6 +20,7 @@ import (
 
 var (
 	PrestoFlags   utils.PrestoFlags
+	NoAnalyze     bool
 	OutputPath    string
 	Schema        string
 	Catalog       string
@@ -126,7 +127,7 @@ func saveTable(ctx context.Context, client *presto.Client, catalog, schema, tabl
 			return
 		}
 		ts := &TableSummary{Catalog: catalog, Schema: schema, Name: table}
-		ts.QueryTableSummary(ctx, client)
+		ts.QueryTableSummary(ctx, client, !NoAnalyze)
 		filePath := filepath.Join(OutputPath,
 			fmt.Sprintf("%s_%s_%s.json", catalog, schema, table))
 		if err := ts.SaveToFile(filePath); err != nil {

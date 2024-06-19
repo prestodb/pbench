@@ -97,7 +97,11 @@ func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
 	if vPtr.Kind() != reflect.Pointer {
 		return fmt.Errorf("%w must be a pointer, but it is %T", UnmarshalError, v)
 	} else if vPtr.IsNil() {
-		vPtr.Set(reflect.New(vPtr.Elem().Type()))
+		if vPtr.CanAddr() {
+			vPtr.Set(reflect.New(vPtr.Type().Elem()))
+		} else {
+			return fmt.Errorf("%w non-addressable value", UnmarshalError)
+		}
 	}
 
 	vArrayOrStruct := vPtr.Elem()

@@ -9,7 +9,6 @@ import (
 )
 
 func TestBuiltinRows(t *testing.T) {
-	t.SkipNow()
 	pRows, pCols := getRowsFromPresto(t)
 	bRows, bCols := getBuiltinRows(t)
 	assert.Equal(t, pRows, bRows)
@@ -18,6 +17,9 @@ func TestBuiltinRows(t *testing.T) {
 
 func TestPrestoUnmarshalScalar(t *testing.T) {
 	client, _ := NewClient("http://localhost:8080", false)
+	if _, _, err := client.GetClusterInfo(context.Background()); err != nil {
+		t.Skip("local cluster is not ready")
+	}
 	client.Catalog("tpch").Schema("sf1")
 	ctx := context.Background()
 	var ddl string
@@ -42,8 +44,36 @@ func TestPrestoUnmarshal(t *testing.T) {
 	err = UnmarshalQueryData(rows, columnHeaders, columnsStats)
 	assert.ErrorIs(t, err, UnmarshalError) // not a pointer
 
+	newFloat64 := func(f float64) *float64 {
+		return &f
+	}
+	newString := func(v string) *string {
+		return &v
+	}
+	zero := newFloat64(0)
+	expectedStats := []ColumnStats{
+		{ColumnName: "orderkey", DistinctValuesCount: newFloat64(1500254), NullsFraction: zero, LowValue: newString("1"), HighValue: newString("6000000")},
+		{ColumnName: "partkey", DistinctValuesCount: newFloat64(200044), NullsFraction: zero, LowValue: newString("1"), HighValue: newString("200000")},
+		{ColumnName: "suppkey", DistinctValuesCount: newFloat64(10000.0), NullsFraction: zero, LowValue: newString("1"), HighValue: newString("10000")},
+		{ColumnName: "linenumber", DistinctValuesCount: newFloat64(7.0), NullsFraction: zero, LowValue: newString("1"), HighValue: newString("7")},
+		{ColumnName: "quantity", DistinctValuesCount: newFloat64(50.0), NullsFraction: zero, LowValue: newString("1.0"), HighValue: newString("50.0")},
+		{ColumnName: "extendedprice", DistinctValuesCount: newFloat64(933985.0), NullsFraction: zero, LowValue: newString("901.0"), HighValue: newString("104949.5")},
+		{ColumnName: "discount", DistinctValuesCount: newFloat64(11.0), NullsFraction: zero, LowValue: newString("0.0"), HighValue: newString("0.1")},
+		{ColumnName: "tax", DistinctValuesCount: newFloat64(9.0), NullsFraction: zero, LowValue: newString("0.0"), HighValue: newString("0.08")},
+		{ColumnName: "returnflag", DataSize: newFloat64(6001215.0), DistinctValuesCount: newFloat64(3.0), NullsFraction: zero},
+		{ColumnName: "linestatus", DataSize: newFloat64(6001215.0), DistinctValuesCount: newFloat64(2.0), NullsFraction: zero},
+		{ColumnName: "shipdate", DistinctValuesCount: newFloat64(2526.0), NullsFraction: zero, LowValue: newString("1992-01-02"), HighValue: newString("1998-12-01")},
+		{ColumnName: "commitdate", DistinctValuesCount: newFloat64(2466.0), NullsFraction: zero, LowValue: newString("1992-01-31"), HighValue: newString("1998-10-31")},
+		{ColumnName: "receiptdate", DistinctValuesCount: newFloat64(2554.0), NullsFraction: zero, LowValue: newString("1992-01-04"), HighValue: newString("1998-12-31")},
+		{ColumnName: "shipinstruct", DataSize: newFloat64(7.2006409e7), DistinctValuesCount: newFloat64(4.0), NullsFraction: zero},
+		{ColumnName: "shipmode", DataSize: newFloat64(2.5717034e7), DistinctValuesCount: newFloat64(7.0), NullsFraction: zero},
+		{ColumnName: "comment", DataSize: newFloat64(1.58997209e8), DistinctValuesCount: newFloat64(4580252.0), NullsFraction: zero},
+		{RowCount: newFloat64(6001215.0)},
+	}
+
 	err = UnmarshalQueryData(rows, columnHeaders, &columnsStats[0])
-	assert.ErrorIs(t, err, UnmarshalError) // not an array/slice pointer
+	assert.Nil(t, err)
+	assert.Equal(t, expectedStats[0], columnsStats[0])
 
 	// UnmarshalQueryData into a []json.RawMessage
 	var decodedRows []json.RawMessage
@@ -71,36 +101,14 @@ func TestPrestoUnmarshal(t *testing.T) {
 	err = UnmarshalQueryData(rows, columnHeaders, &columnsStats)
 	assert.Nil(t, err)
 	assert.Equal(t, len(rows), len(columnsStats))
-	newFloat64 := func(f float64) *float64 {
-		return &f
-	}
-	newString := func(v string) *string {
-		return &v
-	}
-	zero := newFloat64(0)
-	assert.Equal(t, []ColumnStats{
-		{"orderkey", nil, newFloat64(1500254), zero, nil, newString("1"), newString("6000000"), nil, nil, nil},
-		{"partkey", nil, newFloat64(200044), zero, nil, newString("1"), newString("200000"), nil, nil, nil},
-		{"suppkey", nil, newFloat64(10000.0), zero, nil, newString("1"), newString("10000"), nil, nil, nil},
-		{"linenumber", nil, newFloat64(7.0), zero, nil, newString("1"), newString("7"), nil, nil, nil},
-		{"quantity", nil, newFloat64(50.0), zero, nil, newString("1.0"), newString("50.0"), nil, nil, nil},
-		{"extendedprice", nil, newFloat64(933985.0), zero, nil, newString("901.0"), newString("104949.5"), nil, nil, nil},
-		{"discount", nil, newFloat64(11.0), zero, nil, newString("0.0"), newString("0.1"), nil, nil, nil},
-		{"tax", nil, newFloat64(9.0), zero, nil, newString("0.0"), newString("0.08"), nil, nil, nil},
-		{"returnflag", newFloat64(6001215.0), newFloat64(3.0), zero, nil, nil, nil, nil, nil, nil},
-		{"linestatus", newFloat64(6001215.0), newFloat64(2.0), zero, nil, nil, nil, nil, nil, nil},
-		{"shipdate", nil, newFloat64(2526.0), zero, nil, newString("1992-01-02"), newString("1998-12-01"), nil, nil, nil},
-		{"commitdate", nil, newFloat64(2466.0), zero, nil, newString("1992-01-31"), newString("1998-10-31"), nil, nil, nil},
-		{"receiptdate", nil, newFloat64(2554.0), zero, nil, newString("1992-01-04"), newString("1998-12-31"), nil, nil, nil},
-		{"shipinstruct", newFloat64(7.2006409e7), newFloat64(4.0), zero, nil, nil, nil, nil, nil, nil},
-		{"shipmode", newFloat64(2.5717034e7), newFloat64(7.0), zero, nil, nil, nil, nil, nil, nil},
-		{"comment", newFloat64(1.58997209e8), newFloat64(4580252.0), zero, nil, nil, nil, nil, nil, nil},
-		{"", nil, nil, nil, newFloat64(6001215.0), nil, nil, nil, nil, nil},
-	}, columnsStats)
+	assert.Equal(t, expectedStats, columnsStats)
 }
 
 func getRowsFromPresto(t *testing.T) ([]json.RawMessage, []Column) {
 	client, _ := NewClient("http://localhost:8080", false)
+	if _, _, err := client.GetClusterInfo(context.Background()); err != nil {
+		t.Skip("local cluster is not ready")
+	}
 	client.Catalog("tpch").Schema("sf1")
 	ctx := context.Background()
 
@@ -114,9 +122,8 @@ func getRowsFromPresto(t *testing.T) ([]json.RawMessage, []Column) {
 	})
 	if assert.Nil(t, err) {
 		return rows, clientResult.Columns
-	} else {
-		return rows, nil
 	}
+	return rows, nil
 }
 
 func getBuiltinRows(t *testing.T) ([]json.RawMessage, []Column) {

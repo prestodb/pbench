@@ -34,6 +34,7 @@ func init() {
 	saveCmd.Flags().StringVarP(&save.OutputPath, "output-path", "o", wd, "Output directory path")
 	saveCmd.Flags().StringVarP(&save.Catalog, "catalog", "", "", "Catalog name")
 	saveCmd.Flags().StringVarP(&save.Schema, "schema", "", "", "Schema name")
+	saveCmd.Flags().BoolVarP(&save.NoAnalyze, "no-analyze", "n", false, "Do not run additional queries to analyze table when stats were missing.")
 	saveCmd.Flags().StringArrayVarP(&save.Session, "session", "", nil,
 		"Session property (property can be used multiple times; format is\nkey=value; use 'SHOW SESSION' in Presto CLI to see available properties)")
 	saveCmd.Flags().StringVarP(&save.InputFilePath, "file", "f", "", "CSV file to read catalog,schema,table.")

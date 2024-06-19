@@ -92,7 +92,7 @@ func handleQueryError(err error, abortOnError bool) (retry bool) {
 	return
 }
 
-func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client) {
+func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client, analyze bool) {
 	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
 
 	defer func() {
@@ -118,7 +118,7 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 	}
 
 	// Zero rows, no need to do anything more.
-	if *s.RowCount == 0 {
+	if *s.RowCount == 0 || !analyze {
 		return
 	}
 
