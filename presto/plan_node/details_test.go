@@ -179,7 +179,6 @@ func TestParseAssignment(t *testing.T) {
 			`array_agg_51 := "presto.default.array_agg"((name_35)) ORDER BY OrderingScheme {orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]', orderings='{name_35=ASC_NULLS_LAST}'} (6:21)`,
 			`branded_car_enrollment.target_id := car_id (22:5)`,
 			`expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)`,
-			`date_format_5 := date_format(CAST(CAST(period_hour_local_date AS date) AS timestamp), VARCHAR'%Y-%m-%d') (8:12)`,
 		},
 		[]plan_node.Assignment{
 			{ // case 0
@@ -292,29 +291,6 @@ func TestParseAssignment(t *testing.T) {
 					ColumnNumber: 6,
 				},
 			},
-			{ // case 7
-				Identifier: plan_node.IdentRef{Ident: "date_format_5"},
-				AssignedValue: &plan_node.FunctionCall{
-					FunctionName: "date_format",
-					Parameters: []plan_node.Value{
-						&plan_node.TypeCastedValue{
-							OriginalValue: &plan_node.TypeCastedValue{
-								OriginalValue: &plan_node.IdentRef{Ident: "period_hour_local_date"},
-								CastedType:    "date",
-							},
-							CastedType: "timestamp",
-						},
-						&plan_node.TypedValue{
-							DataType:     "VARCHAR",
-							ValueLiteral: "%Y-%m-%d",
-						},
-					},
-				},
-				Loc: &plan_node.SourceLocation{
-					RowNumber:    8,
-					ColumnNumber: 12,
-				},
-			},
 		})
 }
 
@@ -342,6 +318,112 @@ func TestParseFunctionCall(t *testing.T) {
 				Parameters: []plan_node.Value{
 					&plan_node.IdentRef{Ident: "array_agg_51"},
 					&plan_node.TypedValue{DataType: "VARCHAR", ValueLiteral: ";"},
+				},
+			},
+		})
+}
+
+func TestParsePlanNodeDetail(t *testing.T) {
+	testParsing[plan_node.PlanNodeDetails](t, plan_node.PlanNodeDetailParserOptions,
+		[]string{`expr_4 := CAST(city_id_0 AS varchar) (8:12)
+date_format_5 := date_format(CAST(CAST(period_hour_local_date AS date) AS timestamp), VARCHAR'%Y-%m-%d') (8:12)
+LAYOUT: ng_public.etl_city_kpi_hourly{}
+city_id_0 := city_id:bigint:1:REGULAR (8:11)
+period_hour_local_date := period_hour_local_date:string:-13:PARTITION_KEY (8:11)
+    :: [["2023-03-01", "2024-05-31"]]
+has_order_h := has_order_h:decimal(10,2):37:REGULAR (8:11)
+`},
+		[]plan_node.PlanNodeDetails{
+			{
+				Stmts: []plan_node.PlanNodeDetailStmt{
+					&plan_node.Assignment{
+						Identifier: plan_node.IdentRef{Ident: "expr_4"},
+						AssignedValue: &plan_node.TypeCastedValue{
+							OriginalValue: &plan_node.IdentRef{Ident: "city_id_0"},
+							CastedType:    "varchar",
+						},
+						Loc: &plan_node.SourceLocation{
+							RowNumber:    8,
+							ColumnNumber: 12,
+						},
+					},
+					&plan_node.Assignment{
+						Identifier: plan_node.IdentRef{Ident: "date_format_5"},
+						AssignedValue: &plan_node.FunctionCall{
+							FunctionName: "date_format",
+							Parameters: []plan_node.Value{
+								&plan_node.TypeCastedValue{
+									OriginalValue: &plan_node.TypeCastedValue{
+										OriginalValue: &plan_node.IdentRef{Ident: "period_hour_local_date"},
+										CastedType:    "date",
+									},
+									CastedType: "timestamp",
+								},
+								&plan_node.TypedValue{
+									DataType:     "VARCHAR",
+									ValueLiteral: "%Y-%m-%d",
+								},
+							},
+						},
+						Loc: &plan_node.SourceLocation{
+							RowNumber:    8,
+							ColumnNumber: 12,
+						},
+					},
+					&plan_node.Layout{
+						LayoutString: "ng_public.etl_city_kpi_hourly{}",
+					},
+					&plan_node.Assignment{
+						Identifier: plan_node.IdentRef{Ident: "city_id_0"},
+						AssignedValue: &plan_node.HiveColumnHandle{
+							ColumnName:  plan_node.IdentRef{Ident: "city_id"},
+							DataType:    "bigint",
+							ColumnIndex: 1,
+							ColumnType:  "REGULAR",
+							Loc: &plan_node.SourceLocation{
+								RowNumber:    8,
+								ColumnNumber: 11,
+							},
+						},
+					},
+					&plan_node.Assignment{
+						Identifier: plan_node.IdentRef{Ident: "period_hour_local_date"},
+						AssignedValue: &plan_node.HiveColumnHandle{
+							ColumnName:  plan_node.IdentRef{Ident: "period_hour_local_date"},
+							DataType:    "string",
+							ColumnIndex: -13,
+							ColumnType:  "PARTITION_KEY",
+							Loc: &plan_node.SourceLocation{
+								RowNumber:    8,
+								ColumnNumber: 11,
+							},
+							Ranges: []plan_node.Range{
+								{
+									LowValue: &plan_node.Marker{
+										Bound: plan_node.EXACTLY,
+										Value: "2023-03-01",
+									},
+									HighValue: &plan_node.Marker{
+										Bound: plan_node.EXACTLY,
+										Value: "2024-05-31",
+									},
+								},
+							},
+						},
+					},
+					&plan_node.Assignment{
+						Identifier: plan_node.IdentRef{Ident: "has_order_h"},
+						AssignedValue: &plan_node.HiveColumnHandle{
+							ColumnName:  plan_node.IdentRef{Ident: "has_order_h"},
+							DataType:    "decimal(10,2)",
+							ColumnIndex: 37,
+							ColumnType:  "REGULAR",
+							Loc: &plan_node.SourceLocation{
+								RowNumber:    8,
+								ColumnNumber: 11,
+							},
+						},
+					},
 				},
 			},
 		})
