@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -131,7 +132,7 @@ func (s *Stage) Run(ctx context.Context) int {
 	results := make([]*QueryResult, 0, len(s.Queries)+len(s.QueryFiles))
 	s.States.resultChan = make(chan *QueryResult, 16)
 	timeToExit := make(chan os.Signal, 1)
-	signal.Notify(timeToExit, os.Interrupt, os.Kill)
+	signal.Notify(timeToExit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	// Each goroutine we spawn will increment this wait group (count-down latch). We may start a goroutine for running
 	// a benchmark stage, or write query output to disk asynchronously.
 	// This wait group is propagated to the descendant stages.

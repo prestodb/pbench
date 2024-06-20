@@ -13,6 +13,7 @@ import (
 	"pbench/presto"
 	"pbench/utils"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -43,8 +44,8 @@ func Run(_ *cobra.Command, args []string) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	timeToExit := make(chan os.Signal, 1)
-	signal.Notify(timeToExit, os.Interrupt, os.Kill)
-	// Handle SIGKILL and SIGINT. When ctx is canceled, in-progress MySQL transactions and InfluxDB operations will roll back.
+	signal.Notify(timeToExit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// Handle SIGINT, SIGTERM, and SIGQUIT. When ctx is canceled, in-progress MySQL transactions and InfluxDB operations will roll back.
 	go func() {
 		sig := <-timeToExit
 		if sig != nil {
