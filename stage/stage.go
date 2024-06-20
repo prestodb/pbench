@@ -225,7 +225,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.prepareClient()
 	s.propagateStates()
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
-		if s.RandomExecution != nil && *s.RandomExecution {
+		if *s.RandomExecution {
 			returnErr = s.runRandomly(ctx)
 		} else {
 			returnErr = s.runSequentially(ctx)
@@ -271,7 +271,7 @@ func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
 }
 
 func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowCountStartIndex *int, fileAlias *string) error {
-	file, err := os.Open(queryFile)
+	// fileAlias is the query file name we will report. We try to make it short, so try to use relative path when possible.
 	if fileAlias == nil {
 		if relPath, relErr := filepath.Rel(s.BaseDir, queryFile); relErr == nil {
 			fileAlias = &relPath
@@ -280,6 +280,7 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 		}
 	}
 
+	file, err := os.Open(queryFile)
 	var queries []string
 	if err == nil {
 		queries, err = presto.SplitQueries(file)
@@ -320,7 +321,7 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	} else {
 		err := fmt.Errorf("failed to parse randomly_execute_until %s", *s.RandomlyExecuteUntil)
 		if *s.AbortOnError {
-			s.States.exitCode.CompareAndSwap(0, 5)
+			s.States.exitCode.CompareAndSwap(0, 2) // syntax error
 			return err
 		} else {
 			log.Error().Err(err).Send()

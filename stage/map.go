@@ -94,8 +94,10 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 			nextStagePath = filepath.Join(stage.BaseDir, nextStagePath)
 			stage.NextStagePaths[i] = nextStagePath
 		}
-		if _, err := os.Stat(nextStagePath); err != nil {
+		if fileInfo, err := os.Stat(nextStagePath); err != nil {
 			return nil, fmt.Errorf("%s links to an invalid next stage file %s: %w", stage.Id, nextStagePath, err)
+		} else if fileInfo.IsDir() {
+			return nil, fmt.Errorf("%s links to a directory as next stage: %s", stage.Id, nextStagePath)
 		}
 	}
 	stages[stage.Id] = stage

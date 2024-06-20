@@ -179,6 +179,9 @@ func (s *Stage) prepareClient() {
 
 func (s *Stage) setDefaults() {
 	falseValue := false
+	if s.RandomExecution == nil {
+		s.RandomExecution = &falseValue
+	}
 	if s.AbortOnError == nil {
 		s.AbortOnError = &falseValue
 	}
