@@ -10,6 +10,7 @@ import (
 	"pbench/log"
 	"pbench/presto"
 	"pbench/utils"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -17,11 +18,16 @@ import (
 )
 
 var (
-	PrestoFlagsArray utils.PrestoFlagsArray
-	OutputPath       string
-	RunName          string
-	PollInterval     time.Duration
+	PrestoFlagsArray      utils.PrestoFlagsArray
+	OutputPath            string
+	RunName               string
+	PollInterval          time.Duration
+	ExcludePatternStrings []string
+	ReplacePatternStrings []string
 
+	excludePatterns []*regexp.Regexp
+	replacePatterns []*regexp.Regexp
+	replaceStrings  []string
 	runningTasks    sync.WaitGroup
 	failedToForward atomic.Uint32
 	forwarded       atomic.Uint32
@@ -61,6 +67,26 @@ func Run(_ *cobra.Command, _ []string) {
 			sourceClusterSize = stats.ActiveWorkers
 		} else if stats.ActiveWorkers != sourceClusterSize {
 			log.Warn().Msgf("the source cluster and target cluster %d do not match in size (%d != %d)", i, sourceClusterSize, stats.ActiveWorkers)
+		}
+	}
+
+	for i, excludePatternStr := range ExcludePatternStrings {
+		if regex, err := regexp.Compile(excludePatternStr); err == nil {
+			excludePatterns = append(excludePatterns, regex)
+			log.Info().Str("pattern", excludePatternStr).Msg("added exclude pattern")
+		} else {
+			log.Warn().Str("pattern", excludePatternStr).Err(err).Msgf("failed to compile exclude pattern %d", i)
+		}
+	}
+
+	for i := 0; i+1 < len(ReplacePatternStrings); i += 2 {
+		if regex, err := regexp.Compile(ReplacePatternStrings[i]); err == nil {
+			replacePatterns = append(replacePatterns, regex)
+			replaceStrings = append(replaceStrings, ReplacePatternStrings[i+1])
+			log.Info().Str("pattern", ReplacePatternStrings[i]).Str("replace_with", ReplacePatternStrings[i+1]).
+				Msg("added replace pattern")
+		} else {
+			log.Warn().Str("pattern", ReplacePatternStrings[i]).Err(err).Msgf("failed to compile replace pattern %d, skipping", i/2)
 		}
 	}
 
@@ -112,9 +138,25 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 	defer runningTasks.Done()
 	queryInfo, _, queryInfoErr := clients[0].GetQueryInfo(ctx, queryState.QueryId, false, nil)
 	if queryInfoErr != nil {
-		log.Error().Str("query_id", queryState.QueryId).Err(queryInfoErr).Msg("failed to get query info for forwarding")
+		log.Error().Str("source_query_id", queryState.QueryId).Err(queryInfoErr).
+			Msg("failed to get query info for forwarding")
 		failedToForward.Add(1)
 		return
+	}
+	for _, regex := range excludePatterns {
+		if regex.MatchString(queryInfo.Query) {
+			log.Info().Str("source_query_id", queryInfo.QueryId).
+				Msgf("skipping query because it matches exclude pattern %s", regex.String())
+			return
+		}
+	}
+	for i, regex := range replacePatterns {
+		replacedQuery := regex.ReplaceAllString(queryInfo.Query, replaceStrings[i])
+		if queryInfo.Query != replacedQuery {
+			log.Info().Str("source_query_id", queryInfo.QueryId).
+				Msgf("replaced with pattern %s -> %s", regex.String(), replaceStrings[i])
+			queryInfo.Query = replacedQuery
+		}
 	}
 	SessionPropertyHeader := clients[0].GenerateSessionParamsHeaderValue(queryInfo.Session.CollectSessionProperties())
 	successful, failed := atomic.Uint32{}, atomic.Uint32{}

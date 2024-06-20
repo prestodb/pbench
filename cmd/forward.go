@@ -49,4 +49,6 @@ func init() {
 	forwardCmd.Flags().StringVarP(&forward.OutputPath, "output-path", "o", wd, "Output directory path")
 	forwardCmd.Flags().StringVarP(&forward.RunName, "name", "n", fmt.Sprintf("forward_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "forward_<current time>")`)
 	forwardCmd.Flags().DurationVarP(&forward.PollInterval, "poll-interval", "i", time.Second*5, "Interval between polls to the source cluster")
+	forwardCmd.Flags().StringArrayVarP(&forward.ExcludePatternStrings, "exclude", "x", []string{}, `Regular expressions to filter queries to forward`)
+	forwardCmd.Flags().StringArrayVarP(&forward.ReplacePatternStrings, "replace", "r", []string{}, `Pairs of regular expressions to match pattern in the query and the replacement expression. Use $1, $2, ... to reference capture groups. This will be applied after filters.`)
 }
