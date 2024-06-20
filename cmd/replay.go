@@ -24,6 +24,9 @@ We also expect the queries in this CSV file are sorted by "create_time" in ascen
 		}
 		utils.ExpandHomeDirectory(&replay.OutputPath)
 		utils.ExpandHomeDirectory(&args[0])
+		if replay.PrestoFlags.IsTrino {
+			return fmt.Errorf("replay command does not support Trino yet")
+		}
 		return nil
 	},
 	Run: replay.Run,
@@ -33,6 +36,7 @@ func init() {
 	RootCmd.AddCommand(replayCmd)
 	wd, _ := os.Getwd()
 	replay.PrestoFlags.Install(replayCmd)
+	_ = replayCmd.Flags().MarkHidden("trino")
 	replayCmd.Flags().StringVarP(&replay.OutputPath, "output-path", "o", wd, "Output directory path")
 	replayCmd.Flags().StringVarP(&replay.RunName, "name", "n", fmt.Sprintf("replay_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "replay_<current time>")`)
 }

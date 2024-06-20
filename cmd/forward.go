@@ -31,6 +31,11 @@ var forwardCmd = &cobra.Command{
 				return fmt.Errorf("the forward target server host at position %d is identical to the source server host %s", i, sourceUrl.Host)
 			}
 		}
+		for _, isTrino := range forward.PrestoFlagsArray.IsTrino {
+			if isTrino {
+				return fmt.Errorf("forward command does not support Trino yet")
+			}
+		}
 		return nil
 	},
 	Short: "Watch incoming query workloads from the first Presto cluster (cluster 0) and forward them to the rest clusters.",
@@ -39,6 +44,7 @@ var forwardCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(forwardCmd)
 	forward.PrestoFlagsArray.Install(forwardCmd)
+	_ = forwardCmd.Flags().MarkHidden("trino")
 	wd, _ := os.Getwd()
 	forwardCmd.Flags().StringVarP(&forward.OutputPath, "output-path", "o", wd, "Output directory path")
 	forwardCmd.Flags().StringVarP(&forward.RunName, "name", "n", fmt.Sprintf("forward_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "forward_<current time>")`)

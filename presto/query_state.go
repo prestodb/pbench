@@ -11,16 +11,16 @@ import (
 // https://github.com/prestodb/presto/blob/master/presto-main/src/main/java/com/facebook/presto/server/QueryStateInfo.java
 // Unused fields are commented out for now.
 type QueryStateInfo struct {
-	QueryId    string `json:"queryId"`
-	QueryState string `json:"queryState"`
+	QueryId string `json:"queryId"`
+	//QueryState string `json:"queryState"`
 	//ResourceGroupId []string  `json:"resourceGroupId"`
-	Query          string    `json:"query"`
-	QueryTruncated bool      `json:"queryTruncated"`
-	CreateTime     time.Time `json:"createTime"`
-	User           string    `json:"user"`
-	Authenticated  bool      `json:"authenticated"`
-	Source         string    `json:"source"`
-	Catalog        string    `json:"catalog"`
+	//Query          string    `json:"query"`
+	//QueryTruncated bool      `json:"queryTruncated"`
+	CreateTime time.Time `json:"createTime"`
+	//User           string    `json:"user"`
+	//Authenticated  bool      `json:"authenticated"`
+	//Source         string    `json:"source,omitempty"`
+	//Catalog        string    `json:"catalog"`
 	//Progress        struct {
 	//	ElapsedTimeMillis        int  `json:"elapsedTimeMillis"`
 	//	QueuedTimeMillis         int  `json:"queuedTimeMillis"`
@@ -61,7 +61,7 @@ func (c *Client) GetQueryState(ctx context.Context, reqOpt *GetQueryStatsOptions
 	}
 
 	infoArray := make([]QueryStateInfo, 0, 16)
-	resp, err := c.Do(ctx, req, infoArray)
+	resp, err := c.Do(ctx, req, &infoArray)
 	if err != nil {
 		return nil, resp, err
 	}

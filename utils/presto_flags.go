@@ -56,7 +56,8 @@ func (a *PrestoFlagsArray) Install(cmd *cobra.Command) {
 	cmd.Flags().StringArrayVarP(&a.Password, "password", "p", []string{""}, "Presto user password (optional)")
 }
 
-func (a *PrestoFlagsArray) Assemble() []PrestoFlags {
+// Pivot generates PrestoFlags array that is suitable for creating Presto clients conveniently.
+func (a *PrestoFlagsArray) Pivot() []PrestoFlags {
 	ret := make([]PrestoFlags, 0, len(a.ServerUrl))
 	for _, url := range a.ServerUrl {
 		ret = append(ret, PrestoFlags{

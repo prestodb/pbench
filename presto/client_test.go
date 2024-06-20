@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"pbench/presto"
+	"pbench/presto/query_json"
 	"strings"
 	"syscall"
 	"testing"
@@ -42,9 +43,14 @@ func TestQuery(t *testing.T) {
 	assert.Equal(t, 150000, rowCount)
 
 	buf := &strings.Builder{}
-	_, err = client.GetQueryInfo(context.Background(), qr.Id, false, buf)
+	var queryInfo *query_json.QueryInfo
+	queryInfo, _, err = client.GetQueryInfo(context.Background(), qr.Id, false, buf)
 	assert.Nil(t, err)
+	assert.Nil(t, queryInfo)
 	assert.Greater(t, buf.Len(), 0)
+	queryInfo, _, err = client.GetQueryInfo(context.Background(), qr.Id, true, nil)
+	assert.Nil(t, err)
+	assert.Equal(t, qr.Id, queryInfo.QueryId)
 }
 
 func TestGenerateQueryParameter(t *testing.T) {

@@ -51,3 +51,19 @@ func (s *Session) PrepareForInsert() {
 		s.SessionPropertiesJson = string(jsonBytes[:len(jsonBytes)-1])
 	}
 }
+
+func (s *Session) CollectSessionProperties() map[string]any {
+	sessionParams := make(map[string]any)
+	if s == nil {
+		return sessionParams
+	}
+	for k, v := range s.SystemProperties {
+		sessionParams[k] = v
+	}
+	for catalog, catalogProps := range s.CatalogProperties {
+		for k, v := range catalogProps {
+			sessionParams[catalog+"."+k] = v
+		}
+	}
+	return sessionParams
+}

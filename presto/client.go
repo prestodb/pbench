@@ -91,6 +91,10 @@ func GenerateHttpQueryParameter(v any) string {
 	return queryBuilder.String()
 }
 
+func (c *Client) GetHost() string {
+	return c.serverUrl.Host
+}
+
 func (c *Client) setHeader(key, value string) {
 	if c.isTrino {
 		key = strings.Replace(key, "X-Presto", "X-Trino", 1)
