@@ -51,4 +51,5 @@ func init() {
 	forwardCmd.Flags().DurationVarP(&forward.PollInterval, "poll-interval", "i", time.Second*5, "Interval between polls to the source cluster")
 	forwardCmd.Flags().StringArrayVarP(&forward.ExcludePatternStrings, "exclude", "x", []string{}, `Regular expressions to filter queries to forward`)
 	forwardCmd.Flags().StringArrayVarP(&forward.ReplacePatternStrings, "replace", "r", []string{}, `Pairs of regular expressions to match pattern in the query and the replacement expression. Use $1, $2, ... to reference capture groups. This will be applied after filters.`)
+	forwardCmd.Flags().StringSliceVarP(&forward.SchemaMappingStrings, "schema-mapping", "m", []string{}, "Pairs of schema names to establish schema mapping relationships for schema replacement when forwarding queries. You can specify something like -m schema1,schema2")
 }

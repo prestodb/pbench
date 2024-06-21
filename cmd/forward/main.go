@@ -24,10 +24,12 @@ var (
 	PollInterval          time.Duration
 	ExcludePatternStrings []string
 	ReplacePatternStrings []string
+	SchemaMappingStrings  []string
 
 	excludePatterns []*regexp.Regexp
 	replacePatterns []*regexp.Regexp
 	replaceStrings  []string
+	schemaMappings  = make(map[string]string)
 	runningTasks    sync.WaitGroup
 	failedToForward atomic.Uint32
 	forwarded       atomic.Uint32
@@ -70,6 +72,7 @@ func Run(_ *cobra.Command, _ []string) {
 		}
 	}
 
+	// Compile the regular expressions to filter queries to forward.
 	for i, excludePatternStr := range ExcludePatternStrings {
 		if regex, err := regexp.Compile(excludePatternStr); err == nil {
 			excludePatterns = append(excludePatterns, regex)
@@ -79,6 +82,7 @@ func Run(_ *cobra.Command, _ []string) {
 		}
 	}
 
+	// We take string pairs of (regular expression string, replace string) from this array.
 	for i := 0; i+1 < len(ReplacePatternStrings); i += 2 {
 		if regex, err := regexp.Compile(ReplacePatternStrings[i]); err == nil {
 			replacePatterns = append(replacePatterns, regex)
@@ -90,11 +94,19 @@ func Run(_ *cobra.Command, _ []string) {
 		}
 	}
 
+	for i := 0; i+1 < len(SchemaMappingStrings); i += 2 {
+		schemaMappings[SchemaMappingStrings[i]] = SchemaMappingStrings[i+1]
+		log.Info().Msgf("added schema mapping from %s to %s", SchemaMappingStrings[i], SchemaMappingStrings[i+1])
+	}
+
 	sourceClient := clients[0]
 	trueValue := true
 	// lastQueryStateCheckCutoffTime is the query create time of the most recent query in the previous batch.
 	// We only look at queries created later than this timestamp in the following batch.
 	lastQueryStateCheckCutoffTime := time.Time{}
+	// GetQueryState API will always return the full query history for all queries that have not yet been expired by the
+	// Presto server. This can be a huge list. We do not want to do forwarding for queries that were already submitted
+	// before this program started. So we need to skip the forwarding for the API result we got in the first batch.
 	firstBatch := true
 	// Keep running until the source cluster becomes unavailable or the user interrupts or quits using Ctrl + C or Ctrl + D.
 	for ctx.Err() == nil {
@@ -103,7 +115,10 @@ func Run(_ *cobra.Command, _ []string) {
 			log.Error().Err(err).Msgf("failed to get query states")
 			break
 		}
-		newCutoffTime := time.Time{}
+		// GetQueryState API does not return results (queries) in chronological order. Therefore, we cannot update
+		// lastQueryStateCheckCutoffTime directly because we may update it to be too recent so some queries we do need
+		// to process get filtered out.
+		newCutoffTime := lastQueryStateCheckCutoffTime
 		for _, state := range states {
 			if !state.CreateTime.After(lastQueryStateCheckCutoffTime) {
 				// We looked at this query in the previous batch.
@@ -113,14 +128,13 @@ func Run(_ *cobra.Command, _ []string) {
 				newCutoffTime = state.CreateTime
 			}
 			if !firstBatch {
+				// As we mentioned above, we do not do forwarding for the first batch.
 				runningTasks.Add(1)
 				go forwardQuery(ctx, &state, clients)
 			}
 		}
 		firstBatch = false
-		if newCutoffTime.After(lastQueryStateCheckCutoffTime) {
-			lastQueryStateCheckCutoffTime = newCutoffTime
-		}
+		lastQueryStateCheckCutoffTime = newCutoffTime
 		timer := time.NewTimer(PollInterval)
 		select {
 		case <-ctx.Done():
@@ -170,7 +184,13 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 					req.Header.Set(presto.CatalogHeader, *queryInfo.Session.Catalog)
 				}
 				if queryInfo.Session.Schema != nil {
-					req.Header.Set(presto.SchemaHeader, *queryInfo.Session.Schema)
+					if mappedSchema, exists := schemaMappings[*queryInfo.Session.Schema]; exists {
+						req.Header.Set(presto.SchemaHeader, mappedSchema)
+						log.Info().Str("source_query_id", queryInfo.QueryId).
+							Msgf("schema replaced %s -> %s", *queryInfo.Session.Schema, mappedSchema)
+					} else {
+						req.Header.Set(presto.SchemaHeader, *queryInfo.Session.Schema)
+					}
 				}
 				req.Header.Set(presto.SessionHeader, SessionPropertyHeader)
 				req.Header.Set(presto.SourceHeader, queryInfo.QueryId)
