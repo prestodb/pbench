@@ -1,0 +1,14 @@
+{
+  "name": "inventory",
+  "columns": {
+    "inv_date_sk": {
+      "name": "inv_date_sk",
+      "type": "INT",
+      "partitionKey": true
+    },
+    "inv_item_sk": {
+      "name": "inv_item_sk",
+      "type": "INT"
+    }
+  }
+}
