@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	DryRun                bool
 	PrestoFlagsArray      utils.PrestoFlagsArray
 	OutputPath            string
 	RunName               string
@@ -172,7 +173,22 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			queryInfo.Query = replacedQuery
 		}
 	}
+	if schema := queryInfo.Session.Schema; schema != nil {
+		if mappedSchema, exists := schemaMappings[*schema]; exists {
+			queryInfo.Session.Schema = &mappedSchema
+			log.Info().Str("source_query_id", queryInfo.QueryId).
+				Msgf("schema replaced %s -> %s", *schema, mappedSchema)
+		}
+	}
 	SessionPropertyHeader := clients[0].GenerateSessionParamsHeaderValue(queryInfo.Session.CollectSessionProperties())
+	if DryRun {
+		logEntry := log.Info().Str("query", queryInfo.Query)
+		if queryInfo.Session.Schema != nil {
+			logEntry = logEntry.Str("schema", *queryInfo.Session.Schema)
+		}
+		logEntry.Msg("query not sent in dry-run mode")
+		return
+	}
 	successful, failed := atomic.Uint32{}, atomic.Uint32{}
 	forwardedQueries := sync.WaitGroup{}
 	for i := 1; i < len(clients); i++ {
@@ -184,13 +200,7 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 					req.Header.Set(presto.CatalogHeader, *queryInfo.Session.Catalog)
 				}
 				if queryInfo.Session.Schema != nil {
-					if mappedSchema, exists := schemaMappings[*queryInfo.Session.Schema]; exists {
-						req.Header.Set(presto.SchemaHeader, mappedSchema)
-						log.Info().Str("source_query_id", queryInfo.QueryId).
-							Msgf("schema replaced %s -> %s", *queryInfo.Session.Schema, mappedSchema)
-					} else {
-						req.Header.Set(presto.SchemaHeader, *queryInfo.Session.Schema)
-					}
+					req.Header.Set(presto.SchemaHeader, *queryInfo.Session.Schema)
 				}
 				req.Header.Set(presto.SessionHeader, SessionPropertyHeader)
 				req.Header.Set(presto.SourceHeader, queryInfo.QueryId)
