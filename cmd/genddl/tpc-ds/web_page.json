@@ -1,0 +1,61 @@
+{
+  "name": "web_page",
+  "columns": [
+    {
+      "name": "wp_web_page_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wp_web_page_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "wp_rec_start_date",
+      "type": "DATE"
+    },
+    {
+      "name": "wp_rec_end_date",
+      "type": "DATE"
+    },
+    {
+      "name": "wp_creation_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wp_access_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wp_autogen_flag",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "wp_customer_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wp_url",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "wp_type",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "wp_char_count",
+      "type": "INT"
+    },
+    {
+      "name": "wp_link_count",
+      "type": "INT"
+    },
+    {
+      "name": "wp_image_count",
+      "type": "INT"
+    },
+    {
+      "name": "wp_max_ad_count",
+      "type": "INT"
+    }
+  ]
+}

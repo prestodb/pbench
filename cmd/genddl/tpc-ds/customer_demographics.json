@@ -1,0 +1,41 @@
+{
+  "name": "customer_demographics",
+  "columns": [
+    {
+      "name": "cd_demo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cd_gender",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "cd_marital_status",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "cd_education_status",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "cd_purchase_estimate",
+      "type": "INT"
+    },
+    {
+      "name": "cd_credit_rating",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "cd_dep_count",
+      "type": "INT"
+    },
+    {
+      "name": "cd_dep_employed_count",
+      "type": "INT"
+    },
+    {
+      "name": "cd_dep_college_count",
+      "type": "INT"
+    }
+  ]
+}
