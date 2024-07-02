@@ -2,11 +2,16 @@ package genddl
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"pbench/log"
 	"pbench/utils"
+	"strings"
 	"testing"
 	"text/template"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type Schema struct {
@@ -35,22 +40,39 @@ func TestShowcase(t *testing.T) {
 		CompressionMethod: "zstd",
 		Tables:            make(map[string]*Table),
 	}
-	if f, err := os.ReadFile("inventory.json"); err != nil {
-		if !assert.Nil(t, err) {
-			t.FailNow()
+	root := "/Users/xpeng/IBM-work/prestodb/pbench/cmd/genddl"
+
+	_ = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			log.Error().Err(err).Send()
+			return err
 		}
-	} else {
-		tbl := new(Table)
-		assert.Nil(t, json.Unmarshal(f, tbl))
-		schema.Tables[tbl.Name] = tbl
-	}
+		if info.IsDir() {
+			return nil
+		}
 
-	templateBytes, readErr := os.ReadFile("create_table.sql")
-	assert.Nil(t, readErr)
-	tmpl, err := template.New("a name").Parse(string(templateBytes))
-	assert.Nil(t, err)
-	f, err := os.OpenFile(schema.Name+".sql", utils.OpenNewFileFlags, 0644)
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".json") {
+			if f, err := os.ReadFile(info.Name()); err != nil {
+				if !assert.Nil(t, err) {
+					t.FailNow()
+				}
+			} else {
+				tbl := new(Table)
+				assert.Nil(t, json.Unmarshal(f, tbl))
+				schema.Tables[tbl.Name] = tbl
+			}
 
-	err = tmpl.Execute(f, schema)
+			templateBytes, readErr := os.ReadFile("create_table.sql")
+			assert.Nil(t, readErr)
+			tmpl, err := template.New("a name").Parse(string(templateBytes))
+			assert.Nil(t, err)
+			f, err := os.OpenFile(schema.Name+".sql", utils.OpenNewFileFlags, 0644)
+
+			err = tmpl.Execute(f, schema)
+
+		}
+
+		return nil
+	})
 
 }

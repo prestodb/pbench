@@ -10,8 +10,19 @@ USE hive.{{ .Name }};
 
 {{ range .Tables -}}
 CREATE TABLE IF NOT EXISTS {{ .Name }} (
-{{ range .Columns -}}
-    {{ .Name }} {{ .Type }},
-{{ end -}}
+{{- $first := true }}
+{{- range .Columns }}
+    {{- if $first }}
+        {{- $first = false }}
+    {{- else -}}
+        ,
+    {{- end }}
+    {{ .Name }} {{ .Type }}
+{{- end }}
 )
+WITH (
+    format = 'PARQUET',
+    location = 's3a://presto-workload-v2/{{ $.Name }}/{{ .Name }}'
+)
+
 {{ end -}}
