@@ -1,3 +1,6 @@
+{{ range $key, $value := .SessionVariables -}}
+SET SESSION {{ $key }}='{{ $value }}';
+{{ end }}
 CREATE SCHEMA IF NOT EXISTS {{ .Name }}
 WITH (
     location = 's3a://presto-workload-v2/{{ .Name }}/'
