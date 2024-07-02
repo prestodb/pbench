@@ -1,7 +1,6 @@
 package cmp
 
 import (
-	"fmt"
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
@@ -34,11 +33,14 @@ func Run(_ *cobra.Command, args []string) {
 		log.Fatal().Err(err).Str("build_side_path", buildSidePath).Msg("failed to build file ID map")
 	}
 
+	buildSideFileCount := len(fileIdMap)
+
 	utils.ExpandHomeDirectory(&OutputPath)
 	utils.PrepareOutputDirectory(OutputPath)
 
 	probeSideFileCount, fileCompared, diffWritten := 0, 0, 0
 	entries, readDirErr := os.ReadDir(probeSidePath) // !!!! IS PROBE SIDE COUNT JUST LENGTH OF ENTRIES?????
+	// !!!! MAYBE OPTIMIZE THE USE OF ENTRIES? ENTRIES ARE ALL THE FILES IN THE DIRECTORY, MAYBE LIMIT IT?
 	if readDirErr != nil {
 		log.Fatal().Err(readDirErr).Str("probe_side_path", probeSidePath).Msg("failed to read the probe side directory")
 	}
@@ -50,15 +52,14 @@ func Run(_ *cobra.Command, args []string) {
 		}
 		if match := fileIdRegex.FindStringSubmatch(entry.Name()); len(match) > 0 {
 			fileId := match[1]
-			probeSideFileCount++
 			buildSideFilePath, exists := fileIdMap[fileId]
 			if !exists {
 				continue
 			}
+			probeSideFileCount++
 			probeSideFilePath := filepath.Join(probeSidePath, entry.Name())
-			//buildSideString, probeSideString := readFileIntoString(buildSideFilePath), readFileIntoString(probeSideFilePath)
-
 			diffs, _ := generateDiff(buildSideFilePath, probeSideFilePath)
+
 			fileCompared++
 			if len(diffs) > 0 {
 				diffFilePath := filepath.Join(OutputPath, fileId+".diff")
@@ -87,8 +88,8 @@ func Run(_ *cobra.Command, args []string) {
 			delete(fileIdMap, fileId)
 		}
 	}
-	/// !!!! Build Side is always 0 because of delete statement
-	log.Info().Int("build_side_count", len(fileIdMap)).Int("probe_side_count", probeSideFileCount).
+
+	log.Info().Int("build_side_count", buildSideFileCount).Int("probe_side_count", probeSideFileCount).
 		Int("file_compared", fileCompared).Int("diff_written", diffWritten).Send()
 }
 
@@ -121,12 +122,21 @@ func readFileIntoString(filePath string) string {
 func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {
 	cmd := exec.Command("diff", "-u", buildSideFilePath, probeSideFilePath)
 	output, err := cmd.CombinedOutput()
+	// Error handling
 	if err != nil {
-
-		// !!!!! Figure out exit code issue
-		if _, ok := err.(*exec.ExitError); !ok {
-			return "", fmt.Errorf("failed to execute diff: %w", err)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode := exitErr.ExitCode()
+			if exitCode > 1 {
+				// Error with diff
+				log.Error().Err(err).
+					Int("exit_code", exitCode).
+					Str("build_side", buildSideFilePath).
+					Str("probe_side", probeSideFilePath).
+					Msg("Error while performing diff")
+				return "", nil
+			}
 		}
 	}
+	// Files are identical, no err, or err code 0
 	return string(output), nil
 }
