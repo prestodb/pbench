@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"pbench/log"
 	"pbench/utils"
@@ -37,7 +38,7 @@ func Run(_ *cobra.Command, args []string) {
 	utils.PrepareOutputDirectory(OutputPath)
 
 	probeSideFileCount, fileCompared, diffWritten := 0, 0, 0
-	entries, readDirErr := os.ReadDir(probeSidePath)
+	entries, readDirErr := os.ReadDir(probeSidePath) // !!!! IS PROBE SIDE COUNT JUST LENGTH OF ENTRIES?????
 	if readDirErr != nil {
 		log.Fatal().Err(readDirErr).Str("probe_side_path", probeSidePath).Msg("failed to read the probe side directory")
 	}
@@ -55,10 +56,10 @@ func Run(_ *cobra.Command, args []string) {
 				continue
 			}
 			probeSideFilePath := filepath.Join(probeSidePath, entry.Name())
-			buildSideString, probeSideString := readFileIntoString(buildSideFilePath), readFileIntoString(probeSideFilePath)
+			//buildSideString, probeSideString := readFileIntoString(buildSideFilePath), readFileIntoString(probeSideFilePath)
 
-			diffs := Do(probeSideString, buildSideString)
-
+			diffs, _ := generateDiff(buildSideFilePath, probeSideFilePath)
+			fileCompared++
 			if len(diffs) > 0 {
 				diffFilePath := filepath.Join(OutputPath, fileId+".diff")
 				diffFile, ioErr := os.OpenFile(diffFilePath, utils.OpenNewFileFlags, 0644)
@@ -68,22 +69,11 @@ func Run(_ *cobra.Command, args []string) {
 				}
 
 				// Print out the diffs
-				for _, diff := range diffs {
-					_, ioErr = fmt.Fprintf(diffFile, "%s: %s\n", diff.Type, diff.Text)
-
+				err = os.WriteFile(diffFilePath, []byte(diffs), 0644)
+				if err != nil {
+					log.Error().Err(err).Str("output_file", diffFilePath).Msg("failed to write diff file")
+					continue
 				}
-
-				/*
-					// Get and print the destination text
-					dstText := Dst(diffs)
-					fmt.Printf("\nDestination text:\n%s\n", dstText)
-
-					// Get and print the source text
-					srcText := Src(diffs)
-					fmt.Printf("\nSource text:\n%s\n", srcText)
-				*/
-
-				//_, ioErr = fmt.Fprintln(diffFile, gotextdiff.ToUnified(buildSideFilePath, probeSideFilePath, buildSideString, diffText))
 				if ioErr != nil {
 					log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to write to output file")
 					_ = diffFile.Close()
@@ -94,31 +84,10 @@ func Run(_ *cobra.Command, args []string) {
 				diffWritten++
 			}
 
-			/*
-				edits := myers.ComputeEdits(span.URIFromPath(buildSideString), buildSideString, probeSideString)
-				fileCompared++
-				if len(edits) > 0 {
-					diffFilePath := filepath.Join(OutputPath, fileId+".diff")
-					diffFile, ioErr := os.OpenFile(diffFilePath, utils.OpenNewFileFlags, 0644)
-					if ioErr != nil {
-						log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to open output file")
-						continue
-					}
-					_, ioErr = fmt.Fprintln(diffFile, gotextdiff.ToUnified(buildSideFilePath, probeSideFilePath, buildSideString, edits))
-					if ioErr != nil {
-						log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to write to output file")
-						_ = diffFile.Close()
-						continue
-					}
-					_ = diffFile.Close()
-					log.Info().Str("build_side", buildSideFilePath).Str("probe_side", probeSideFilePath).Msg("diff result written")
-					diffWritten++
-				}
-
-			*/
 			delete(fileIdMap, fileId)
 		}
 	}
+	/// !!!! Build Side is always 0 because of delete statement
 	log.Info().Int("build_side_count", len(fileIdMap)).Int("probe_side_count", probeSideFileCount).
 		Int("file_compared", fileCompared).Int("diff_written", diffWritten).Send()
 }
@@ -147,4 +116,17 @@ func readFileIntoString(filePath string) string {
 	} else {
 		return string(bytes)
 	}
+}
+
+func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {
+	cmd := exec.Command("diff", "-u", buildSideFilePath, probeSideFilePath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+
+		// !!!!! Figure out exit code issue
+		if _, ok := err.(*exec.ExitError); !ok {
+			return "", fmt.Errorf("failed to execute diff: %w", err)
+		}
+	}
+	return string(output), nil
 }
