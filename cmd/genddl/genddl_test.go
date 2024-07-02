@@ -40,9 +40,9 @@ func TestShowcase(t *testing.T) {
 		CompressionMethod: "zstd",
 		Tables:            make(map[string]*Table),
 	}
-	root := "/Users/xpeng/IBM-work/prestodb/pbench/cmd/genddl"
+	currDir := "."
 
-	_ = filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+	_ = filepath.Walk(currDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			log.Error().Err(err).Send()
 			return err
