@@ -1,0 +1,117 @@
+{
+  "name": "date_dim",
+  "columns": [
+    {
+      "name": "d_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "d_date_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "d_date",
+      "type": "DATE"
+    },
+    {
+      "name": "d_month_seq",
+      "type": "INT"
+    },
+    {
+      "name": "d_week_seq",
+      "type": "INT"
+    },
+    {
+      "name": "d_quarter_seq",
+      "type": "INT"
+    },
+    {
+      "name": "d_year",
+      "type": "INT"
+    },
+    {
+      "name": "d_dow",
+      "type": "INT"
+    },
+    {
+      "name": "d_moy",
+      "type": "INT"
+    },
+    {
+      "name": "d_dom",
+      "type": "INT"
+    },
+    {
+      "name": "d_qoy",
+      "type": "INT"
+    },
+    {
+      "name": "d_fy_year",
+      "type": "INT"
+    },
+    {
+      "name": "d_fy_quarter_seq",
+      "type": "INT"
+    },
+    {
+      "name": "d_fy_week_seq",
+      "type": "INT"
+    },
+    {
+      "name": "d_day_name",
+      "type": "VARCHAR(9)"
+    },
+    {
+      "name": "d_quarter_name",
+      "type": "VARCHAR(6)"
+    },
+    {
+      "name": "d_holiday",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "d_weekend",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "d_following_holiday",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "d_first_dom",
+      "type": "INT"
+    },
+    {
+      "name": "d_last_dom",
+      "type": "INT"
+    },
+    {
+      "name": "d_same_day_ly",
+      "type": "INT"
+    },
+    {
+      "name": "d_same_day_lq",
+      "type": "INT"
+    },
+    {
+      "name": "d_current_day",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "d_current_week",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "d_current_month",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "d_current_quarter",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "d_current_year",
+      "type": "VARCHAR(1)"
+    }
+  ]
+}

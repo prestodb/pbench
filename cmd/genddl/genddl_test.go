@@ -29,8 +29,8 @@ type Column struct {
 }
 
 type Table struct {
-	Name    string             `json:"name"`
-	Columns map[string]*Column `json:"columns"`
+	Name    string    `json:"name"`
+	Columns []*Column `json:"columns"`
 }
 
 func TestShowcase(t *testing.T) {
