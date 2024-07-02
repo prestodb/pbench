@@ -40,7 +40,7 @@ func TestShowcase(t *testing.T) {
 		CompressionMethod: "zstd",
 		Tables:            make(map[string]*Table),
 	}
-	currDir := "."
+	currDir := "./tpc-ds"
 
 	_ = filepath.Walk(currDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -52,7 +52,7 @@ func TestShowcase(t *testing.T) {
 		}
 
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".json") {
-			if f, err := os.ReadFile(info.Name()); err != nil {
+			if f, err := os.ReadFile(currDir + "/" + info.Name()); err != nil {
 				if !assert.Nil(t, err) {
 					t.FailNow()
 				}
