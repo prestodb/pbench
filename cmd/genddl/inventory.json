@@ -9,6 +9,14 @@
     "inv_item_sk": {
       "name": "inv_item_sk",
       "type": "INT"
+    },
+    "inv_warehouse_sk": {
+      "name": "inv_warehouse_sk",
+      "type": "INT"
+    },
+    "inv_quantity_on_hand": {
+      "name": "inv_quantity_on_hand",
+      "type": "INT"
     }
   }
 }
