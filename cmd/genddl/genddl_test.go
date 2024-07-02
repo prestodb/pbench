@@ -19,6 +19,7 @@ type Schema struct {
 	Iceberg           bool              `json:"iceberg"`
 	CompressionMethod string            `json:"compressionMethod"`
 	Tables            map[string]*Table `json:"tables"`
+	SessionVariables  map[string]string `json:"session_variables"`
 }
 
 type Column struct {
@@ -39,6 +40,11 @@ func TestShowcase(t *testing.T) {
 		Iceberg:           true,
 		CompressionMethod: "zstd",
 		Tables:            make(map[string]*Table),
+		SessionVariables: map[string]string{
+			"iceberg.compression_codec": "NONE",
+			"query_max_execution_time":  "12h",
+			"query_max_run_time":        "12h",
+		},
 	}
 	currDir := "./tpc-ds"
 

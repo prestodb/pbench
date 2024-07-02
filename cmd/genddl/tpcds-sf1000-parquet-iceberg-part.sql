@@ -1,3 +1,7 @@
+SET SESSION iceberg.compression_codec='NONE';
+SET SESSION query_max_execution_time='12h';
+SET SESSION query_max_run_time='12h';
+
 CREATE SCHEMA IF NOT EXISTS tpcds-sf1000-parquet-iceberg-part
 WITH (
     location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/'
