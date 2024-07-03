@@ -38,9 +38,9 @@ func Run(_ *cobra.Command, args []string) {
 	utils.ExpandHomeDirectory(&OutputPath)
 	utils.PrepareOutputDirectory(OutputPath)
 
-	probeSideFileCount, fileCompared, diffWritten := 0, 0, 0
-	entries, readDirErr := os.ReadDir(probeSidePath) // !!!! IS PROBE SIDE COUNT JUST LENGTH OF ENTRIES?????
-	// !!!! MAYBE OPTIMIZE THE USE OF ENTRIES? ENTRIES ARE ALL THE FILES IN THE DIRECTORY, MAYBE LIMIT IT?
+	probeSideFileCount, fileCompared, diffWritten, errorFileCount := 0, 0, 0, 0
+	entries, readDirErr := os.ReadDir(probeSidePath)
+
 	if readDirErr != nil {
 		log.Fatal().Err(readDirErr).Str("probe_side_path", probeSidePath).Msg("failed to read the probe side directory")
 	}
@@ -58,7 +58,12 @@ func Run(_ *cobra.Command, args []string) {
 			}
 			probeSideFileCount++
 			probeSideFilePath := filepath.Join(probeSidePath, entry.Name())
-			diffs, _ := generateDiff(buildSideFilePath, probeSideFilePath)
+			diffs, diffErr := generateDiff(buildSideFilePath, probeSideFilePath)
+
+			if diffErr != nil {
+				errorFileCount++
+				continue
+			}
 
 			fileCompared++
 			if len(diffs) > 0 {
@@ -90,7 +95,7 @@ func Run(_ *cobra.Command, args []string) {
 	}
 
 	log.Info().Int("build_side_count", buildSideFileCount).Int("probe_side_count", probeSideFileCount).
-		Int("file_compared", fileCompared).Int("diff_written", diffWritten).Send()
+		Int("files_with_errors", errorFileCount).Int("file_compared", fileCompared).Int("diff_written", diffWritten).Send()
 }
 
 func buildFileIdMap(path string) (map[string]string, error) {
@@ -124,19 +129,20 @@ func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {
 	output, err := cmd.CombinedOutput()
 	// Error handling
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		if exitErr, ok := err.(*exec.ExitError); ok { // if error was of type exit error
 			exitCode := exitErr.ExitCode()
 			if exitCode > 1 {
 				// Error with diff
 				log.Error().Err(err).
-					Int("exit_code", exitCode).
 					Str("build_side", buildSideFilePath).
 					Str("probe_side", probeSideFilePath).
+					Str("error_message", string(output)).
 					Msg("Error while performing diff")
-				return "", nil
+
+				return "", err
 			}
 		}
 	}
-	// Files are identical, no err, or err code 0
+	// Error code 0 or 1, diff ran properly
 	return string(output), nil
 }
