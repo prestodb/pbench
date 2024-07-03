@@ -13,6 +13,8 @@
 
 echo "node.id=$HOSTNAME" >> /opt/presto-server/etc/node.properties
 
+dnf install procps-ng -y
+
 if [ -f /opt/entrypoint_debug.sh ]
 then
   cp ~/.ssh/authorized_keys2 ~/.ssh/authorized_keys
