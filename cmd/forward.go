@@ -46,6 +46,7 @@ func init() {
 	forward.PrestoFlagsArray.Install(forwardCmd)
 	_ = forwardCmd.Flags().MarkHidden("trino")
 	wd, _ := os.Getwd()
+	forwardCmd.Flags().BoolVarP(&forward.DryRun, "dry-run", "", false, "Turning on dry run will only show the queries but not sending them to the target server.")
 	forwardCmd.Flags().StringVarP(&forward.OutputPath, "output-path", "o", wd, "Output directory path")
 	forwardCmd.Flags().StringVarP(&forward.RunName, "name", "n", fmt.Sprintf("forward_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "forward_<current time>")`)
 	forwardCmd.Flags().DurationVarP(&forward.PollInterval, "poll-interval", "i", time.Second*5, "Interval between polls to the source cluster")

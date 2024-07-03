@@ -1,5 +1,5 @@
 {
-    "cluster_size": "large",
+    "cluster_size": "large-ssd",
     "coordinator_instance_type": "r5.8xlarge",
     "coordinator_instance_ebs_size": 512,
     "worker_instance_type": "r5d.8xlarge",

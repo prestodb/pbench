@@ -45,7 +45,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 			delete(s.SessionParams, k)
 		}
 	}
-	if s.TimeZone == nil {
+	if other.TimeZone != nil {
 		s.TimeZone = other.TimeZone
 	}
 	s.Queries = append(s.Queries, other.Queries...)
