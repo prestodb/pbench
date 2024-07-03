@@ -132,13 +132,11 @@ func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {
 		if exitErr, ok := err.(*exec.ExitError); ok { // if error was of type exit error
 			exitCode := exitErr.ExitCode()
 			if exitCode > 1 {
-				// Error with diff
 				log.Error().Err(err).
 					Str("build_side", buildSideFilePath).
 					Str("probe_side", probeSideFilePath).
 					Str("error_message", string(output)).
 					Msg("Error while performing diff")
-
 				return "", err
 			}
 		}
