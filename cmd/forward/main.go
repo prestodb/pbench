@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"pbench/log"
 	"pbench/presto"
+	"pbench/presto/query_json"
 	"pbench/utils"
 	"regexp"
 	"sync"
@@ -35,6 +36,16 @@ var (
 	failedToForward atomic.Uint32
 	forwarded       atomic.Uint32
 )
+
+const maxRetry = 10
+
+func waitForNextPoll(ctx context.Context) {
+	timer := time.NewTimer(PollInterval)
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
+}
 
 func Run(_ *cobra.Command, _ []string) {
 	OutputPath = filepath.Join(OutputPath, RunName)
@@ -102,6 +113,8 @@ func Run(_ *cobra.Command, _ []string) {
 
 	sourceClient := clients[0]
 	trueValue := true
+	// We do not need query text from the queryState because we will need to query the detailed info for session params anyway.
+	queryTextSizeLimit := 1
 	// lastQueryStateCheckCutoffTime is the query create time of the most recent query in the previous batch.
 	// We only look at queries created later than this timestamp in the following batch.
 	lastQueryStateCheckCutoffTime := time.Time{}
@@ -109,12 +122,20 @@ func Run(_ *cobra.Command, _ []string) {
 	// Presto server. This can be a huge list. We do not want to do forwarding for queries that were already submitted
 	// before this program started. So we need to skip the forwarding for the API result we got in the first batch.
 	firstBatch := true
-	// Keep running until the source cluster becomes unavailable or the user interrupts or quits using Ctrl + C or Ctrl + D.
-	for ctx.Err() == nil {
-		states, _, err := sourceClient.GetQueryState(ctx, &presto.GetQueryStatsOptions{IncludeAllQueries: &trueValue})
+	// Keep running until user interrupts or quits using Ctrl + C or Ctrl + D.
+	// When the cluster is unavailable to return the running queries, wait and retry for at most 10 times before quitting.
+	for attempt := 1; ctx.Err() == nil && attempt <= maxRetry; {
+		states, _, err := sourceClient.GetQueryState(ctx, &presto.GetQueryStatsOptions{
+			IncludeAllQueries:  &trueValue,
+			QueryTextSizeLimit: &queryTextSizeLimit,
+		})
 		if err != nil {
-			log.Error().Err(err).Msgf("failed to get query states")
-			break
+			log.Error().Err(err).Msgf("failed to get query states, attempt %d/%d", attempt, maxRetry)
+			attempt++
+			waitForNextPoll(ctx)
+			continue
+		} else {
+			attempt = 1
 		}
 		// GetQueryState API does not return results (queries) in chronological order. Therefore, we cannot update
 		// lastQueryStateCheckCutoffTime directly because we may update it to be too recent so some queries we do need
@@ -136,11 +157,12 @@ func Run(_ *cobra.Command, _ []string) {
 		}
 		firstBatch = false
 		lastQueryStateCheckCutoffTime = newCutoffTime
-		timer := time.NewTimer(PollInterval)
-		select {
-		case <-ctx.Done():
-		case <-timer.C:
-		}
+		waitForNextPoll(ctx)
+	}
+	if ctx.Err() == nil {
+		// We exited the loop because the source server is not able to return the query states after maxRetry attempts.
+		// Not because of user interruption.
+		log.Error().Msgf("failed to get query state info from the source cluster after %d attempts", maxRetry)
 	}
 	runningTasks.Wait()
 	// This causes the signal handler to exit.
@@ -151,10 +173,23 @@ func Run(_ *cobra.Command, _ []string) {
 
 func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, clients []*presto.Client) {
 	defer runningTasks.Done()
-	queryInfo, _, queryInfoErr := clients[0].GetQueryInfo(ctx, queryState.QueryId, false, nil)
-	if queryInfoErr != nil {
-		log.Error().Str("source_query_id", queryState.QueryId).Err(queryInfoErr).
-			Msg("failed to get query info for forwarding")
+	var (
+		queryInfo    *query_json.QueryInfo
+		queryInfoErr error
+	)
+	for attempt := 1; attempt <= maxRetry; attempt++ {
+		queryInfo, _, queryInfoErr = clients[0].GetQueryInfo(ctx, queryState.QueryId, false, nil)
+		if queryInfoErr != nil {
+			log.Error().Str("source_query_id", queryState.QueryId).Err(queryInfoErr).
+				Msgf("failed to get query info for forwarding, attempt %d/%d", attempt, maxRetry)
+			waitForNextPoll(ctx)
+		} else {
+			break
+		}
+	}
+	if queryInfo == nil {
+		log.Error().Str("source_query_id", queryState.QueryId).
+			Msgf("cannot get query info for forwarding after %d retries, skipping", maxRetry)
 		failedToForward.Add(1)
 		return
 	}
