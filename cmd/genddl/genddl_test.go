@@ -15,9 +15,9 @@ import (
 )
 
 type Schema struct {
-	Name              string
+	Name              string            `json:"name"`
 	Iceberg           bool              `json:"iceberg"`
-	CompressionMethod string            `json:"compressionMethod"`
+	CompressionMethod string            `json:"compression_method"`
 	Tables            map[string]*Table `json:"tables"`
 	SessionVariables  map[string]string `json:"session_variables"`
 }
@@ -35,17 +35,19 @@ type Table struct {
 }
 
 func TestShowcase(t *testing.T) {
-	schema := &Schema{
-		Name:              "tpcds-sf1000-parquet-iceberg-part",
-		Iceberg:           true,
-		CompressionMethod: "zstd",
-		Tables:            make(map[string]*Table),
-		SessionVariables: map[string]string{
-			"iceberg.compression_codec": "NONE",
-			"query_max_execution_time":  "12h",
-			"query_max_run_time":        "12h",
-		},
+	content, err := os.ReadFile("./config.json")
+	if err != nil {
+		log.Err(err).Send()
 	}
+
+	// Now let's unmarshall the data into `payload`
+	var schema Schema
+	err = schema.UnmarshalJSON(content)
+	if err != nil {
+		log.Err(err).Send()
+		return
+	}
+
 	currDir := "./tpc-ds"
 
 	_ = filepath.Walk(currDir, func(path string, info fs.FileInfo, err error) error {
@@ -81,4 +83,29 @@ func TestShowcase(t *testing.T) {
 		return nil
 	})
 
+}
+
+func (s *Schema) UnmarshalJSON(data []byte) error {
+	type Alias Schema
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if s.Name == "" {
+		s.Name = "tpcds-sf1000-parquet-iceberg-part"
+	}
+	if s.Tables == nil {
+		s.Tables = make(map[string]*Table)
+	}
+	if s.SessionVariables == nil {
+		s.SessionVariables = make(map[string]string)
+	}
+
+	return nil
 }
