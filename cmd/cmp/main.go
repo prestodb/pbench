@@ -21,7 +21,6 @@ func Run(_ *cobra.Command, args []string) {
 		err       error
 		fileIdMap map[string]string
 	)
-
 	fileIdRegex, err = regexp.Compile(FileIdRegexStr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to compile file ID regex")
@@ -38,7 +37,7 @@ func Run(_ *cobra.Command, args []string) {
 	utils.ExpandHomeDirectory(&OutputPath)
 	utils.PrepareOutputDirectory(OutputPath)
 
-	probeSideFileCount, fileCompared, diffWritten, errorFileCount := 0, 0, 0, 0
+	probeSideMatched, fileCompared, diffWritten, errorFileCount := 0, 0, 0, 0
 	entries, readDirErr := os.ReadDir(probeSidePath)
 
 	if readDirErr != nil {
@@ -56,7 +55,7 @@ func Run(_ *cobra.Command, args []string) {
 			if !exists {
 				continue
 			}
-			probeSideFileCount++
+			probeSideMatched++
 			probeSideFilePath := filepath.Join(probeSidePath, entry.Name())
 			diffs, diffErr := generateDiff(buildSideFilePath, probeSideFilePath)
 
@@ -68,24 +67,13 @@ func Run(_ *cobra.Command, args []string) {
 			fileCompared++
 			if len(diffs) > 0 {
 				diffFilePath := filepath.Join(OutputPath, fileId+".diff")
-				diffFile, ioErr := os.OpenFile(diffFilePath, utils.OpenNewFileFlags, 0644)
-				if ioErr != nil {
-					log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to open output file")
-					continue
-				}
-
 				// Print out the diffs
 				err = os.WriteFile(diffFilePath, []byte(diffs), 0644)
 				if err != nil {
 					log.Error().Err(err).Str("output_file", diffFilePath).Msg("failed to write diff file")
 					continue
 				}
-				if ioErr != nil {
-					log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to write to output file")
-					_ = diffFile.Close()
-					continue
-				}
-				_ = diffFile.Close()
+
 				log.Info().Str("build_side", buildSideFilePath).Str("probe_side", probeSideFilePath).Msg("diff result written")
 				diffWritten++
 			}
@@ -94,8 +82,14 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	}
 
-	log.Info().Int("build_side_count", buildSideFileCount).Int("probe_side_count", probeSideFileCount).
+	log.Info().Int("build_side_count", buildSideFileCount).Int("probe_side_matched", probeSideMatched).
 		Int("files_with_errors", errorFileCount).Int("file_compared", fileCompared).Int("diff_written", diffWritten).Send()
+
+	if errorFileCount > 0 || diffWritten > 0 {
+		os.Exit(1)
+	} else {
+		os.Exit(0)
+	}
 }
 
 func buildFileIdMap(path string) (map[string]string, error) {
@@ -128,19 +122,18 @@ func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {
 	cmd := exec.Command("diff", "-u", buildSideFilePath, probeSideFilePath)
 	output, err := cmd.CombinedOutput()
 	// Error handling
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok { // if error was of type exit error
-			exitCode := exitErr.ExitCode()
-			if exitCode > 1 {
-				log.Error().Err(err).
-					Str("build_side", buildSideFilePath).
-					Str("probe_side", probeSideFilePath).
-					Str("error_message", string(output)).
-					Msg("Error while performing diff")
-				return "", err
-			}
-		}
+
+	switch cmd.ProcessState.ExitCode() {
+	case 0, 1:
+		return string(output), nil
+	default:
+		//some error running diff
+		log.Error().Err(err).
+			Str("build_side", buildSideFilePath).
+			Str("probe_side", probeSideFilePath).
+			Str("error_message", string(output)).
+			Msg("Error while performing diff")
+		return "", err
+
 	}
-	// Error code 0 or 1, diff ran properly
-	return string(output), nil
 }
