@@ -15,9 +15,12 @@ import (
 )
 
 type Schema struct {
-	Name              string            `json:"name"`
+	ScaleFactor       string            `json:"scale_factor"`
+	FileFormat        string            `json:"file_format"`
 	Iceberg           bool              `json:"iceberg"`
 	CompressionMethod string            `json:"compression_method"`
+	Partitioned       bool              `json:"partitioned"`
+	Name              string            `json:"name"`
 	Tables            map[string]*Table `json:"tables"`
 	SessionVariables  map[string]string `json:"session_variables"`
 }
@@ -42,7 +45,7 @@ func TestShowcase(t *testing.T) {
 
 	// Now let's unmarshall the data into `payload`
 	var schema Schema
-	err = schema.UnmarshalJSON(content)
+	err = schema.unmarshalJson(content)
 	if err != nil {
 		log.Err(err).Send()
 		return
@@ -85,7 +88,7 @@ func TestShowcase(t *testing.T) {
 
 }
 
-func (s *Schema) UnmarshalJSON(data []byte) error {
+func (s *Schema) unmarshalJson(data []byte) error {
 	type Alias Schema
 	aux := &struct {
 		*Alias
@@ -98,7 +101,7 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	}
 
 	if s.Name == "" {
-		s.Name = "tpcds-sf1000-parquet-iceberg-part"
+		s.generateName()
 	}
 	if s.Tables == nil {
 		s.Tables = make(map[string]*Table)
@@ -106,6 +109,31 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	if s.SessionVariables == nil {
 		s.SessionVariables = make(map[string]string)
 	}
+	s.setSessionVars()
 
 	return nil
+}
+
+func (s *Schema) setSessionVars() {
+	s.SessionVariables["query_max_execution_time"] = "12h"
+	s.SessionVariables["query_max_run_time"] = "12h"
+	if s.Iceberg {
+		s.SessionVariables["iceberg.compression_codec"] = "NONE"
+	}
+}
+
+func (s *Schema) generateName() {
+	var icebergName string
+	if s.Iceberg {
+		icebergName = "iceberg"
+	} else {
+		icebergName = "hive"
+	}
+	var partitionedSuffix string
+	if s.Partitioned {
+		partitionedSuffix = "-part"
+	} else {
+		partitionedSuffix = ""
+	}
+	s.Name = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + "-" + icebergName + partitionedSuffix
 }

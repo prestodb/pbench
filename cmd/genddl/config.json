@@ -1,10 +1,7 @@
 {
-  "name": "tpcds-sf1000-parquet-iceberg-part",
+  "scale_factor": "1000",
+  "file_format": "parquet",
   "iceberg": true,
   "compression_method": "zstd",
-  "session_variables": {
-    "iceberg.compression_codec": "NONE",
-    "query_max_execution_time": "12h",
-    "query_max_run_time": "12h"
-  }
+  "partitioned": true
 }
