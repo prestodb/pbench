@@ -90,9 +90,7 @@ func CompareRun(args []string) int {
 	log.Info().Int("build_side_count", buildSideFileCount).Int("probe_side_matched", probeSideMatched).
 		Int("files_with_errors", errorFileCount).Int("files_compared", fileCompared).Int("diff_written", diffWritten).Send()
 
-	if errorFileCount > 0 {
-		return 2
-	} else if diffWritten > 0 {
+	if errorFileCount > 0 || diffWritten > 0 {
 		return 1
 	} else {
 		return 0
@@ -129,13 +127,12 @@ func readFileIntoString(filePath string) string {
 func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {
 	cmd := exec.Command("diff", "-u", buildSideFilePath, probeSideFilePath)
 	output, err := cmd.CombinedOutput()
-	// Error handling
 
 	switch cmd.ProcessState.ExitCode() {
 	case 0, 1:
 		return string(output), nil
 	default:
-		//some error running diff
+		// some error running diff
 		log.Error().Err(err).
 			Str("build_side", buildSideFilePath).
 			Str("probe_side", probeSideFilePath).
