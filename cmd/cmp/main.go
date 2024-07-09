@@ -92,7 +92,6 @@ func CompareRun(args []string) int {
 
 	if errorFileCount > 0 {
 		return 2
-		//os.Exit(1)
 	} else if diffWritten > 0 {
 		return 1
 	} else {
