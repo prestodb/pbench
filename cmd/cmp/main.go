@@ -17,6 +17,11 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
+	returnCode := CompareRun(args)
+	os.Exit(returnCode)
+}
+
+func CompareRun(args []string) int {
 	var (
 		err       error
 		fileIdMap map[string]string
@@ -83,13 +88,17 @@ func Run(_ *cobra.Command, args []string) {
 	}
 
 	log.Info().Int("build_side_count", buildSideFileCount).Int("probe_side_matched", probeSideMatched).
-		Int("files_with_errors", errorFileCount).Int("file_compared", fileCompared).Int("diff_written", diffWritten).Send()
+		Int("files_with_errors", errorFileCount).Int("files_compared", fileCompared).Int("diff_written", diffWritten).Send()
 
-	if errorFileCount > 0 || diffWritten > 0 {
-		os.Exit(1)
+	if errorFileCount > 0 {
+		return 2
+		//os.Exit(1)
+	} else if diffWritten > 0 {
+		return 1
 	} else {
-		os.Exit(0)
+		return 0
 	}
+
 }
 
 func buildFileIdMap(path string) (map[string]string, error) {

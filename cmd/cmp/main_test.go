@@ -1,17 +1,16 @@
 package cmp
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
 	"os"
-	"path/filepath"
 	"testing"
-
-	"github.com/spf13/cobra"
 )
 
 func TestRun(t *testing.T) {
 	// Paths to existing directories
-	buildDir := "./test_1"
-	probeDir := "./test_2"
+	//buildDir := "tests/test_1_build"
+	//probeDir := "tests/test_1_probe"
 
 	// Set up test output directory
 	outputDir, err := os.MkdirTemp("", "output")
@@ -24,33 +23,16 @@ func TestRun(t *testing.T) {
 	OutputPath = outputDir
 	FileIdRegexStr = `.*(query_\d{2})(?:_c0)?\.output`
 
-	// Run the function
-	Run(&cobra.Command{}, []string{buildDir, probeDir})
-
-	// Check if diff files were created as expected
-	expectedDiffs := []string{"query_02.diff", "query_03.diff"}
-	for _, diffFile := range expectedDiffs {
-		diffPath := filepath.Join(outputDir, diffFile)
-		if _, err := os.Stat(diffPath); os.IsNotExist(err) {
-			t.Errorf("Expected diff file %s to be created, but it doesn't exist", diffPath)
-		}
+	expectedReturns := []int{2, 1, 0, 0, 0, 0}
+	for i := 0; i <= 5; i++ {
+		buildDir := fmt.Sprintf("tests/test_%d_build", i)
+		probeDir := fmt.Sprintf("tests/test_%d_probe", i)
+		returnCode := CompareRun([]string{buildDir, probeDir})
+		assert.Equal(t, expectedReturns[i], returnCode, "test_%d failed", i)
 	}
-	/*
-		// Check if no diff file was created for matching files
-		noDiffFile := filepath.Join(outputDir, "query_01.diff")
-		if _, err := os.Stat(noDiffFile); !os.IsNotExist(err) {
-			t.Errorf("Expected no diff file for %s, but it exists", noDiffFile)
-		}
 
-		// Check the content of a diff file
-		query02DiffPath := filepath.Join(outputDir, "query_02.diff")
-		content, err := os.ReadFile(query02DiffPath)
-		if err != nil {
-			t.Fatalf("Failed to read diff file %s: %v", query02DiffPath, err)
-		}
-		if len(content) == 0 {
-			t.Errorf("Diff file %s is empty", query02DiffPath)
-		}
-	*/
-	// You can add more specific checks on the content of the diff files here
+	//returnCode := Compare_Run([]string{buildDir, probeDir})
+
+	//assert.Equal(t, expectedReturns, returnCode)
+
 }
