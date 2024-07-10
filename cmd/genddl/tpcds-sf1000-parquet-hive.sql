@@ -1,13 +1,13 @@
-SET SESSION iceberg.compression_codec='NONE';
+SET SESSION hive.compression_codec='NONE';
 SET SESSION query_max_execution_time='12h';
 SET SESSION query_max_run_time='12h';
 
-CREATE SCHEMA IF NOT EXISTS tpcds-sf1000-parquet-iceberg-part
+CREATE SCHEMA IF NOT EXISTS hive.tpcds-sf1000-parquet-hive;
 WITH (
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/'
 );
 
-USE iceberg.tpcds-sf1000-parquet-iceberg-part;
+USE hive.tpcds-sf1000-parquet-hive;
 
 CREATE TABLE IF NOT EXISTS call_center (
     cc_call_center_sk INT,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS call_center (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/call_center'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/call_center'
 )
 
 CREATE TABLE IF NOT EXISTS catalog_page (
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS catalog_page (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/catalog_page'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/catalog_page'
 )
 
 CREATE TABLE IF NOT EXISTS catalog_returns (
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS catalog_returns (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/catalog_returns'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/catalog_returns'
 )
 
 CREATE TABLE IF NOT EXISTS catalog_sales (
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/catalog_sales'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/catalog_sales'
 )
 
 CREATE TABLE IF NOT EXISTS customer (
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS customer (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/customer'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/customer'
 )
 
 CREATE TABLE IF NOT EXISTS customer_address (
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS customer_address (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/customer_address'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/customer_address'
 )
 
 CREATE TABLE IF NOT EXISTS customer_demographics (
@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS customer_demographics (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/customer_demographics'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/customer_demographics'
 )
 
 CREATE TABLE IF NOT EXISTS date_dim (
@@ -231,7 +231,7 @@ CREATE TABLE IF NOT EXISTS date_dim (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/date_dim'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/date_dim'
 )
 
 CREATE TABLE IF NOT EXISTS household_demographics (
@@ -243,7 +243,7 @@ CREATE TABLE IF NOT EXISTS household_demographics (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/household_demographics'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/household_demographics'
 )
 
 CREATE TABLE IF NOT EXISTS income_band (
@@ -253,7 +253,7 @@ CREATE TABLE IF NOT EXISTS income_band (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/income_band'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/income_band'
 )
 
 CREATE TABLE IF NOT EXISTS inventory (
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS inventory (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/inventory'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/inventory'
 )
 
 CREATE TABLE IF NOT EXISTS item (
@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS item (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/item'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/item'
 )
 
 CREATE TABLE IF NOT EXISTS promotion (
@@ -319,7 +319,7 @@ CREATE TABLE IF NOT EXISTS promotion (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/promotion'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/promotion'
 )
 
 CREATE TABLE IF NOT EXISTS reason (
@@ -329,7 +329,7 @@ CREATE TABLE IF NOT EXISTS reason (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/reason'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/reason'
 )
 
 CREATE TABLE IF NOT EXISTS ship_mode (
@@ -342,7 +342,7 @@ CREATE TABLE IF NOT EXISTS ship_mode (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/ship_mode'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/ship_mode'
 )
 
 CREATE TABLE IF NOT EXISTS store (
@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS store (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/store'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/store'
 )
 
 CREATE TABLE IF NOT EXISTS store_returns (
@@ -405,7 +405,7 @@ CREATE TABLE IF NOT EXISTS store_returns (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/store_returns'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/store_returns'
 )
 
 CREATE TABLE IF NOT EXISTS store_sales (
@@ -435,7 +435,7 @@ CREATE TABLE IF NOT EXISTS store_sales (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/store_sales'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/store_sales'
 )
 
 CREATE TABLE IF NOT EXISTS time_dim (
@@ -452,7 +452,7 @@ CREATE TABLE IF NOT EXISTS time_dim (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/time_dim'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/time_dim'
 )
 
 CREATE TABLE IF NOT EXISTS warehouse (
@@ -473,7 +473,7 @@ CREATE TABLE IF NOT EXISTS warehouse (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/warehouse'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/warehouse'
 )
 
 CREATE TABLE IF NOT EXISTS web_page (
@@ -494,7 +494,7 @@ CREATE TABLE IF NOT EXISTS web_page (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/web_page'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/web_page'
 )
 
 CREATE TABLE IF NOT EXISTS web_returns (
@@ -525,7 +525,7 @@ CREATE TABLE IF NOT EXISTS web_returns (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/web_returns'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/web_returns'
 )
 
 CREATE TABLE IF NOT EXISTS web_sales (
@@ -566,7 +566,7 @@ CREATE TABLE IF NOT EXISTS web_sales (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/web_sales'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/web_sales'
 )
 
 CREATE TABLE IF NOT EXISTS web_site (
@@ -599,6 +599,6 @@ CREATE TABLE IF NOT EXISTS web_site (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg-part/web_site'
+    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/web_site'
 )
 

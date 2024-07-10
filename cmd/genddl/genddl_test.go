@@ -78,8 +78,15 @@ func TestShowcase(t *testing.T) {
 			tmpl, err := template.New("a name").Parse(string(templateBytes))
 			assert.Nil(t, err)
 			f, err := os.OpenFile(schema.Name+".sql", utils.OpenNewFileFlags, 0644)
-
 			err = tmpl.Execute(f, schema)
+
+			templateBytes2, readErr2 := os.ReadFile("insert_table.sql")
+			assert.Nil(t, readErr2)
+			tmpl2, err2 := template.New("a name2").Parse(string(templateBytes2))
+			assert.Nil(t, err2)
+			f2, err2 := os.OpenFile("insert_table"+schema.Name+".sql", utils.OpenNewFileFlags, 0644)
+
+			err2 = tmpl2.Execute(f2, schema)
 
 		}
 
