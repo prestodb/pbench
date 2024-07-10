@@ -1,7 +1,9 @@
 {{ range $key, $value := .SessionVariables -}}
 SET SESSION {{ $key }}='{{ $value }}';
 {{ end }}
-CREATE SCHEMA IF NOT EXISTS {{ .Name }}
+CREATE SCHEMA IF NOT EXISTS {{ if .Iceberg }}iceberg.{{ .Name }};
+{{- else }}hive.{{ .Name }};
+{{- end }}
 WITH (
     location = 's3a://presto-workload-v2/{{ .Name }}/'
 );
