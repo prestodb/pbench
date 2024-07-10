@@ -3,7 +3,8 @@
   "columns": [
     {
       "name": "ws_sold_date_sk",
-      "type": "INT"
+      "type": "INT",
+      "partition_key": true
     },
     {
       "name": "ws_sold_time_sk",
