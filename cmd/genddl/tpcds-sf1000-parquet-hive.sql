@@ -2,12 +2,12 @@ SET SESSION hive.compression_codec='NONE';
 SET SESSION query_max_execution_time='12h';
 SET SESSION query_max_run_time='12h';
 
-CREATE SCHEMA IF NOT EXISTS hive.tpcds-sf1000-parquet-hive;
+CREATE SCHEMA IF NOT EXISTS hive.tpcds_sf1000_parquet_hive;
 WITH (
     location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-hive/'
 );
 
-USE hive.tpcds-sf1000-parquet-hive;
+USE hive.tpcds_sf1000_parquet_hive;
 
 CREATE TABLE IF NOT EXISTS call_center (
     cc_call_center_sk INT,
