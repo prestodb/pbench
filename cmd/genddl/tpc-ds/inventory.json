@@ -4,7 +4,7 @@
     {
       "name": "inv_date_sk",
       "type": "INT",
-      "partitionKey": true
+      "partition_key": true
     },
     {
       "name": "inv_item_sk",

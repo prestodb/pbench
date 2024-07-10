@@ -29,8 +29,8 @@ type Schema struct {
 type Column struct {
 	Name         string  `json:"name"`
 	Type         *string `json:"type"`
-	PartitionKey *bool   `json:"partitionKey"`
-	BucketKey    *bool   `json:"bucketKey"`
+	PartitionKey *bool   `json:"partition_key"`
+	BucketKey    *bool   `json:"bucket_key"`
 }
 
 type Table struct {
@@ -78,12 +78,13 @@ func TestShowcase(t *testing.T) {
 				tbl := new(Table)
 				assert.Nil(t, json.Unmarshal(f, tbl))
 
-				if isRegisterTable(tbl.Name, schema) {
+				if isRegisterTable(tbl.Name, &schema) {
 					var registerTable RegisterTable
 					registerTable.TableName = tbl.Name
 					registerTable.ExternalLocation = &externalLoc
 					schema.RegisterTables = append(schema.RegisterTables, &registerTable)
 				} else {
+					tbl.reorderColumns(&schema) // Move PartitionKey columns to the bottom
 					schema.Tables[tbl.Name] = tbl
 				}
 			}
@@ -110,7 +111,7 @@ func TestShowcase(t *testing.T) {
 
 }
 
-func isRegisterTable(table string, schema Schema) bool {
+func isRegisterTable(table string, schema *Schema) bool {
 	if schema.Iceberg && schema.Partitioned {
 		if table == "catalog_sales" || table == "inventory" || table == "store_sales" || table == "web_sales" {
 			return false
@@ -144,6 +145,31 @@ func (s *Schema) unmarshalJson(data []byte) error {
 	s.setSessionVars()
 
 	return nil
+}
+
+func (t *Table) reorderColumns(s *Schema) {
+	if len(t.Columns) == 0 {
+		return
+	}
+
+	var partitionIndex = -1
+
+	// Find the index of the first Column with PartitionKey=true
+	for i, col := range t.Columns {
+		if col.PartitionKey != nil && *col.PartitionKey && s.Partitioned {
+			partitionIndex = i
+			break
+		}
+	}
+
+	if partitionIndex == -1 {
+		return
+	}
+
+	// Move the partition key column to the end of the slice
+	partitionColumn := t.Columns[partitionIndex]
+	t.Columns = append(t.Columns[:partitionIndex], t.Columns[partitionIndex+1:]...) // Exclude partitionColumn
+	t.Columns = append(t.Columns, partitionColumn)                                  // Add partitionColumn to end
 }
 
 func (s *Schema) setSessionVars() {
