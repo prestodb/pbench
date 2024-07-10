@@ -117,8 +117,14 @@ func (s *Schema) unmarshalJson(data []byte) error {
 func (s *Schema) setSessionVars() {
 	s.SessionVariables["query_max_execution_time"] = "12h"
 	s.SessionVariables["query_max_run_time"] = "12h"
-	if s.Iceberg {
+	if s.Iceberg && s.CompressionMethod == "uncompressed" {
 		s.SessionVariables["iceberg.compression_codec"] = "NONE"
+	} else if s.Iceberg && s.CompressionMethod == "zstd" {
+		s.SessionVariables["iceberg.compression_codec"] = "ZSTD"
+	} else if !s.Iceberg && s.CompressionMethod == "uncompressed" {
+		s.SessionVariables["hive.compression_codec"] = "NONE"
+	} else if !s.Iceberg && s.CompressionMethod == "zstd" {
+		s.SessionVariables["hive.compression_codec"] = "ZSTD"
 	}
 }
 
