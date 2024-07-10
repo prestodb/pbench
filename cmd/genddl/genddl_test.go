@@ -34,8 +34,9 @@ type Column struct {
 }
 
 type Table struct {
-	Name    string    `json:"name"`
-	Columns []*Column `json:"columns"`
+	Name       string    `json:"name"`
+	Columns    []*Column `json:"columns"`
+	LastColumn *Column
 }
 
 type RegisterTable struct {
@@ -85,6 +86,7 @@ func TestShowcase(t *testing.T) {
 					schema.RegisterTables = append(schema.RegisterTables, &registerTable)
 				} else {
 					tbl.reorderColumns(&schema) // Move PartitionKey columns to the bottom
+					tbl.LastColumn = tbl.Columns[len(tbl.Columns)-1]
 					schema.Tables[tbl.Name] = tbl
 				}
 			}

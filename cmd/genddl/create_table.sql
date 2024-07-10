@@ -33,7 +33,11 @@ CREATE TABLE IF NOT EXISTS {{ .Name }} (
 )
 WITH (
     format = 'PARQUET',
+    {{- if $.Partitioned }}
+    partitioning = array['{{ .LastColumn.Name }}']
+    {{- else }}
     location = 's3a://presto-workload-v2/{{ $.LocationName }}/{{ .Name }}'
+    {{- end }}
 )
 
 {{ end -}}

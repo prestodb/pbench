@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-partitioned-iceberg/catalog_sales'
+    partitioning = array['cs_sold_date_sk']
 )
 
 CREATE TABLE IF NOT EXISTS inventory (
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS inventory (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-partitioned-iceberg/inventory'
+    partitioning = array['inv_date_sk']
 )
 
 CREATE TABLE IF NOT EXISTS store_sales (
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS store_sales (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-partitioned-iceberg/store_sales'
+    partitioning = array['ss_sold_date_sk']
 )
 
 CREATE TABLE IF NOT EXISTS web_sales (
@@ -150,6 +150,6 @@ CREATE TABLE IF NOT EXISTS web_sales (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-partitioned-iceberg/web_sales'
+    partitioning = array['ws_sold_date_sk']
 )
 
