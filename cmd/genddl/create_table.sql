@@ -1,16 +1,22 @@
 {{ range $key, $value := .SessionVariables -}}
 SET SESSION {{ $key }}='{{ $value }}';
 {{ end }}
-CREATE SCHEMA IF NOT EXISTS {{ if .Iceberg }}iceberg.{{ .Name }};
-{{- else }}hive.{{ .Name }};
+CREATE SCHEMA IF NOT EXISTS {{ if .Iceberg }}iceberg.{{ .SchemaName }};
+{{- else }}hive.{{ .SchemaName }};
 {{- end }}
 WITH (
-    location = 's3a://presto-workload-v2/{{ .Name }}/'
+    location = 's3a://presto-workload-v2/{{ .LocationName }}/'
 );
 {{ if .Iceberg }}
-USE iceberg.{{ .Name }};
+USE iceberg.{{ .SchemaName }};
 {{- else }}
-USE hive.{{ .Name }};
+USE hive.{{ .SchemaName }};
+{{- end }}
+
+{{- if .RegisterTables }}
+{{ range .RegisterTables }}
+CALL iceberg.system.register_table('{{ $.SchemaName }}', '{{ .TableName }}', 's3a://presto-workload-v2/{{ .ExternalLocation }}/{{ .TableName }}/metadata');
+{{- end }}
 {{- end }}
 
 {{ range .Tables -}}
@@ -27,7 +33,7 @@ CREATE TABLE IF NOT EXISTS {{ .Name }} (
 )
 WITH (
     format = 'PARQUET',
-    location = 's3a://presto-workload-v2/{{ $.Name }}/{{ .Name }}'
+    location = 's3a://presto-workload-v2/{{ $.LocationName }}/{{ .Name }}'
 )
 
 {{ end -}}

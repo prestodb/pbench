@@ -2,6 +2,7 @@ package genddl
 
 import (
 	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,8 +11,6 @@ import (
 	"strings"
 	"testing"
 	"text/template"
-
-	"github.com/stretchr/testify/assert"
 )
 
 type Schema struct {
@@ -20,7 +19,9 @@ type Schema struct {
 	Iceberg           bool              `json:"iceberg"`
 	CompressionMethod string            `json:"compression_method"`
 	Partitioned       bool              `json:"partitioned"`
-	Name              string            `json:"name"`
+	SchemaName        string            `json:"schema_name"`
+	LocationName      string            `json:"location_name"`
+	RegisterTables    []*RegisterTable  `json:"register_tables"`
 	Tables            map[string]*Table `json:"tables"`
 	SessionVariables  map[string]string `json:"session_variables"`
 }
@@ -37,6 +38,11 @@ type Table struct {
 	Columns []*Column `json:"columns"`
 }
 
+type RegisterTable struct {
+	TableName        string
+	ExternalLocation *string
+}
+
 func TestShowcase(t *testing.T) {
 	content, err := os.ReadFile("./config.json")
 	if err != nil {
@@ -51,6 +57,7 @@ func TestShowcase(t *testing.T) {
 		return
 	}
 
+	externalLoc := schema.getNonPartLocationName()
 	currDir := "./tpc-ds"
 
 	_ = filepath.Walk(currDir, func(path string, info fs.FileInfo, err error) error {
@@ -70,21 +77,29 @@ func TestShowcase(t *testing.T) {
 			} else {
 				tbl := new(Table)
 				assert.Nil(t, json.Unmarshal(f, tbl))
-				schema.Tables[tbl.Name] = tbl
+
+				if isRegisterTable(tbl.Name, schema) {
+					var registerTable RegisterTable
+					registerTable.TableName = tbl.Name
+					registerTable.ExternalLocation = &externalLoc
+					schema.RegisterTables = append(schema.RegisterTables, &registerTable)
+				} else {
+					schema.Tables[tbl.Name] = tbl
+				}
 			}
 
 			templateBytes, readErr := os.ReadFile("create_table.sql")
 			assert.Nil(t, readErr)
 			tmpl, err := template.New("a name").Parse(string(templateBytes))
 			assert.Nil(t, err)
-			f, err := os.OpenFile(schema.Name+".sql", utils.OpenNewFileFlags, 0644)
+			f, err := os.OpenFile(schema.LocationName+".sql", utils.OpenNewFileFlags, 0644)
 			err = tmpl.Execute(f, schema)
 
 			templateBytes2, readErr2 := os.ReadFile("insert_table.sql")
 			assert.Nil(t, readErr2)
 			tmpl2, err2 := template.New("a name2").Parse(string(templateBytes2))
 			assert.Nil(t, err2)
-			f2, err2 := os.OpenFile("insert_table"+schema.Name+".sql", utils.OpenNewFileFlags, 0644)
+			f2, err2 := os.OpenFile("insert_table"+schema.LocationName+".sql", utils.OpenNewFileFlags, 0644)
 
 			err2 = tmpl2.Execute(f2, schema)
 
@@ -93,6 +108,16 @@ func TestShowcase(t *testing.T) {
 		return nil
 	})
 
+}
+
+func isRegisterTable(table string, schema Schema) bool {
+	if schema.Iceberg && schema.Partitioned {
+		if table == "catalog_sales" || table == "inventory" || table == "store_sales" || table == "web_sales" {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func (s *Schema) unmarshalJson(data []byte) error {
@@ -107,8 +132,8 @@ func (s *Schema) unmarshalJson(data []byte) error {
 		return err
 	}
 
-	if s.Name == "" {
-		s.generateName()
+	if s.SchemaName == "" || s.LocationName == "" {
+		s.setNames()
 	}
 	if s.Tables == nil {
 		s.Tables = make(map[string]*Table)
@@ -135,18 +160,27 @@ func (s *Schema) setSessionVars() {
 	}
 }
 
-func (s *Schema) generateName() {
-	var icebergName string
+func (s *Schema) setNames() {
+	var iceberg string
 	if s.Iceberg {
-		icebergName = "iceberg"
+		iceberg = "_iceberg"
 	} else {
-		icebergName = "hive"
+		iceberg = "_hive"
 	}
-	var partitionedSuffix string
+	var partitioned string
 	if s.Partitioned {
-		partitionedSuffix = "-part"
+		partitioned = "_partitioned"
 	} else {
-		partitionedSuffix = ""
+		partitioned = ""
 	}
-	s.Name = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + "-" + icebergName + partitionedSuffix
+	s.SchemaName = "tpcds_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
+	s.LocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg)
+}
+
+func (s *Schema) getNonPartLocationName() string {
+	return strings.Replace(s.LocationName, "-partitioned", "", 1)
+}
+
+func toHyphen(s string) string {
+	return strings.Replace(s, "_", "-", 1)
 }
