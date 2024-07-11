@@ -2,10 +2,10 @@
 SET SESSION {{ $key }}='{{ $value }}';
 {{ end }}
 
-{{ if .Iceberg }}
-USE iceberg.{{ .Name }};
+{{- if .Iceberg }}
+USE iceberg.{{ .SchemaName }};
 {{- else }}
-USE hive.{{ .Name }};
+USE hive.{{ .SchemaName }};
 {{- end }}
 
 {{ range .Tables -}}
@@ -17,7 +17,7 @@ SELECT {{- $first := true }}
     {{- else -}}
         ,
     {{- end }}
-    cast({{ .Name }} as {{ .Type }}
+    cast({{ .Name }} as {{ .Type }})
 {{- end }}
 FROM tpcds.sf{{ $.ScaleFactor }}.{{ .Name }};
 
