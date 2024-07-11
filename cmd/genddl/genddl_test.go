@@ -25,6 +25,7 @@ type Schema struct {
 	IcebergLocationName string            `json:"iceberg_location_name"`
 	RegisterTables      []*RegisterTable  `json:"register_tables"`
 	Tables              map[string]*Table `json:"tables"`
+	InsertTables        map[string]*Table `json:"insert_tables"`
 	SessionVariables    map[string]string `json:"session_variables"`
 }
 
@@ -33,6 +34,7 @@ type Column struct {
 	Type         *string `json:"type"`
 	PartitionKey *bool   `json:"partition_key"`
 	BucketKey    *bool   `json:"bucket_key"`
+	IsVarchar    bool
 }
 
 type Table struct {
@@ -81,6 +83,7 @@ func TestShowcase(t *testing.T) {
 			} else {
 				tbl := new(Table)
 				assert.Nil(t, json.Unmarshal(f, tbl))
+				tbl.initIsVarchar() // Populates the IsVarchar var for all columns
 
 				if isRegisterTable(tbl, &schema) {
 					var registerTable RegisterTable
@@ -91,6 +94,9 @@ func TestShowcase(t *testing.T) {
 					tbl.reorderColumns(&schema) // Move PartitionKey columns to the bottom
 					tbl.LastColumn = tbl.Columns[len(tbl.Columns)-1]
 					schema.Tables[tbl.Name] = tbl
+				}
+				if isInsertTable(tbl, &schema) {
+					schema.InsertTables[tbl.Name] = tbl
 				}
 			}
 
@@ -127,6 +133,13 @@ func isRegisterTable(table *Table, schema *Schema) bool {
 	return false
 }
 
+func isInsertTable(table *Table, schema *Schema) bool {
+	if schema.Partitioned {
+		return table.Partitioned
+	}
+	return true
+}
+
 func (s *Schema) unmarshalJson(data []byte) error {
 	type Alias Schema
 	aux := &struct {
@@ -145,12 +158,27 @@ func (s *Schema) unmarshalJson(data []byte) error {
 	if s.Tables == nil {
 		s.Tables = make(map[string]*Table)
 	}
+	if s.InsertTables == nil {
+		s.InsertTables = make(map[string]*Table)
+	}
 	if s.SessionVariables == nil {
 		s.SessionVariables = make(map[string]string)
 	}
 	s.setSessionVars()
 
 	return nil
+}
+
+func (t *Table) initIsVarchar() {
+	for _, c := range t.Columns {
+		firstParen := strings.Index(*c.Type, "(")
+		if firstParen == -1 {
+			c.IsVarchar = false
+		} else {
+			baseType := (*c.Type)[:firstParen]
+			c.IsVarchar = baseType == "VARCHAR"
+		}
+	}
 }
 
 func (t *Table) reorderColumns(s *Schema) {
