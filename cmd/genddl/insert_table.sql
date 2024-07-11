@@ -8,7 +8,7 @@ USE iceberg.{{ .SchemaName }};
 USE hive.{{ .SchemaName }};
 {{- end }}
 
-{{ range .Tables -}}
+{{ range .InsertTables -}}
 INSERT INTO {{ .Name }}
 {{- if eq $.CompressionMethod "uncompressed" }}
 SELECT {{- $first := true }}
@@ -18,7 +18,11 @@ SELECT {{- $first := true }}
     {{- else -}}
         ,
     {{- end }}
+    {{- if .IsVarchar }}
+    trim(cast({{ .Name }} as {{ .Type }}))
+    {{- else }}
     cast({{ .Name }} as {{ .Type }})
+    {{- end }}
 {{- end }}
 FROM tpcds.sf{{ $.ScaleFactor }}.{{ .Name }};
 {{- else }}
@@ -26,6 +30,6 @@ SELECT * FROM {{ if $.Iceberg }}iceberg{{ else }}hive{{ end }}.{{ $.Uncompressed
 {{- end }}
 
 {{ end }}
-{{- range .Tables -}}
+{{- range .InsertTables -}}
 ANALYZE {{ .Name }};
 {{ end -}}
