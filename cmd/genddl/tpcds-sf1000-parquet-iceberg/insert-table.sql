@@ -1,8 +1,8 @@
-SET SESSION hive.compression_codec='NONE';
+SET SESSION iceberg.compression_codec='ZSTD';
 SET SESSION query_max_execution_time='12h';
 SET SESSION query_max_run_time='12h';
 
-USE hive.tpcds_sf1000_parquet_hive;
+USE iceberg.tpcds_sf1000_parquet_iceberg;
 
 INSERT INTO call_center 
 SELECT
