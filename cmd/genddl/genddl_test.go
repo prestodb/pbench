@@ -14,17 +14,18 @@ import (
 )
 
 type Schema struct {
-	ScaleFactor       string            `json:"scale_factor"`
-	FileFormat        string            `json:"file_format"`
-	Iceberg           bool              `json:"iceberg"`
-	CompressionMethod string            `json:"compression_method"`
-	Partitioned       bool              `json:"partitioned"`
-	SchemaName        string            `json:"schema_name"`
-	LocationName      string            `json:"location_name"`
-	UncompressedName  string            `json:"uncompressed_name"`
-	RegisterTables    []*RegisterTable  `json:"register_tables"`
-	Tables            map[string]*Table `json:"tables"`
-	SessionVariables  map[string]string `json:"session_variables"`
+	ScaleFactor         string            `json:"scale_factor"`
+	FileFormat          string            `json:"file_format"`
+	Iceberg             bool              `json:"iceberg"`
+	CompressionMethod   string            `json:"compression_method"`
+	Partitioned         bool              `json:"partitioned"`
+	SchemaName          string            `json:"schema_name"`
+	LocationName        string            `json:"location_name"`
+	UncompressedName    string            `json:"uncompressed_name"`
+	IcebergLocationName string            `json:"iceberg_location_name"`
+	RegisterTables      []*RegisterTable  `json:"register_tables"`
+	Tables              map[string]*Table `json:"tables"`
+	SessionVariables    map[string]string `json:"session_variables"`
 }
 
 type Column struct {
@@ -35,9 +36,10 @@ type Column struct {
 }
 
 type Table struct {
-	Name       string    `json:"name"`
-	Columns    []*Column `json:"columns"`
-	LastColumn *Column
+	Name        string    `json:"name"`
+	Partitioned bool      `json:"partitioned"`
+	Columns     []*Column `json:"columns"`
+	LastColumn  *Column
 }
 
 type RegisterTable struct {
@@ -80,7 +82,7 @@ func TestShowcase(t *testing.T) {
 				tbl := new(Table)
 				assert.Nil(t, json.Unmarshal(f, tbl))
 
-				if isRegisterTable(tbl.Name, &schema) {
+				if isRegisterTable(tbl, &schema) {
 					var registerTable RegisterTable
 					registerTable.TableName = tbl.Name
 					registerTable.ExternalLocation = &externalLoc
@@ -118,12 +120,9 @@ func TestShowcase(t *testing.T) {
 
 }
 
-func isRegisterTable(table string, schema *Schema) bool {
+func isRegisterTable(table *Table, schema *Schema) bool {
 	if schema.Iceberg && schema.Partitioned {
-		if table == "catalog_sales" || table == "inventory" || table == "store_sales" || table == "web_sales" {
-			return false
-		}
-		return true
+		return !table.Partitioned
 	}
 	return false
 }
@@ -215,6 +214,7 @@ func (s *Schema) setNames() {
 	s.UncompressedName = "tpcds_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
 	s.SchemaName = s.UncompressedName + compression
 	s.LocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg) + toHyphen(compression)
+	s.IcebergLocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + "-iceberg"
 }
 
 func (s *Schema) getNonPartLocationName() string {

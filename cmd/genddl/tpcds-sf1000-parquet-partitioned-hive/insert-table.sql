@@ -2,7 +2,7 @@ SET SESSION hive.compression_codec='NONE';
 SET SESSION query_max_execution_time='12h';
 SET SESSION query_max_run_time='12h';
 
-USE hive.tpcds_sf1000_parquet_hive;
+USE hive.tpcds_sf1000_parquet_partitioned_hive;
 
 INSERT INTO call_center
 SELECT
@@ -85,7 +85,6 @@ FROM tpcds.sf1000.catalog_returns;
 
 INSERT INTO catalog_sales
 SELECT
-    cast(cs_sold_date_sk as INT),
     cast(cs_sold_time_sk as INT),
     cast(cs_ship_date_sk as INT),
     cast(cs_bill_customer_sk as INT),
@@ -118,7 +117,8 @@ SELECT
     cast(cs_net_paid_inc_tax as DECIMAL(7,2)),
     cast(cs_net_paid_inc_ship as DECIMAL(7,2)),
     cast(cs_net_paid_inc_ship_tax as DECIMAL(7,2)),
-    cast(cs_net_profit as DECIMAL(7,2))
+    cast(cs_net_profit as DECIMAL(7,2)),
+    cast(cs_sold_date_sk as INT)
 FROM tpcds.sf1000.catalog_sales;
 
 INSERT INTO customer
@@ -223,10 +223,10 @@ FROM tpcds.sf1000.income_band;
 
 INSERT INTO inventory
 SELECT
-    cast(inv_date_sk as INT),
     cast(inv_item_sk as INT),
     cast(inv_warehouse_sk as INT),
-    cast(inv_quantity_on_hand as INT)
+    cast(inv_quantity_on_hand as INT),
+    cast(inv_date_sk as INT)
 FROM tpcds.sf1000.inventory;
 
 INSERT INTO item
@@ -354,7 +354,6 @@ FROM tpcds.sf1000.store_returns;
 
 INSERT INTO store_sales
 SELECT
-    cast(ss_sold_date_sk as INT),
     cast(ss_sold_time_sk as INT),
     cast(ss_item_sk as INT),
     cast(ss_customer_sk as INT),
@@ -376,7 +375,8 @@ SELECT
     cast(ss_coupon_amt as DECIMAL(7,2)),
     cast(ss_net_paid as DECIMAL(7,2)),
     cast(ss_net_paid_inc_tax as DECIMAL(7,2)),
-    cast(ss_net_profit as DECIMAL(7,2))
+    cast(ss_net_profit as DECIMAL(7,2)),
+    cast(ss_sold_date_sk as INT)
 FROM tpcds.sf1000.store_sales;
 
 INSERT INTO time_dim
@@ -459,7 +459,6 @@ FROM tpcds.sf1000.web_returns;
 
 INSERT INTO web_sales
 SELECT
-    cast(ws_sold_date_sk as INT),
     cast(ws_sold_time_sk as INT),
     cast(ws_ship_date_sk as INT),
     cast(ws_item_sk as INT),
@@ -492,7 +491,8 @@ SELECT
     cast(ws_net_paid_inc_tax as DECIMAL(7,2)),
     cast(ws_net_paid_inc_ship as DECIMAL(7,2)),
     cast(ws_net_paid_inc_ship_tax as DECIMAL(7,2)),
-    cast(ws_net_profit as DECIMAL(7,2))
+    cast(ws_net_profit as DECIMAL(7,2)),
+    cast(ws_sold_date_sk as INT)
 FROM tpcds.sf1000.web_sales;
 
 INSERT INTO web_site

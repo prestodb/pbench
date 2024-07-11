@@ -34,7 +34,13 @@ CREATE TABLE IF NOT EXISTS {{ .Name }} (
 WITH (
     format = 'PARQUET',
     {{- if $.Partitioned }}
+    {{- if $.Iceberg}}
     partitioning = array['{{ .LastColumn.Name }}']
+    {{- else if .Partitioned }}
+    partitioned_by = array['{{ .LastColumn.Name }}']
+    {{- else }}
+    external_location = 's3a://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/'
+    {{- end }}
     {{- else }}
     location = 's3a://presto-workload-v2/{{ $.LocationName }}/{{ .Name }}'
     {{- end }}

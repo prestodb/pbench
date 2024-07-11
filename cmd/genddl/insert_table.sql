@@ -21,7 +21,7 @@ SELECT {{- $first := true }}
     cast({{ .Name }} as {{ .Type }})
 {{- end }}
 FROM tpcds.sf{{ $.ScaleFactor }}.{{ .Name }};
-{{ else }}
+{{- else }}
 SELECT * FROM {{ if $.Iceberg }}iceberg{{ else }}hive{{ end }}.{{ $.UncompressedName }}.{{ .Name }};
 {{- end }}
 
