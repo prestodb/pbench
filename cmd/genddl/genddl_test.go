@@ -21,6 +21,7 @@ type Schema struct {
 	Partitioned       bool              `json:"partitioned"`
 	SchemaName        string            `json:"schema_name"`
 	LocationName      string            `json:"location_name"`
+	UncompressedName  string            `json:"uncompressed_name"`
 	RegisterTables    []*RegisterTable  `json:"register_tables"`
 	Tables            map[string]*Table `json:"tables"`
 	SessionVariables  map[string]string `json:"session_variables"`
@@ -205,8 +206,15 @@ func (s *Schema) setNames() {
 	} else {
 		partitioned = ""
 	}
-	s.SchemaName = "tpcds_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
-	s.LocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg)
+	var compression string
+	if s.CompressionMethod == "zstd" {
+		compression = "_zstd"
+	} else {
+		compression = ""
+	}
+	s.UncompressedName = "tpcds_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
+	s.SchemaName = s.UncompressedName + compression
+	s.LocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg) + toHyphen(compression)
 }
 
 func (s *Schema) getNonPartLocationName() string {

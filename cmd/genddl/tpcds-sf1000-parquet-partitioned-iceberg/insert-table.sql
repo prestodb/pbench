@@ -115,5 +115,7 @@ SELECT
     cast(ws_sold_date_sk as INT)
 FROM tpcds.sf1000.web_sales;
 
-
-
+ANALYZE catalog_sales;
+ANALYZE inventory;
+ANALYZE store_sales;
+ANALYZE web_sales;

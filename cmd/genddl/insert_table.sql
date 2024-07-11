@@ -9,7 +9,8 @@ USE hive.{{ .SchemaName }};
 {{- end }}
 
 {{ range .Tables -}}
-INSERT INTO {{ .Name }} 
+INSERT INTO {{ .Name }}
+{{- if eq $.CompressionMethod "uncompressed" }}
 SELECT {{- $first := true }}
 {{- range .Columns }}
     {{- if $first }}
@@ -20,6 +21,11 @@ SELECT {{- $first := true }}
     cast({{ .Name }} as {{ .Type }})
 {{- end }}
 FROM tpcds.sf{{ $.ScaleFactor }}.{{ .Name }};
+{{ else }}
+SELECT * FROM {{ if $.Iceberg }}iceberg{{ else }}hive{{ end }}.{{ $.UncompressedName }}.{{ .Name }};
+{{- end }}
 
 {{ end }}
-
+{{- range .Tables -}}
+ANALYZE {{ .Name }};
+{{ end -}}
