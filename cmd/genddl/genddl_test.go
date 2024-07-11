@@ -59,7 +59,7 @@ func TestShowcase(t *testing.T) {
 	}
 
 	externalLoc := schema.getNonPartLocationName()
-	currDir := "./tpc-ds"
+	currDir := "./definition/tpc-ds"
 
 	_ = filepath.Walk(currDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -91,18 +91,22 @@ func TestShowcase(t *testing.T) {
 				}
 			}
 
+			outputDir := filepath.Join(".", schema.LocationName)
+			mkErr := os.MkdirAll(outputDir, os.ModePerm)
+			assert.Nil(t, mkErr)
+
 			templateBytes, readErr := os.ReadFile("create_table.sql")
 			assert.Nil(t, readErr)
 			tmpl, err := template.New("a name").Parse(string(templateBytes))
 			assert.Nil(t, err)
-			f, err := os.OpenFile(schema.LocationName+".sql", utils.OpenNewFileFlags, 0644)
+			f, err := os.OpenFile(outputDir+"/create-schema-table.sql", utils.OpenNewFileFlags, 0644)
 			err = tmpl.Execute(f, schema)
 
 			templateBytes2, readErr2 := os.ReadFile("insert_table.sql")
 			assert.Nil(t, readErr2)
 			tmpl2, err2 := template.New("a name2").Parse(string(templateBytes2))
 			assert.Nil(t, err2)
-			f2, err2 := os.OpenFile("insert_table"+schema.LocationName+".sql", utils.OpenNewFileFlags, 0644)
+			f2, err2 := os.OpenFile(outputDir+"/insert-table.sql", utils.OpenNewFileFlags, 0644)
 
 			err2 = tmpl2.Execute(f2, schema)
 
