@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS call_center (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/call_center/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS catalog_page (
     cp_catalog_page_sk INT,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS catalog_page (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/catalog_page/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS catalog_returns (
     cr_returned_date_sk INT,
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS catalog_returns (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/catalog_returns/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS catalog_sales (
     cs_sold_time_sk INT,
@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
 WITH (
     format = 'PARQUET',
     partitioned_by = array['cs_sold_date_sk']
-)
+);
 
 CREATE TABLE IF NOT EXISTS customer (
     c_customer_sk INT,
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS customer (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/customer/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS customer_address (
     ca_address_sk INT,
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS customer_address (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/customer_address/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS customer_demographics (
     cd_demo_sk INT,
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS customer_demographics (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/customer_demographics/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS date_dim (
     d_date_sk INT,
@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS date_dim (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/date_dim/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS household_demographics (
     hd_demo_sk INT,
@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS household_demographics (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/household_demographics/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS income_band (
     ib_income_band_sk INT,
@@ -254,7 +254,7 @@ CREATE TABLE IF NOT EXISTS income_band (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/income_band/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS inventory (
     inv_item_sk INT,
@@ -265,7 +265,7 @@ CREATE TABLE IF NOT EXISTS inventory (
 WITH (
     format = 'PARQUET',
     partitioned_by = array['inv_date_sk']
-)
+);
 
 CREATE TABLE IF NOT EXISTS item (
     i_item_sk INT,
@@ -294,7 +294,7 @@ CREATE TABLE IF NOT EXISTS item (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/item/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS promotion (
     p_promo_sk INT,
@@ -320,7 +320,7 @@ CREATE TABLE IF NOT EXISTS promotion (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/promotion/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS reason (
     r_reason_sk INT,
@@ -330,7 +330,7 @@ CREATE TABLE IF NOT EXISTS reason (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/reason/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS ship_mode (
     sm_ship_mode_sk INT,
@@ -343,7 +343,7 @@ CREATE TABLE IF NOT EXISTS ship_mode (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/ship_mode/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS store (
     s_store_sk INT,
@@ -379,7 +379,7 @@ CREATE TABLE IF NOT EXISTS store (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/store/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS store_returns (
     sr_returned_date_sk INT,
@@ -406,7 +406,7 @@ CREATE TABLE IF NOT EXISTS store_returns (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/store_returns/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS store_sales (
     ss_sold_time_sk INT,
@@ -436,7 +436,7 @@ CREATE TABLE IF NOT EXISTS store_sales (
 WITH (
     format = 'PARQUET',
     partitioned_by = array['ss_sold_date_sk']
-)
+);
 
 CREATE TABLE IF NOT EXISTS time_dim (
     t_time_sk INT,
@@ -453,7 +453,7 @@ CREATE TABLE IF NOT EXISTS time_dim (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/time_dim/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS warehouse (
     w_warehouse_sk INT,
@@ -474,7 +474,7 @@ CREATE TABLE IF NOT EXISTS warehouse (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/warehouse/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS web_page (
     wp_web_page_sk INT,
@@ -495,7 +495,7 @@ CREATE TABLE IF NOT EXISTS web_page (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_page/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS web_returns (
     wr_returned_date_sk INT,
@@ -526,7 +526,7 @@ CREATE TABLE IF NOT EXISTS web_returns (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_returns/data/'
-)
+);
 
 CREATE TABLE IF NOT EXISTS web_sales (
     ws_sold_time_sk INT,
@@ -567,7 +567,7 @@ CREATE TABLE IF NOT EXISTS web_sales (
 WITH (
     format = 'PARQUET',
     partitioned_by = array['ws_sold_date_sk']
-)
+);
 
 CREATE TABLE IF NOT EXISTS web_site (
     web_site_sk INT,
@@ -600,5 +600,5 @@ CREATE TABLE IF NOT EXISTS web_site (
 WITH (
     format = 'PARQUET',
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_site/data/'
-)
+);
 
