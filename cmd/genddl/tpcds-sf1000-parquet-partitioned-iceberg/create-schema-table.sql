@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
 WITH (
     format = 'PARQUET',
     partitioning = array['cs_sold_date_sk']
-)
+);
 
 CREATE TABLE IF NOT EXISTS inventory (
     inv_item_sk INT,
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS inventory (
 WITH (
     format = 'PARQUET',
     partitioning = array['inv_date_sk']
-)
+);
 
 CREATE TABLE IF NOT EXISTS store_sales (
     ss_sold_time_sk INT,
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS store_sales (
 WITH (
     format = 'PARQUET',
     partitioning = array['ss_sold_date_sk']
-)
+);
 
 CREATE TABLE IF NOT EXISTS web_sales (
     ws_sold_time_sk INT,
@@ -151,5 +151,5 @@ CREATE TABLE IF NOT EXISTS web_sales (
 WITH (
     format = 'PARQUET',
     partitioning = array['ws_sold_date_sk']
-)
+);
 

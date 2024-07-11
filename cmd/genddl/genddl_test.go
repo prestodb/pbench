@@ -111,19 +111,27 @@ func TestShowcase(t *testing.T) {
 			f, err := os.OpenFile(outputDir+"/create-schema-table.sql", utils.OpenNewFileFlags, 0644)
 			err = tmpl.Execute(f, schema)
 
-			templateBytes2, readErr2 := os.ReadFile("insert_table.sql")
-			assert.Nil(t, readErr2)
-			tmpl2, err2 := template.New("a name2").Parse(string(templateBytes2))
-			assert.Nil(t, err2)
-			f2, err2 := os.OpenFile(outputDir+"/insert-table.sql", utils.OpenNewFileFlags, 0644)
+			if schema.shouldGenInsert() {
+				templateBytes2, readErr2 := os.ReadFile("insert_table.sql")
+				assert.Nil(t, readErr2)
+				tmpl2, err2 := template.New("a name2").Parse(string(templateBytes2))
+				assert.Nil(t, err2)
+				f2, err2 := os.OpenFile(outputDir+"/insert-table.sql", utils.OpenNewFileFlags, 0644)
 
-			err2 = tmpl2.Execute(f2, schema)
-
+				err2 = tmpl2.Execute(f2, schema)
+			}
 		}
 
 		return nil
 	})
 
+}
+
+func (s *Schema) shouldGenInsert() bool {
+	if !s.Iceberg && !s.Partitioned {
+		return false
+	}
+	return true
 }
 
 func isRegisterTable(table *Table, schema *Schema) bool {

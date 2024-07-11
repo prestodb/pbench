@@ -41,9 +41,11 @@ WITH (
     {{- else }}
     external_location = 's3a://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/'
     {{- end }}
-    {{- else }}
+    {{- else if $.Iceberg }}
     location = 's3a://presto-workload-v2/{{ $.LocationName }}/{{ .Name }}'
+    {{- else }}
+    external_location = 's3a://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/'
     {{- end }}
-)
+);
 
 {{ end -}}
