@@ -1,5 +1,6 @@
 {
   "name": "store_sales",
+  "partitioned": true,
   "columns": [
     {
       "name": "ss_sold_date_sk",

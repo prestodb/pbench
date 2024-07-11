@@ -1,5 +1,6 @@
 {
   "name": "web_sales",
+  "partitioned": true,
   "columns": [
     {
       "name": "ws_sold_date_sk",

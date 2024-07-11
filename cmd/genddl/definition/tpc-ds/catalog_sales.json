@@ -1,5 +1,6 @@
 {
   "name": "catalog_sales",
+  "partitioned": true,
   "columns": [
     {
       "name": "cs_sold_date_sk",

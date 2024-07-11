@@ -1,10 +1,10 @@
-SET SESSION iceberg.compression_codec='ZSTD';
+SET SESSION iceberg.compression_codec='NONE';
 SET SESSION query_max_execution_time='12h';
 SET SESSION query_max_run_time='12h';
 
 USE iceberg.tpcds_sf1000_parquet_iceberg;
 
-INSERT INTO call_center 
+INSERT INTO call_center
 SELECT
     cast(cc_call_center_sk as INT),
     cast(cc_call_center_id as VARCHAR(16)),
@@ -39,7 +39,7 @@ SELECT
     cast(cc_tax_percentage as DECIMAL(5,2))
 FROM tpcds.sf1000.call_center;
 
-INSERT INTO catalog_page 
+INSERT INTO catalog_page
 SELECT
     cast(cp_catalog_page_sk as INT),
     cast(cp_catalog_page_id as VARCHAR(16)),
@@ -52,7 +52,7 @@ SELECT
     cast(cp_type as VARCHAR(100))
 FROM tpcds.sf1000.catalog_page;
 
-INSERT INTO catalog_returns 
+INSERT INTO catalog_returns
 SELECT
     cast(cr_returned_date_sk as INT),
     cast(cr_returned_time_sk as INT),
@@ -83,7 +83,7 @@ SELECT
     cast(cr_net_loss as DECIMAL(7,2))
 FROM tpcds.sf1000.catalog_returns;
 
-INSERT INTO catalog_sales 
+INSERT INTO catalog_sales
 SELECT
     cast(cs_sold_date_sk as INT),
     cast(cs_sold_time_sk as INT),
@@ -121,7 +121,7 @@ SELECT
     cast(cs_net_profit as DECIMAL(7,2))
 FROM tpcds.sf1000.catalog_sales;
 
-INSERT INTO customer 
+INSERT INTO customer
 SELECT
     cast(c_customer_sk as INT),
     cast(c_customer_id as VARCHAR(16)),
@@ -143,7 +143,7 @@ SELECT
     cast(c_last_review_date_sk as INT)
 FROM tpcds.sf1000.customer;
 
-INSERT INTO customer_address 
+INSERT INTO customer_address
 SELECT
     cast(ca_address_sk as INT),
     cast(ca_address_id as VARCHAR(16)),
@@ -160,7 +160,7 @@ SELECT
     cast(ca_location_type as VARCHAR(20))
 FROM tpcds.sf1000.customer_address;
 
-INSERT INTO customer_demographics 
+INSERT INTO customer_demographics
 SELECT
     cast(cd_demo_sk as INT),
     cast(cd_gender as VARCHAR(1)),
@@ -173,7 +173,7 @@ SELECT
     cast(cd_dep_college_count as INT)
 FROM tpcds.sf1000.customer_demographics;
 
-INSERT INTO date_dim 
+INSERT INTO date_dim
 SELECT
     cast(d_date_sk as INT),
     cast(d_date_id as VARCHAR(16)),
@@ -205,7 +205,7 @@ SELECT
     cast(d_current_year as VARCHAR(1))
 FROM tpcds.sf1000.date_dim;
 
-INSERT INTO household_demographics 
+INSERT INTO household_demographics
 SELECT
     cast(hd_demo_sk as INT),
     cast(hd_income_band_sk as INT),
@@ -214,14 +214,14 @@ SELECT
     cast(hd_vehicle_count as INT)
 FROM tpcds.sf1000.household_demographics;
 
-INSERT INTO income_band 
+INSERT INTO income_band
 SELECT
     cast(ib_income_band_sk as INT),
     cast(ib_lower_bound as INT),
     cast(ib_upper_bound as INT)
 FROM tpcds.sf1000.income_band;
 
-INSERT INTO inventory 
+INSERT INTO inventory
 SELECT
     cast(inv_date_sk as INT),
     cast(inv_item_sk as INT),
@@ -229,7 +229,7 @@ SELECT
     cast(inv_quantity_on_hand as INT)
 FROM tpcds.sf1000.inventory;
 
-INSERT INTO item 
+INSERT INTO item
 SELECT
     cast(i_item_sk as INT),
     cast(i_item_id as VARCHAR(16)),
@@ -255,7 +255,7 @@ SELECT
     cast(i_product_name as VARCHAR(50))
 FROM tpcds.sf1000.item;
 
-INSERT INTO promotion 
+INSERT INTO promotion
 SELECT
     cast(p_promo_sk as INT),
     cast(p_promo_id as VARCHAR(16)),
@@ -278,14 +278,14 @@ SELECT
     cast(p_discount_active as VARCHAR(1))
 FROM tpcds.sf1000.promotion;
 
-INSERT INTO reason 
+INSERT INTO reason
 SELECT
     cast(r_reason_sk as INT),
     cast(r_reason_id as VARCHAR(16)),
     cast(r_reason_desc as VARCHAR(100))
 FROM tpcds.sf1000.reason;
 
-INSERT INTO ship_mode 
+INSERT INTO ship_mode
 SELECT
     cast(sm_ship_mode_sk as INT),
     cast(sm_ship_mode_id as VARCHAR(16)),
@@ -295,7 +295,7 @@ SELECT
     cast(sm_contract as VARCHAR(20))
 FROM tpcds.sf1000.ship_mode;
 
-INSERT INTO store 
+INSERT INTO store
 SELECT
     cast(s_store_sk as INT),
     cast(s_store_id as VARCHAR(16)),
@@ -328,7 +328,7 @@ SELECT
     cast(s_tax_precentage as DECIMAL(5,2))
 FROM tpcds.sf1000.store;
 
-INSERT INTO store_returns 
+INSERT INTO store_returns
 SELECT
     cast(sr_returned_date_sk as INT),
     cast(sr_return_time_sk as INT),
@@ -352,7 +352,7 @@ SELECT
     cast(sr_net_loss as DECIMAL(7,2))
 FROM tpcds.sf1000.store_returns;
 
-INSERT INTO store_sales 
+INSERT INTO store_sales
 SELECT
     cast(ss_sold_date_sk as INT),
     cast(ss_sold_time_sk as INT),
@@ -379,7 +379,7 @@ SELECT
     cast(ss_net_profit as DECIMAL(7,2))
 FROM tpcds.sf1000.store_sales;
 
-INSERT INTO time_dim 
+INSERT INTO time_dim
 SELECT
     cast(t_time_sk as INT),
     cast(t_time_id as VARCHAR(16)),
@@ -393,7 +393,7 @@ SELECT
     cast(t_meal_time as VARCHAR(20))
 FROM tpcds.sf1000.time_dim;
 
-INSERT INTO warehouse 
+INSERT INTO warehouse
 SELECT
     cast(w_warehouse_sk as INT),
     cast(w_warehouse_id as VARCHAR(16)),
@@ -411,7 +411,7 @@ SELECT
     cast(w_gmt_offset as DECIMAL(5,2))
 FROM tpcds.sf1000.warehouse;
 
-INSERT INTO web_page 
+INSERT INTO web_page
 SELECT
     cast(wp_web_page_sk as INT),
     cast(wp_web_page_id as VARCHAR(16)),
@@ -429,7 +429,7 @@ SELECT
     cast(wp_max_ad_count as INT)
 FROM tpcds.sf1000.web_page;
 
-INSERT INTO web_returns 
+INSERT INTO web_returns
 SELECT
     cast(wr_returned_date_sk as INT),
     cast(wr_returned_time_sk as INT),
@@ -457,7 +457,7 @@ SELECT
     cast(wr_net_loss as DECIMAL(7,2))
 FROM tpcds.sf1000.web_returns;
 
-INSERT INTO web_sales 
+INSERT INTO web_sales
 SELECT
     cast(ws_sold_date_sk as INT),
     cast(ws_sold_time_sk as INT),
@@ -495,7 +495,7 @@ SELECT
     cast(ws_net_profit as DECIMAL(7,2))
 FROM tpcds.sf1000.web_sales;
 
-INSERT INTO web_site 
+INSERT INTO web_site
 SELECT
     cast(web_site_sk as INT),
     cast(web_site_id as VARCHAR(16)),

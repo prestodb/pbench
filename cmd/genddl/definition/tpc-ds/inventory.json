@@ -1,5 +1,6 @@
 {
   "name": "inventory",
+  "partitioned": true,
   "columns": [
     {
       "name": "inv_date_sk",

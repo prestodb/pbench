@@ -4,7 +4,7 @@ SET SESSION query_max_run_time='12h';
 
 USE iceberg.tpcds_sf1000_parquet_partitioned_iceberg;
 
-INSERT INTO catalog_sales 
+INSERT INTO catalog_sales
 SELECT
     cast(cs_sold_time_sk as INT),
     cast(cs_ship_date_sk as INT),
@@ -42,7 +42,7 @@ SELECT
     cast(cs_sold_date_sk as INT)
 FROM tpcds.sf1000.catalog_sales;
 
-INSERT INTO inventory 
+INSERT INTO inventory
 SELECT
     cast(inv_item_sk as INT),
     cast(inv_warehouse_sk as INT),
@@ -50,7 +50,7 @@ SELECT
     cast(inv_date_sk as INT)
 FROM tpcds.sf1000.inventory;
 
-INSERT INTO store_sales 
+INSERT INTO store_sales
 SELECT
     cast(ss_sold_time_sk as INT),
     cast(ss_item_sk as INT),
@@ -77,7 +77,7 @@ SELECT
     cast(ss_sold_date_sk as INT)
 FROM tpcds.sf1000.store_sales;
 
-INSERT INTO web_sales 
+INSERT INTO web_sales
 SELECT
     cast(ws_sold_time_sk as INT),
     cast(ws_ship_date_sk as INT),
