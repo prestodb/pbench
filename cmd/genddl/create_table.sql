@@ -47,5 +47,27 @@ WITH (
     external_location = 's3a://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/'
     {{- end }}
 );
+{{- if not $.Iceberg }}
+{{- if and .Partitioned $.Partitioned }}
 
-{{ end -}}
+-- aws s3 mv --recursive s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=null/ s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=__HIVE_DEFAULT_PARTITION__/
+
+CALL system.sync_partition_metadata('{{ $.IcebergLocationName }}', '{{ .Name }}', 'FULL');
+{{- end }}
+{{- end }}
+
+{{ end }}
+{{- if not .Iceberg }}
+{{- if .Partitioned }}
+{{- range .Tables }}
+ANALYZE {{ .Name }};
+{{- end }}
+{{- end }}
+{{- end }}
+{{ range .Tables }}
+{{- if not .Iceberg }}
+{{- if .Partitioned }}
+-- aws s3 cp --recursive s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=__HIVE_DEFAULT_PARTITION__/ s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=null/
+{{- end }}
+{{- end }}
+{{- end }}
