@@ -138,10 +138,6 @@ WITH (
     partitioned_by = array['cs_sold_date_sk']
 );
 
--- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/catalog_sales/data/cs_sold_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/catalog_sales/data/cs_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
-
-CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'catalog_sales', 'FULL');
-
 CREATE TABLE IF NOT EXISTS customer (
     c_customer_sk INT,
     c_customer_id VARCHAR(16),
@@ -270,10 +266,6 @@ WITH (
     format = 'PARQUET',
     partitioned_by = array['inv_date_sk']
 );
-
--- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/inventory/data/inv_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/inventory/data/inv_date_sk=__HIVE_DEFAULT_PARTITION__/
-
-CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'inventory', 'FULL');
 
 CREATE TABLE IF NOT EXISTS item (
     i_item_sk INT,
@@ -446,10 +438,6 @@ WITH (
     partitioned_by = array['ss_sold_date_sk']
 );
 
--- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/store_sales/data/ss_sold_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/store_sales/data/ss_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
-
-CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'store_sales', 'FULL');
-
 CREATE TABLE IF NOT EXISTS time_dim (
     t_time_sk INT,
     t_time_id VARCHAR(16),
@@ -581,10 +569,6 @@ WITH (
     partitioned_by = array['ws_sold_date_sk']
 );
 
--- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_sales/data/ws_sold_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_sales/data/ws_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
-
-CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'web_sales', 'FULL');
-
 CREATE TABLE IF NOT EXISTS web_site (
     web_site_sk INT,
     web_site_id VARCHAR(16),
@@ -618,6 +602,15 @@ WITH (
     external_location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_site/data/'
 );
 
+-- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/catalog_sales/data/cs_sold_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/catalog_sales/data/cs_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/inventory/data/inv_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/inventory/data/inv_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/store_sales/data/ss_sold_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/store_sales/data/ss_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+-- aws s3 mv --recursive s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_sales/data/ws_sold_date_sk=null/ s3://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_sales/data/ws_sold_date_sk=__HIVE_DEFAULT_PARTITION__/
+
+CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'catalog_sales', 'FULL');
+CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'inventory', 'FULL');
+CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'store_sales', 'FULL');
+CALL system.sync_partition_metadata('tpcds-sf1000-parquet-iceberg', 'web_sales', 'FULL');
 
 ANALYZE call_center;
 ANALYZE catalog_page;
