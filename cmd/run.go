@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"os"
 	"pbench/cmd/run"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 // runCmd represents the run command
