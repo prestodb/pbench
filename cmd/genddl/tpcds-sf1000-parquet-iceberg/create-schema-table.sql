@@ -602,4 +602,3 @@ WITH (
     location = 's3a://presto-workload-v2/tpcds-sf1000-parquet-iceberg/web_site'
 );
 
-
