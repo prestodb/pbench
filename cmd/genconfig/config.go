@@ -12,6 +12,7 @@ type ClusterConfig struct {
 	VCPUPerWorker                 uint                 `json:"vcpu_per_worker"`
 	SpillEnabled                  bool                 `json:"spill_enabled,omitempty"`
 	SsdCacheSize                  uint                 `json:"ssd_cache_size,omitempty"`
+	RaptorXCacheEnabled           bool                 `json:"raptorx_cache_enabled,omitempty"`
 	GeneratorParameters           *GeneratorParameters `json:"generator_parameters,omitempty"`
 	ContainerMemoryGb             uint                 `json:"-"`
 	HeadroomGb                    uint                 `json:"-"`

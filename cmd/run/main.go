@@ -32,6 +32,9 @@ func Run(_ *cobra.Command, args []string) {
 		log.Fatal().Err(parseErr).Str("server_url", PrestoFlags.ServerUrl).Msg("failed to parse server URL")
 	}
 	utils.ExpandHomeDirectory(&OutputPath)
+	utils.ExpandHomeDirectory(&InfluxCfgPath)
+	utils.ExpandHomeDirectory(&MySQLCfgPath)
+	utils.ExpandHomeDirectory(&PulumiCfgPath)
 	mainStage := &stage.Stage{
 		States: &stage.SharedStageStates{
 			RunName:      Name,
