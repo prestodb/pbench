@@ -128,7 +128,7 @@ func TestShowcase(t *testing.T) {
 }
 
 func (s *Schema) shouldGenInsert() bool {
-	if !s.Iceberg && !s.Partitioned {
+	if !s.Iceberg {
 		return false
 	}
 	return true

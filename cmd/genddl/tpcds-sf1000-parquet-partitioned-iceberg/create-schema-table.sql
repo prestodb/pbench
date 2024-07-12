@@ -153,3 +153,4 @@ WITH (
     partitioning = array['ws_sold_date_sk']
 );
 
+
