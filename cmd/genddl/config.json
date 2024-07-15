@@ -3,5 +3,5 @@
   "file_format": "parquet",
   "iceberg": false,
   "compression_method": "uncompressed",
-  "partitioned": true
+  "partitioned": false
 }
