@@ -2,14 +2,14 @@ package genddl
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
+	"fmt"
+	"github.com/spf13/cobra"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"pbench/log"
 	"pbench/utils"
 	"strings"
-	"testing"
 	"text/template"
 )
 
@@ -49,8 +49,14 @@ type RegisterTable struct {
 	ExternalLocation *string
 }
 
-func TestShowcase(t *testing.T) {
-	content, err := os.ReadFile("./config.json")
+func Run(_ *cobra.Command, args []string) {
+	pathArg := args[0]
+	absPath, absErr := filepath.Abs(pathArg)
+	if absErr != nil {
+		log.Fatal().Err(absErr).Msg("Error getting absolute path")
+	}
+
+	content, err := os.ReadFile(absPath)
 	if err != nil {
 		log.Err(err).Send()
 	}
@@ -64,11 +70,16 @@ func TestShowcase(t *testing.T) {
 	}
 
 	externalLoc := schema.getNonPartLocationName()
-	currDir := "./definition/tpc-ds"
+	wd, wdErr := os.Getwd()
+	if wdErr != nil {
+		log.Fatal().Err(err).Msg("Failed to get working directory")
+	}
+	genDdlDir := wd + "/cmd/genddl"
+	defDir := genDdlDir + "/definition/tpc-ds"
 
-	_ = filepath.Walk(currDir, func(path string, info fs.FileInfo, err error) error {
+	_ = filepath.Walk(defDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
-			log.Error().Err(err).Send()
+			log.Fatal().Err(err).Send()
 			return err
 		}
 		if info.IsDir() {
@@ -76,13 +87,16 @@ func TestShowcase(t *testing.T) {
 		}
 
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".json") {
-			if f, err := os.ReadFile(currDir + "/" + info.Name()); err != nil {
-				if !assert.Nil(t, err) {
-					t.FailNow()
+			if f, readErr := os.ReadFile(defDir + "/" + info.Name()); err != nil {
+				if readErr != nil {
+					log.Fatal().Err(readErr).Str("file", info.Name()).Msg("Failed to read file")
 				}
 			} else {
 				tbl := new(Table)
-				assert.Nil(t, json.Unmarshal(f, tbl))
+				umErr := json.Unmarshal(f, tbl)
+				if umErr != nil {
+					log.Fatal().Err(umErr).Str("file", info.Name()).Msg("Failed to unmarshal file to type Table")
+				}
 				tbl.initIsVarchar() // Populates the IsVarchar var for all columns
 
 				if isRegisterTable(tbl, &schema) {
@@ -100,31 +114,90 @@ func TestShowcase(t *testing.T) {
 				}
 			}
 
-			outputDir := filepath.Join(".", schema.LocationName)
+			outputDir := filepath.Join(genDdlDir, "out")
+			cleanErr := cleanOutputDir(outputDir)
+			if cleanErr != nil {
+				log.Warn().Err(cleanErr).Msg("Error cleaning output dir")
+			}
+			// Generate the output directory
 			mkErr := os.MkdirAll(outputDir, os.ModePerm)
-			assert.Nil(t, mkErr)
+			if mkErr != nil {
+				log.Fatal().Err(mkErr).Str("path", outputDir).Msg("Failed to make output directory")
+			}
 
-			templateBytes, readErr := os.ReadFile("create_table.sql")
-			assert.Nil(t, readErr)
-			tmpl, err := template.New("a name").Parse(string(templateBytes))
-			assert.Nil(t, err)
-			f, err := os.OpenFile(outputDir+"/create-schema-table.sql", utils.OpenNewFileFlags, 0644)
-			err = tmpl.Execute(f, schema)
+			generateCreateTable(&schema, outputDir, genDdlDir)
 
 			if schema.shouldGenInsert() {
-				templateBytes2, readErr2 := os.ReadFile("insert_table.sql")
-				assert.Nil(t, readErr2)
-				tmpl2, err2 := template.New("a name2").Parse(string(templateBytes2))
-				assert.Nil(t, err2)
-				f2, err2 := os.OpenFile(outputDir+"/insert-table.sql", utils.OpenNewFileFlags, 0644)
-
-				err2 = tmpl2.Execute(f2, schema)
+				generateInsertTable(&schema, outputDir, genDdlDir)
 			}
 		}
 
 		return nil
 	})
 
+}
+
+func generateCreateTable(schema *Schema, outputDir string, currDir string) {
+	templateBytes, readErr := os.ReadFile(currDir + "/create_table.sql")
+	if readErr != nil {
+		log.Fatal().Err(readErr).Str("file", "create_table.sql").Msg("Failed to read file")
+	}
+
+	tmpl, parseErr := template.New("a name").Parse(string(templateBytes))
+	if parseErr != nil {
+		log.Fatal().Err(parseErr).Msg("Failed to parse text template create_table.sql")
+	}
+
+	f, openErr := os.OpenFile(outputDir+"/create-schema-table.sql", utils.OpenNewFileFlags, 0644)
+	if openErr != nil {
+		log.Fatal().Err(openErr).Msg("Failed to open output file create-schema-table.sql")
+	}
+
+	exErr := tmpl.Execute(f, schema)
+	if exErr != nil {
+		log.Fatal().Err(exErr).Msg("Failed to execute template")
+	}
+}
+
+func generateInsertTable(schema *Schema, outputDir string, currDir string) {
+	templateBytes, readErr := os.ReadFile(currDir + "/insert_table.sql")
+	if readErr != nil {
+		log.Fatal().Err(readErr).Msg("Failed to read file insert_table.sql")
+	}
+
+	tmpl, parseErr := template.New("a name2").Parse(string(templateBytes))
+	if parseErr != nil {
+		log.Fatal().Err(parseErr).Msg("Failed to parse text template insert_table.sql")
+	}
+
+	f2, openErr := os.OpenFile(outputDir+"/insert-table.sql", utils.OpenNewFileFlags, 0644)
+	if openErr != nil {
+		log.Fatal().Err(openErr).Msg("Failed to open output file insert-table.sql")
+	}
+
+	exErr := tmpl.Execute(f2, *schema)
+	if exErr != nil {
+		log.Fatal().Err(exErr).Msg("Failed to execute template")
+	}
+}
+
+func cleanOutputDir(dir string) error {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			filePath := filepath.Join(dir, file.Name())
+
+			err := os.Remove(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to delete file %s: %v", filePath, err)
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Schema) shouldGenInsert() bool {
