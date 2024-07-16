@@ -1,3 +1,4 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
 {{ range $key, $value := .SessionVariables -}}
 SET SESSION {{ $key }}='{{ $value }}';
 {{ end }}

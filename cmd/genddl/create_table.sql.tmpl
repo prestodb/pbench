@@ -1,3 +1,4 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
 {{ range $key, $value := .SessionVariables -}}
 SET SESSION {{ $key }}='{{ $value }}';
 {{ end }}
@@ -47,33 +48,3 @@ WITH (
     {{- end }}
 );
 {{ end }}
-
-{{- if not .Iceberg }}
-{{- range .Tables }}
-{{- if and .Partitioned $.Partitioned }}
--- aws s3 mv --recursive s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=null/ s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=__HIVE_DEFAULT_PARTITION__/
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- if and .Partitioned (not .Iceberg) }}
-{{ range .Tables }}
-{{- if .Partitioned }}
-CALL system.sync_partition_metadata('{{ $.IcebergLocationName }}', '{{ .Name }}', 'FULL');
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{- if and .Partitioned (not .Iceberg) }}
-{{ range .Tables }}
-ANALYZE {{ .Name }};
-{{- end }}
-{{- end }}
-
-{{- if and .Partitioned (not .Iceberg) }}
-{{ range .Tables }}
-{{- if .Partitioned }}
--- aws s3 cp --recursive s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=__HIVE_DEFAULT_PARTITION__/ s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=null/
-{{- end }}
-{{- end }}
-{{- end }}
