@@ -1,0 +1,6 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+{{- range .Tables }}
+{{- if and .Partitioned $.Partitioned -}}
+aws s3 mv --recursive s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=null/ s3://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/{{ .LastColumn.Name }}=__HIVE_DEFAULT_PARTITION__/
+{{ end }}
+{{- end -}}

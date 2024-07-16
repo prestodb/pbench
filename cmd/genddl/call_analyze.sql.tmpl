@@ -1,0 +1,9 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+{{ range .Tables }}
+{{- if .Partitioned -}}
+CALL system.sync_partition_metadata('{{ $.IcebergLocationName }}', '{{ .Name }}', 'FULL');
+{{ end }}
+{{- end }}
+{{ range .Tables -}}
+ANALYZE {{ .Name }};
+{{ end -}}

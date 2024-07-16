@@ -140,53 +140,77 @@ func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outp
 		return nil
 	})
 
-	generateCreateTable(schema, outputDir, genDdlDir, *step)
+	generateCreateTable(schema, genDdlDir, outputDir, *step)
 	*step++
 
 	if schema.shouldGenInsert() {
-		generateInsertTable(schema, outputDir, genDdlDir, *step)
+		generateInsertTable(schema, genDdlDir, outputDir, *step)
 		*step++
 	}
 }
 
-func generateCreateTable(schema *Schema, outputDir string, currDir string, step int) {
-	templateBytes, readErr := os.ReadFile(filepath.Join(currDir, "create_table.sql"))
-	if readErr != nil {
-		log.Fatal().Err(readErr).Str("file", "create_table.sql").Msg("Failed to read file")
-	}
+func generateCreateTable(schema *Schema, currDir string, outputDir string, step int) {
+	genSubSteps := !schema.Iceberg && schema.Partitioned
 
-	tmpl, parseErr := template.New("a name").Parse(string(templateBytes))
-	if parseErr != nil {
-		log.Fatal().Err(parseErr).Msg("Failed to parse text template create_table.sql")
+	tName := "create_table.sql.tmpl"
+	var fName string
+	if genSubSteps {
+		// If there are sub-tasks, prefix the first output file with step a
+		fName = strconv.Itoa(step+1) + "a-create-" + schema.LocationName + ".sql"
+	} else {
+		fName = strconv.Itoa(step+1) + "-create-" + schema.LocationName + ".sql"
 	}
+	parseExecTemplate(schema, tName, fName, currDir, outputDir)
 
-	fName := strconv.Itoa(step+1) + "-create-" + schema.LocationName + ".sql"
-	f, openErr := os.OpenFile(filepath.Join(outputDir, fName), utils.OpenNewFileFlags, 0644)
-	if openErr != nil {
-		log.Fatal().Err(openErr).Msg("Failed to open output file create-schema-table.sql")
-	}
-
-	exErr := tmpl.Execute(f, schema)
-	if exErr != nil {
-		log.Fatal().Err(exErr).Msg("Failed to execute template")
+	if genSubSteps {
+		generateAwsS3Mv(schema, currDir, outputDir, step)     // Generate step b
+		generateCallAnalyze(schema, currDir, outputDir, step) // Generate step c
+		generateAwsS3Cp(schema, currDir, outputDir, step)     // Generate step d
 	}
 }
 
-func generateInsertTable(schema *Schema, outputDir string, currDir string, step int) {
-	templateBytes, readErr := os.ReadFile(filepath.Join(currDir, "insert_table.sql"))
-	if readErr != nil {
-		log.Fatal().Err(readErr).Msg("Failed to read file insert_table.sql")
-	}
-
-	tmpl, parseErr := template.New("a name2").Parse(string(templateBytes))
-	if parseErr != nil {
-		log.Fatal().Err(parseErr).Msg("Failed to parse text template insert_table.sql")
-	}
-
+func generateInsertTable(schema *Schema, currDir string, outputDir string, step int) {
+	tName := "insert_table.sql.tmpl"
 	fName := strconv.Itoa(step+1) + "-insert-" + schema.LocationName + ".sql"
+
+	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+}
+
+func generateAwsS3Mv(schema *Schema, currDir string, outputDir string, step int) {
+	tName := "aws_s3_mv.sh.tmpl"
+	fName := strconv.Itoa(step+1) + "b-s3-mv-" + schema.LocationName + ".sh"
+
+	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+}
+
+func generateCallAnalyze(schema *Schema, currDir string, outputDir string, step int) {
+	tName := "call_analyze.sql.tmpl"
+	fName := strconv.Itoa(step+1) + "c-call-analyze-" + schema.LocationName + ".sql"
+
+	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+}
+
+func generateAwsS3Cp(schema *Schema, currDir string, outputDir string, step int) {
+	tName := "aws_s3_cp.sh.tmpl"
+	fName := strconv.Itoa(step+1) + "d-s3-cp-" + schema.LocationName + ".sh"
+
+	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+}
+
+func parseExecTemplate(schema *Schema, tName string, fName string, currDir string, outputDir string) {
+	templateBytes, readErr := os.ReadFile(filepath.Join(currDir, tName))
+	if readErr != nil {
+		log.Fatal().Err(readErr).Str("file", tName).Msg("Failed to read file")
+	}
+
+	tmpl, parseErr := template.New(tName).Parse(string(templateBytes))
+	if parseErr != nil {
+		log.Fatal().Err(parseErr).Str("file", tName).Msg("Failed to parse text template")
+	}
+
 	f, openErr := os.OpenFile(filepath.Join(outputDir, fName), utils.OpenNewFileFlags, 0644)
 	if openErr != nil {
-		log.Fatal().Err(openErr).Msg("Failed to open output file insert-table.sql")
+		log.Fatal().Err(openErr).Str("file", fName).Msg("Failed to open output file")
 	}
 
 	exErr := tmpl.Execute(f, *schema)
