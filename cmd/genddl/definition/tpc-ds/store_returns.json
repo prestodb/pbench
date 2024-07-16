@@ -1,9 +1,11 @@
 {
   "name": "store_returns",
+  "partitioned_min_scale": 10000,
   "columns": [
     {
       "name": "sr_returned_date_sk",
-      "type": "INT"
+      "type": "INT",
+      "partition_key": true
     },
     {
       "name": "sr_return_time_sk",

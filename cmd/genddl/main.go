@@ -39,10 +39,11 @@ type Column struct {
 }
 
 type Table struct {
-	Name        string    `json:"name"`
-	Partitioned bool      `json:"partitioned"`
-	Columns     []*Column `json:"columns"`
-	LastColumn  *Column
+	Name                string    `json:"name"`
+	Partitioned         bool      `json:"partitioned"`
+	PartitionedMinScale int       `json:"partitioned_min_scale"`
+	Columns             []*Column `json:"columns"`
+	LastColumn          *Column
 }
 
 type RegisterTable struct {
@@ -116,6 +117,10 @@ func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outp
 				log.Fatal().Err(umErr).Str("file", info.Name()).Msg("Failed to unmarshal file to type Table")
 			}
 			tbl.initIsVarchar() // Populates the IsVarchar var for all columns
+			// Set partitioned if above scale factor min
+			if tbl.isPartitioned(schema.intScaleFactor()) {
+				tbl.Partitioned = true
+			}
 
 			if isRegisterTable(tbl, schema) {
 				var registerTable RegisterTable
@@ -245,24 +250,20 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 		return schemas, err
 	}
 
-	for i := 0; i < 4; i++ {
-		s := base // Copy base
+	combinations := []struct {
+		Iceberg     bool
+		Partitioned bool
+	}{
+		{true, false},
+		{true, true},
+		{false, false},
+		{false, true},
+	}
 
-		// Apply iceberg/partitioned combination
-		switch i {
-		case 0:
-			s.Iceberg = true
-			s.Partitioned = false
-		case 1:
-			s.Iceberg = true
-			s.Partitioned = true
-		case 2:
-			s.Iceberg = false
-			s.Partitioned = false
-		case 3:
-			s.Iceberg = false
-			s.Partitioned = true
-		}
+	for _, c := range combinations {
+		s := base // Copy base
+		s.Iceberg = c.Iceberg
+		s.Partitioned = c.Partitioned
 
 		if s.SchemaName == "" || s.LocationName == "" {
 			s.setNames()
@@ -305,7 +306,7 @@ func (t *Table) reorderColumns(s *Schema) {
 
 	// Find the index of the first Column with PartitionKey=true
 	for i, col := range t.Columns {
-		if col.PartitionKey != nil && *col.PartitionKey && s.Partitioned {
+		if col.PartitionKey != nil && *col.PartitionKey && s.Partitioned && t.Partitioned {
 			partitionIndex = i
 			break
 		}
@@ -366,4 +367,28 @@ func (s *Schema) getNonPartLocationName() string {
 
 func toHyphen(s string) string {
 	return strings.Replace(s, "_", "-", 1)
+}
+
+func (t *Table) isPartitioned(sf int) bool {
+	if t.PartitionedMinScale > 0 {
+		return sf >= t.PartitionedMinScale
+	}
+	return t.Partitioned
+}
+
+func (s *Schema) intScaleFactor() int {
+	if strings.HasSuffix(s.ScaleFactor, "k") {
+		numStr := strings.TrimSuffix(s.ScaleFactor, "k")
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			return 0
+		}
+		// Multiply by 1000
+		return num * 1000
+	}
+	num, err := strconv.Atoi(s.ScaleFactor)
+	if err != nil {
+		return 0
+	}
+	return num
 }

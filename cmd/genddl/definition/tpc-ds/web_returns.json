@@ -1,9 +1,11 @@
 {
   "name": "web_returns",
+  "partitioned_min_scale": 10000,
   "columns": [
     {
       "name": "wr_returned_date_sk",
-      "type": "INT"
+      "type": "INT",
+      "partition_key": true
     },
     {
       "name": "wr_returned_time_sk",
