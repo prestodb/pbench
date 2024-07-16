@@ -1,7 +1,5 @@
 {
   "scale_factor": "1000",
   "file_format": "parquet",
-  "iceberg": false,
-  "compression_method": "uncompressed",
-  "partitioned": false
+  "compression_method": "uncompressed"
 }

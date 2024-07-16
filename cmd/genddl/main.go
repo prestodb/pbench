@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"pbench/log"
 	"pbench/utils"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -61,15 +62,12 @@ func Run(_ *cobra.Command, args []string) {
 		log.Err(err).Send()
 	}
 
-	// Now let's unmarshall the data into `payload`
-	var schema Schema
-	err = schema.unmarshalJson(content)
-	if err != nil {
+	schemas, loadErr := loadSchemas(content)
+	if loadErr != nil {
 		log.Err(err).Send()
 		return
 	}
 
-	externalLoc := schema.getNonPartLocationName()
 	wd, wdErr := os.Getwd()
 	if wdErr != nil {
 		log.Fatal().Err(err).Msg("Failed to get working directory")
@@ -77,68 +75,77 @@ func Run(_ *cobra.Command, args []string) {
 	genDdlDir := wd + "/cmd/genddl"
 	defDir := genDdlDir + "/definition/tpc-ds"
 
+	outputDir := filepath.Join(genDdlDir, "out")
+	cleanErr := cleanOutputDir(outputDir)
+	if cleanErr != nil {
+		log.Warn().Err(cleanErr).Msg("Error cleaning output dir")
+	}
+	// Generate the output directory
+	mkErr := os.MkdirAll(outputDir, os.ModePerm)
+	if mkErr != nil {
+		log.Fatal().Err(mkErr).Str("path", outputDir).Msg("Failed to make output directory")
+	}
+
+	step := 0
+	for _, schema := range schemas {
+		externalLoc := schema.getNonPartLocationName()
+
+		generateSchemaFromDef(schema, defDir, genDdlDir, outputDir, &externalLoc, &step)
+	}
+}
+
+func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outputDir string, externalLoc *string, step *int) {
 	_ = filepath.Walk(defDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			log.Fatal().Err(err).Send()
 			return err
 		}
-		if info.IsDir() {
+
+		if info.IsDir() || !strings.HasSuffix(info.Name(), ".json") {
 			return nil
 		}
 
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".json") {
-			if f, readErr := os.ReadFile(defDir + "/" + info.Name()); err != nil {
-				if readErr != nil {
-					log.Fatal().Err(readErr).Str("file", info.Name()).Msg("Failed to read file")
-				}
+		if f, readErr := os.ReadFile(defDir + "/" + info.Name()); err != nil {
+			if readErr != nil {
+				log.Fatal().Err(readErr).Str("file", info.Name()).Msg("Failed to read file")
+			}
+		} else {
+			tbl := new(Table)
+			umErr := json.Unmarshal(f, tbl)
+			if umErr != nil {
+				log.Fatal().Err(umErr).Str("file", info.Name()).Msg("Failed to unmarshal file to type Table")
+			}
+			tbl.initIsVarchar() // Populates the IsVarchar var for all columns
+
+			if isRegisterTable(tbl, schema) {
+				var registerTable RegisterTable
+				registerTable.TableName = tbl.Name
+				registerTable.ExternalLocation = externalLoc
+				schema.RegisterTables = append(schema.RegisterTables, &registerTable)
 			} else {
-				tbl := new(Table)
-				umErr := json.Unmarshal(f, tbl)
-				if umErr != nil {
-					log.Fatal().Err(umErr).Str("file", info.Name()).Msg("Failed to unmarshal file to type Table")
-				}
-				tbl.initIsVarchar() // Populates the IsVarchar var for all columns
-
-				if isRegisterTable(tbl, &schema) {
-					var registerTable RegisterTable
-					registerTable.TableName = tbl.Name
-					registerTable.ExternalLocation = &externalLoc
-					schema.RegisterTables = append(schema.RegisterTables, &registerTable)
-				} else {
-					tbl.reorderColumns(&schema) // Move PartitionKey columns to the bottom
-					tbl.LastColumn = tbl.Columns[len(tbl.Columns)-1]
-					schema.Tables[tbl.Name] = tbl
-				}
-				if isInsertTable(tbl, &schema) {
-					schema.InsertTables[tbl.Name] = tbl
-				}
+				tbl.reorderColumns(schema) // Move PartitionKey columns to the bottom
+				tbl.LastColumn = tbl.Columns[len(tbl.Columns)-1]
+				schema.Tables[tbl.Name] = tbl
 			}
-
-			outputDir := filepath.Join(genDdlDir, "out")
-			cleanErr := cleanOutputDir(outputDir)
-			if cleanErr != nil {
-				log.Warn().Err(cleanErr).Msg("Error cleaning output dir")
-			}
-			// Generate the output directory
-			mkErr := os.MkdirAll(outputDir, os.ModePerm)
-			if mkErr != nil {
-				log.Fatal().Err(mkErr).Str("path", outputDir).Msg("Failed to make output directory")
-			}
-
-			generateCreateTable(&schema, outputDir, genDdlDir)
-
-			if schema.shouldGenInsert() {
-				generateInsertTable(&schema, outputDir, genDdlDir)
+			if isInsertTable(tbl, schema) {
+				schema.InsertTables[tbl.Name] = tbl
 			}
 		}
 
 		return nil
 	})
 
+	generateCreateTable(schema, outputDir, genDdlDir, *step)
+	*step++
+
+	if schema.shouldGenInsert() {
+		generateInsertTable(schema, outputDir, genDdlDir, *step)
+		*step++
+	}
 }
 
-func generateCreateTable(schema *Schema, outputDir string, currDir string) {
-	templateBytes, readErr := os.ReadFile(currDir + "/create_table.sql")
+func generateCreateTable(schema *Schema, outputDir string, currDir string, step int) {
+	templateBytes, readErr := os.ReadFile(filepath.Join(currDir, "create_table.sql"))
 	if readErr != nil {
 		log.Fatal().Err(readErr).Str("file", "create_table.sql").Msg("Failed to read file")
 	}
@@ -148,7 +155,8 @@ func generateCreateTable(schema *Schema, outputDir string, currDir string) {
 		log.Fatal().Err(parseErr).Msg("Failed to parse text template create_table.sql")
 	}
 
-	f, openErr := os.OpenFile(outputDir+"/create-schema-table.sql", utils.OpenNewFileFlags, 0644)
+	fName := strconv.Itoa(step+1) + "-create-" + schema.LocationName + ".sql"
+	f, openErr := os.OpenFile(filepath.Join(outputDir, fName), utils.OpenNewFileFlags, 0644)
 	if openErr != nil {
 		log.Fatal().Err(openErr).Msg("Failed to open output file create-schema-table.sql")
 	}
@@ -159,8 +167,8 @@ func generateCreateTable(schema *Schema, outputDir string, currDir string) {
 	}
 }
 
-func generateInsertTable(schema *Schema, outputDir string, currDir string) {
-	templateBytes, readErr := os.ReadFile(currDir + "/insert_table.sql")
+func generateInsertTable(schema *Schema, outputDir string, currDir string, step int) {
+	templateBytes, readErr := os.ReadFile(filepath.Join(currDir, "insert_table.sql"))
 	if readErr != nil {
 		log.Fatal().Err(readErr).Msg("Failed to read file insert_table.sql")
 	}
@@ -170,12 +178,13 @@ func generateInsertTable(schema *Schema, outputDir string, currDir string) {
 		log.Fatal().Err(parseErr).Msg("Failed to parse text template insert_table.sql")
 	}
 
-	f2, openErr := os.OpenFile(outputDir+"/insert-table.sql", utils.OpenNewFileFlags, 0644)
+	fName := strconv.Itoa(step+1) + "-insert-" + schema.LocationName + ".sql"
+	f, openErr := os.OpenFile(filepath.Join(outputDir, fName), utils.OpenNewFileFlags, 0644)
 	if openErr != nil {
 		log.Fatal().Err(openErr).Msg("Failed to open output file insert-table.sql")
 	}
 
-	exErr := tmpl.Execute(f2, *schema)
+	exErr := tmpl.Execute(f, *schema)
 	if exErr != nil {
 		log.Fatal().Err(exErr).Msg("Failed to execute template")
 	}
@@ -221,33 +230,58 @@ func isInsertTable(table *Table, schema *Schema) bool {
 	return true
 }
 
-func (s *Schema) unmarshalJson(data []byte) error {
+func loadSchemas(data []byte) ([]*Schema, error) {
+	var schemas []*Schema
+	// Load the base schema
+	var base Schema
 	type Alias Schema
 	aux := &struct {
 		*Alias
 	}{
-		Alias: (*Alias)(s),
+		Alias: (*Alias)(&base),
 	}
 
 	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
+		return schemas, err
 	}
 
-	if s.SchemaName == "" || s.LocationName == "" {
-		s.setNames()
-	}
-	if s.Tables == nil {
-		s.Tables = make(map[string]*Table)
-	}
-	if s.InsertTables == nil {
-		s.InsertTables = make(map[string]*Table)
-	}
-	if s.SessionVariables == nil {
-		s.SessionVariables = make(map[string]string)
-	}
-	s.setSessionVars()
+	for i := 0; i < 4; i++ {
+		s := base // Copy base
 
-	return nil
+		// Apply iceberg/partitioned combination
+		switch i {
+		case 0:
+			s.Iceberg = true
+			s.Partitioned = false
+		case 1:
+			s.Iceberg = true
+			s.Partitioned = true
+		case 2:
+			s.Iceberg = false
+			s.Partitioned = false
+		case 3:
+			s.Iceberg = false
+			s.Partitioned = true
+		}
+
+		if s.SchemaName == "" || s.LocationName == "" {
+			s.setNames()
+		}
+		if s.Tables == nil {
+			s.Tables = make(map[string]*Table)
+		}
+		if s.InsertTables == nil {
+			s.InsertTables = make(map[string]*Table)
+		}
+		if s.SessionVariables == nil {
+			s.SessionVariables = make(map[string]string)
+		}
+		s.setSessionVars()
+
+		schemas = append(schemas, &s)
+	}
+
+	return schemas, nil
 }
 
 func (t *Table) initIsVarchar() {
