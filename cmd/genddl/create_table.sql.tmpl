@@ -37,7 +37,8 @@ WITH (
     {{- if $.Iceberg}}
     partitioning = array['{{ .LastColumn.Name }}']
     {{- else if .Partitioned }}
-    partitioned_by = array['{{ .LastColumn.Name }}']
+    partitioned_by = array['{{ .LastColumn.Name }}'],
+    external_location = 's3a://presto-workload-v2/{{ $.PartIcebergName }}/{{ .Name }}/data'
     {{- else }}
     external_location = 's3a://presto-workload-v2/{{ $.IcebergLocationName }}/{{ .Name }}/data/'
     {{- end }}
