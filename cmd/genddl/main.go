@@ -140,6 +140,11 @@ func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outp
 		return nil
 	})
 
+	// sf100 and below don't need any partitioned tables
+	if schema.Partitioned && schema.intScaleFactor() <= 100 {
+		return
+	}
+
 	generateCreateTable(schema, genDdlDir, outputDir, *step)
 	*step++
 
