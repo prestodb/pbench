@@ -1,7 +1,9 @@
 {{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+USE hive.{{ .SchemaName }};
+
 {{ range .Tables }}
 {{- if .Partitioned -}}
-CALL system.sync_partition_metadata('{{ $.IcebergLocationName }}', '{{ .Name }}', 'FULL');
+CALL system.sync_partition_metadata('{{ $.IcebergSchemaName }}', '{{ .Name }}', 'FULL');
 {{ end }}
 {{- end }}
 {{ range .Tables -}}
