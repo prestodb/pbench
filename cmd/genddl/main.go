@@ -24,7 +24,7 @@ type Schema struct {
 	LocationName        string            `json:"location_name"`
 	UncompressedName    string            `json:"uncompressed_name"`
 	IcebergLocationName string            `json:"iceberg_location_name"`
-	IcebergSchemaName   string            `json:"iceberg_schema_name"`
+	PartIcebergName     string            `json:"part_iceberg_name"`
 	RegisterTables      []*RegisterTable  `json:"register_tables"`
 	Tables              map[string]*Table `json:"tables"`
 	InsertTables        map[string]*Table `json:"insert_tables"`
@@ -384,7 +384,7 @@ func (s *Schema) setNames() {
 	s.SchemaName = s.UncompressedName + compression
 	s.LocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg) + toHyphen(compression)
 	s.IcebergLocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + "-iceberg"
-	s.IcebergSchemaName = "tpcds_sf" + s.ScaleFactor + "_" + s.FileFormat + "_iceberg"
+	s.PartIcebergName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + "-iceberg"
 }
 
 func (s *Schema) getNonPartLocationName() string {
