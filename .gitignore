@@ -35,7 +35,3 @@ pbench_*
 
 # genddl output dir
 cmd/genddl/out/
-
-# IntelliJ IDEA config files
-.idea/inspectionProfiles/
-
