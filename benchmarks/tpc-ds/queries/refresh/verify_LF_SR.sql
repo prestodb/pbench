@@ -58,4 +58,4 @@ where
         sr.sr_hdemo_sk  = sr_random.sr_hdemo_sk and
         sr.sr_addr_sk = sr_random.sr_addr_sk and
         sr.sr_store_sk = sr_random.sr_store_sk and
-        sr.sr_reason_sk = sr_random.sr_reason_sk
+        sr.sr_reason_sk = sr_random.sr_reason_sk;

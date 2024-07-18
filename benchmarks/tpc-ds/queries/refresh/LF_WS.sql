@@ -89,4 +89,3 @@ select ws_sold_date_sk,
        cast(ws_net_paid_inc_ship_tax as decimal(7,2)),
        cast(ws_net_profit as decimal(7,2))
 from wsv;
-
