@@ -3,7 +3,7 @@ USE hive.{{ .SchemaName }};
 
 {{ range .Tables }}
 {{- if .Partitioned -}}
-CALL system.sync_partition_metadata('{{ $.IcebergSchemaName }}', '{{ .Name }}', 'FULL');
+CALL system.sync_partition_metadata('{{ $.SchemaName }}', '{{ .Name }}', 'FULL');
 {{ end }}
 {{- end }}
 {{ range .Tables -}}
