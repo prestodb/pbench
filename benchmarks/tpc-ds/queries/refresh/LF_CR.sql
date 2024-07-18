@@ -30,7 +30,7 @@ SELECT d_date_sk                         cr_return_date_sk,
        cret_merchant_credit              cr_merchant_credit,
        cret_return_amt + cret_return_tax + cret_return_fee - cret_refunded_cash-cret_reversed_charge-cret_merchant_credit
            cr_net_loss
-FROM   iceberg.tpcds_sf1_refresh_source_iceberg_corrected.s_catalog_returns_1
+FROM   s_catalog_returns_1
            LEFT OUTER JOIN date_dim
                            ON ( CAST(cret_return_date AS DATE) = d_date )
            LEFT OUTER JOIN time_dim
