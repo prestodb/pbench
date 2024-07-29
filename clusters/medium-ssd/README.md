@@ -1,5 +1,5 @@
 # `medium-ssd` cluster
-r5d.4xlarge (vCPU: 16, Memory: 124 GB) * 8
+r6id.4xlarge (vCPU: 16, Memory: 124 GB) * 8
 
 ### This configuration includes an SSD Cache of 200GB
 ### Global

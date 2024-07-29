@@ -1,8 +1,8 @@
 {
     "cluster_size": "2xlarge",
-    "coordinator_instance_type": "r5.16xlarge",
+    "coordinator_instance_type": "r6i.16xlarge",
     "coordinator_instance_ebs_size": 1024,
-    "worker_instance_type": "r5.16xlarge",
+    "worker_instance_type": "r6i.16xlarge",
     "worker_instance_ebs_size": 1024,
     "number_of_workers": 48,
     "memory_per_node_gb": 490,
