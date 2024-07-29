@@ -49,16 +49,6 @@ type RawPlanWrapper struct {
 	Plan json.RawMessage `json:"plan"`
 }
 
-func selectStats(stats *StageExecutionStats, stageExecutionInfo *StageExecutionInfo) *StageExecutionStats {
-	if stats != nil {
-		return stats
-	}
-	if stageExecutionInfo != nil {
-		return stageExecutionInfo.Stats
-	}
-	return nil
-}
-
 func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[string]RawPlanWrapper) error {
 	if s == nil {
 		return nil
@@ -69,7 +59,10 @@ func (s *StageInfo) PrepareForInsert(flattened *[]*StageInfo, queryPlan map[stri
 	}
 	// Trino plan does not have a last attempt execution info, unlike Presto
 	// https://github.com/prestodb/presto/commit/009a234eac113194396d858df69c23a4c578e3f0#diff-d1065b7bf35e2a6b74d251e3d7c2a439e3a029057f87c3a166b89074dd58c4ee
-	stats := selectStats(s.TrinoStats, s.LatestAttemptExecutionInfo)
+	stats := s.TrinoStats
+	if stats == nil && s.LatestAttemptExecutionInfo != nil {
+		stats = s.LatestAttemptExecutionInfo.Stats
+	}
 	stats.GcInfo = new(StageGcInfo)
 	if err := json.Unmarshal(*stats.GcInfoJson, stats.GcInfo); err != nil {
 		return err
