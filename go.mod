@@ -6,7 +6,6 @@ require (
 	github.com/alecthomas/participle/v2 v2.1.1
 	github.com/docker/go-units v0.5.0
 	github.com/go-sql-driver/mysql v1.8.1
-	github.com/hexops/gotextdiff v1.0.3
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.32.0

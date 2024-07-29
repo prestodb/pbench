@@ -17,11 +17,11 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
-	returnCode := CompareRun(args)
+	returnCode := compareRun(args)
 	os.Exit(returnCode)
 }
 
-func CompareRun(args []string) int {
+func compareRun(args []string) int {
 	var (
 		err       error
 		fileIdMap map[string]string
@@ -32,6 +32,8 @@ func CompareRun(args []string) int {
 	}
 
 	buildSidePath, probeSidePath := args[0], args[1]
+	utils.ExpandHomeDirectory(&buildSidePath)
+	utils.ExpandHomeDirectory(&probeSidePath)
 	// Build side
 	if fileIdMap, err = buildFileIdMap(buildSidePath); err != nil {
 		log.Fatal().Err(err).Str("build_side_path", buildSidePath).Msg("failed to build file ID map")

@@ -17,17 +17,17 @@ func TestRun(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer os.RemoveAll(outputDir)
 		OutputPath = outputDir
 
 		buildDir := fmt.Sprintf("tests/test_%d_build", i)
 		probeDir := fmt.Sprintf("tests/test_%d_probe", i)
-		returnCode := CompareRun([]string{buildDir, probeDir})
+		returnCode := compareRun([]string{buildDir, probeDir})
 		assert.Equal(t, expectedReturns[i], returnCode, "test_%d failed", i)
+
+		err = os.RemoveAll(outputDir)
+		if err != nil {
+			t.Errorf("Failed to remove output directory %s: %v", outputDir, err)
+		}
 	}
-
-	//returnCode := Compare_Run([]string{buildDir, probeDir})
-
-	//assert.Equal(t, expectedReturns, returnCode)
 
 }
