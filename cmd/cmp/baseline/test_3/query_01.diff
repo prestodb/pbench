@@ -1,0 +1,11 @@
+--- tests/test_3_build/b3_query_01.output	2024-07-29 11:25:15
++++ tests/test_3_probe/p3_query_01.output	2024-07-29 11:25:15
+@@ -11,7 +11,7 @@
+ ["ableoughtpripriantiought"]
+ ["antiantiationationn st"]
+ ["antiantiationbarn st"]
+-["antiantipriantin stought"]
++["antiantipriantin stought d"]
+ ["anticallybareseanti"]
+ ["antin stantiationeseought"]
+ ["antin stbaroughteing"]
