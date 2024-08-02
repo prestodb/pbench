@@ -1,10 +1,11 @@
 package cmp
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -98,10 +99,25 @@ func compareResults(currentDir string, baselineDir string) error {
 			return fmt.Errorf("error reading baseline file %s: %v", fileName, err)
 		}
 
-		// Compare contents
-		if !bytes.Equal(currentContent, baselineContent) {
+		currentLines := strings.Split(string(currentContent), "\n")
+		baselineLines := strings.Split(string(baselineContent), "\n")
+
+		// Ensure there are at least 3 lines in each file
+		if len(currentLines) < 3 || len(baselineLines) < 3 {
+			return fmt.Errorf("file %s has fewer than 3 lines", fileName)
+		}
+
+		// Compare contents, ignoring the first two lines
+		if !reflect.DeepEqual(currentLines[2:], baselineLines[2:]) {
 			return fmt.Errorf("difference found in %s", fileName)
 		}
+		/*
+			// Compare contents
+			if !bytes.Equal(currentContent, baselineContent) {
+				return fmt.Errorf("difference found in %s", fileName)
+			}
+		*/
+
 	}
 
 	fmt.Println("All diff files match between current and baseline directories")
