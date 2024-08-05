@@ -2,6 +2,7 @@ package cmp
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,30 +14,10 @@ func TestRun(t *testing.T) {
 
 	FileIdRegexStr = `.*(query_\d{2})(?:_c0)?\.output`
 
-	execPath, err := os.Executable()
-	fmt.Println(execPath)
-
-	if err != nil {
-		// Handle error
-	}
-	execDir := filepath.Dir(execPath)
-	for i := 0; i <= 5; i++ {
-		outputDir := filepath.Join(execDir, fmt.Sprintf("test_%d_output", i))
-		err := os.Mkdir(outputDir, 0755)
-		if err != nil {
-			// Handle error
-		}
-
-		err = os.RemoveAll(outputDir)
-		if err != nil {
-			// Handle error
-		}
-	}
-
 	for i := 0; i <= 5; i++ {
 		outputDir, err := os.MkdirTemp("tests", fmt.Sprintf("test_%d_output_", i))
-		if err != nil {
-			t.Fatal(err)
+		if !assert.Nil(t, err) {
+			t.FailNow()
 		}
 		OutputPath = outputDir
 
@@ -45,8 +26,8 @@ func TestRun(t *testing.T) {
 		compareRun([]string{buildDir, probeDir})
 
 		err = compareResults(fmt.Sprintf("baseline/test_%d", i), OutputPath)
-		if err != nil {
-			t.Error(err)
+		if !assert.Nil(t, err) {
+			t.FailNow()
 		}
 
 		fmt.Println(os.TempDir())
