@@ -80,10 +80,11 @@ func compareResults(currentDir string, baselineDir string) error {
 			return fmt.Errorf("error reading baseline file %s: %v", fileName, err)
 		}
 
+		// creates slices based on the lines in the diff file
 		currentLines := strings.Split(string(currentContent), "\n")
 		baselineLines := strings.Split(string(baselineContent), "\n")
 
-		// Ensure there are at least 3 lines in each file
+		// Ensure there are at least 3 lines in each file, if not, there is an error
 		if len(currentLines) < 3 || len(baselineLines) < 3 {
 			return fmt.Errorf("file %s has fewer than 3 lines", fileName)
 		}
@@ -92,12 +93,6 @@ func compareResults(currentDir string, baselineDir string) error {
 		if !reflect.DeepEqual(currentLines[2:], baselineLines[2:]) {
 			return fmt.Errorf("difference found in %s", fileName)
 		}
-		/*
-			// Compare contents
-			if !bytes.Equal(currentContent, baselineContent) {
-				return fmt.Errorf("difference found in %s", fileName)
-			}
-		*/
 
 	}
 
