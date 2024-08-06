@@ -1,10 +1,12 @@
 {
     "cluster_size": "xsmall",
-    "coordinator_instance_type": "r5.xlarge",
+    "coordinator_instance_type": "r6i.xlarge",
     "coordinator_instance_ebs_size": 50,
-    "worker_instance_type": "r5.xlarge",
+    "worker_instance_type": "r6i.xlarge",
     "worker_instance_ebs_size": 50,
     "number_of_workers": 2,
     "memory_per_node_gb": 30,
-    "vcpu_per_worker": 4
+    "vcpu_per_worker": 4,
+    "fragment_result_cache_enabled" : true,
+    "data_cache_enabled" : true
 }

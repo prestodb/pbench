@@ -88,8 +88,10 @@ services:
     - /var/run/docker.sock:/var/run/docker.sock
     - /home/centos/.ssh/authorized_keys:/root/.ssh/authorized_keys2
     - /etc/ssh:/etc/ssh
-    - /home/centos/presto/log/presto-server/:/var/log/presto-server/{{ if .SpillEnabled }}
+    - /home/centos/presto/log/presto-server/:/var/log/presto-server/
+    {{ if .SpillEnabled -}}
     # spilling is on
-    - /home/centos/presto/spilled_data:/opt/presto-server/spilled_data{{ end }}
+    - /home/centos/presto/spilled_data:/opt/presto-server/spilled_data
+    {{ end -}}
     networks:
       presto-swarm:

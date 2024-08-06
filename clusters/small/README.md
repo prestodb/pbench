@@ -1,5 +1,5 @@
 # `small` cluster
-r5.2xlarge (vCPU: 8, Memory: 62 GB) * 4
+r6i.2xlarge (vCPU: 8, Memory: 62 GB) * 4
 
 ### Global
 * `SysReservedMemCapGb = 2`

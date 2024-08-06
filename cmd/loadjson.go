@@ -23,6 +23,8 @@ var loadJsonCmd = &cobra.Command{
 		if loadjson.Parallelism < 1 || loadjson.Parallelism > runtime.NumCPU() {
 			return fmt.Errorf("invalid parallelism: %d, it should be >= 1 and <= %d", loadjson.Parallelism, runtime.NumCPU())
 		}
+		utils.ExpandHomeDirectory(&loadjson.MySQLCfgPath)
+		utils.ExpandHomeDirectory(&loadjson.InfluxCfgPath)
 		utils.ExpandHomeDirectory(&loadjson.OutputPath)
 		return nil
 	},
