@@ -1,0 +1,11 @@
+--- tests/test_3_build/b3_query_03.output	2024-07-29 11:25:15
++++ tests/test_3_probe/p3_query_03.output	2024-07-29 11:25:15
+@@ -90,7 +90,7 @@
+ ["21952","Sunnyside","138.13"]
+ ["22293","Five Forks","156.51"]
+ ["22477","Pleasant Valley","31.58"]
+-["22562","Superior","5.251"]
++["22562","Superior","5.25"]
+ ["22621","Rankin","60.61"]
+ ["22808","Hamilton","15.33"]
+ ["22812","Shady Grove","6.74"]

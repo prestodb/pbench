@@ -1,12 +1,9 @@
 package cmp
 
 import (
-	"fmt"
-	"github.com/hexops/gotextdiff"
-	"github.com/hexops/gotextdiff/myers"
-	"github.com/hexops/gotextdiff/span"
 	"github.com/spf13/cobra"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"pbench/log"
 	"pbench/utils"
@@ -20,27 +17,36 @@ var (
 )
 
 func Run(_ *cobra.Command, args []string) {
+	returnCode := compareRun(args)
+	os.Exit(returnCode)
+}
+
+func compareRun(args []string) int {
 	var (
 		err       error
 		fileIdMap map[string]string
 	)
-
 	fileIdRegex, err = regexp.Compile(FileIdRegexStr)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to compile file ID regex")
 	}
 
 	buildSidePath, probeSidePath := args[0], args[1]
+	utils.ExpandHomeDirectory(&buildSidePath)
+	utils.ExpandHomeDirectory(&probeSidePath)
 	// Build side
 	if fileIdMap, err = buildFileIdMap(buildSidePath); err != nil {
 		log.Fatal().Err(err).Str("build_side_path", buildSidePath).Msg("failed to build file ID map")
 	}
 
+	buildSideFileCount := len(fileIdMap)
+
 	utils.ExpandHomeDirectory(&OutputPath)
 	utils.PrepareOutputDirectory(OutputPath)
 
-	probeSideFileCount, fileCompared, diffWritten := 0, 0, 0
+	probeSideMatched, fileCompared, diffWritten, errorFileCount := 0, 0, 0, 0
 	entries, readDirErr := os.ReadDir(probeSidePath)
+
 	if readDirErr != nil {
 		log.Fatal().Err(readDirErr).Str("probe_side_path", probeSidePath).Msg("failed to read the probe side directory")
 	}
@@ -52,37 +58,46 @@ func Run(_ *cobra.Command, args []string) {
 		}
 		if match := fileIdRegex.FindStringSubmatch(entry.Name()); len(match) > 0 {
 			fileId := match[1]
-			probeSideFileCount++
 			buildSideFilePath, exists := fileIdMap[fileId]
 			if !exists {
 				continue
 			}
+			probeSideMatched++
 			probeSideFilePath := filepath.Join(probeSidePath, entry.Name())
-			buildSideString, probeSideString := readFileIntoString(buildSideFilePath), readFileIntoString(probeSideFilePath)
-			edits := myers.ComputeEdits(span.URIFromPath(buildSideString), buildSideString, probeSideString)
+			diffs, diffErr := generateDiff(buildSideFilePath, probeSideFilePath)
+
+			if diffErr != nil {
+				errorFileCount++
+				continue
+			}
+
 			fileCompared++
-			if len(edits) > 0 {
+			if len(diffs) > 0 {
 				diffFilePath := filepath.Join(OutputPath, fileId+".diff")
-				diffFile, ioErr := os.OpenFile(diffFilePath, utils.OpenNewFileFlags, 0644)
-				if ioErr != nil {
-					log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to open output file")
+				// Print out the diffs
+				err = os.WriteFile(diffFilePath, []byte(diffs), 0644)
+				if err != nil {
+					log.Error().Err(err).Str("output_file", diffFilePath).Msg("failed to write diff file")
 					continue
 				}
-				_, ioErr = fmt.Fprintln(diffFile, gotextdiff.ToUnified(buildSideFilePath, probeSideFilePath, buildSideString, edits))
-				if ioErr != nil {
-					log.Error().Err(ioErr).Str("output_file", diffFilePath).Msg("failed to write to output file")
-					_ = diffFile.Close()
-					continue
-				}
-				_ = diffFile.Close()
+
 				log.Info().Str("build_side", buildSideFilePath).Str("probe_side", probeSideFilePath).Msg("diff result written")
 				diffWritten++
 			}
+
 			delete(fileIdMap, fileId)
 		}
 	}
-	log.Info().Int("build_side_count", len(fileIdMap)).Int("probe_side_count", probeSideFileCount).
-		Int("file_compared", fileCompared).Int("diff_written", diffWritten).Send()
+
+	log.Info().Int("build_side_count", buildSideFileCount).Int("probe_side_matched", probeSideMatched).
+		Int("files_with_errors", errorFileCount).Int("files_compared", fileCompared).Int("diff_written", diffWritten).Send()
+
+	if errorFileCount > 0 || diffWritten > 0 {
+		return 1
+	} else {
+		return 0
+	}
+
 }
 
 func buildFileIdMap(path string) (map[string]string, error) {
@@ -108,5 +123,24 @@ func readFileIntoString(filePath string) string {
 		return ""
 	} else {
 		return string(bytes)
+	}
+}
+
+func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {
+	cmd := exec.Command("diff", "-u", buildSideFilePath, probeSideFilePath)
+	output, err := cmd.CombinedOutput()
+
+	switch cmd.ProcessState.ExitCode() {
+	case 0, 1:
+		return string(output), nil
+	default:
+		// some error running diff
+		log.Error().Err(err).
+			Str("build_side", buildSideFilePath).
+			Str("probe_side", probeSideFilePath).
+			Str("error_message", string(output)).
+			Msg("Error while performing diff")
+		return "", err
+
 	}
 }

@@ -1,0 +1,11 @@
+--- tests/test_5_build/b5_query_01.output	2024-07-30 14:16:59
++++ tests/test_5_probe/p5_query_01.output	2024-07-29 11:25:15
+@@ -24,8 +24,6 @@
+ ["able",1,"403","Poplar Wilson","Avenue","Suite N","Salem","Mobile County","AL","38048",886,706,639,656,1273]
+ ["able",1,"427","Willow 10th","Cir.","Suite 440","Liberty","Richland County","OH","43451",843,672,676,666,1323]
+ ["able",1,"441","11th","ST","Suite H","Sunnyside","Marshall County","IN","41952",887,681,639,645,1331]
+-[/**
+-+59+44+94654194+44!@%&@!(^^(~>?<"'|{}|{}}::≈ƒß∂ƒ∂ß≈√"
+ ["able",1,"443","Hickory Sycamore","Street","Suite C","Shiloh","Bronx County","NY","19275",879,590,658,719,1338]
+ ["able",1,"479","Park First","Lane","Suite 20","Springfield","Walker County","AL","39303",869,671,638,634,1338]
+ ["able",1,"483","Dogwood","Avenue","Suite D","Springfield","Levy County","FL","39303",915,676,704,646,1312]
