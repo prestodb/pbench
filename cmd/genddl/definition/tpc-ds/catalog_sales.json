@@ -1,0 +1,143 @@
+{
+  "name": "catalog_sales",
+  "partitioned": true,
+  "columns": [
+    {
+      "name": "cs_sold_date_sk",
+      "type": "INT",
+      "partition_key": true
+    },
+    {
+      "name": "cs_sold_time_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_ship_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_bill_customer_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_bill_cdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_bill_hdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_bill_addr_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_ship_customer_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_ship_cdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_ship_hdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_ship_addr_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_call_center_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_catalog_page_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_ship_mode_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_warehouse_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_item_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_promo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cs_order_number",
+      "type": "BIGINT"
+    },
+    {
+      "name": "cs_quantity",
+      "type": "INT"
+    },
+    {
+      "name": "cs_wholesale_cost",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_list_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_sales_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_ext_discount_amt",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_ext_sales_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_ext_wholesale_cost",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_ext_list_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_ext_tax",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_coupon_amt",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_ext_ship_cost",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_net_paid",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_net_paid_inc_tax",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_net_paid_inc_ship",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_net_paid_inc_ship_tax",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "cs_net_profit",
+      "type": "DECIMAL(7,2)"
+    }
+  ]
+}

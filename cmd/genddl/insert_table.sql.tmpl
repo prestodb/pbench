@@ -1,0 +1,36 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+{{ range $key, $value := .SessionVariables -}}
+SET SESSION {{ $key }}='{{ $value }}';
+{{ end }}
+
+{{- if .Iceberg }}
+USE iceberg.{{ .SchemaName }};
+{{- else }}
+USE hive.{{ .SchemaName }};
+{{- end }}
+
+{{ range .InsertTables -}}
+INSERT INTO {{ .Name }}
+{{- if eq $.CompressionMethod "uncompressed" }}
+SELECT {{- $first := true }}
+{{- range .Columns }}
+    {{- if $first }}
+        {{- $first = false }}
+    {{- else -}}
+        ,
+    {{- end }}
+    {{- if .IsVarchar }}
+    trim(cast({{ .Name }} as {{ .Type }}))
+    {{- else }}
+    cast({{ .Name }} as {{ .Type }})
+    {{- end }}
+{{- end }}
+FROM tpcds.sf{{ $.ScaleFactor }}.{{ .Name }};
+{{- else }}
+SELECT * FROM {{ if $.Iceberg }}iceberg{{ else }}hive{{ end }}.{{ $.UncompressedName }}.{{ .Name }};
+{{- end }}
+
+{{ end }}
+{{- range .InsertTables -}}
+ANALYZE {{ .Name }};
+{{ end -}}

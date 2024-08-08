@@ -32,3 +32,6 @@ pbench_*
 
 # tarball
 *.tar.gz
+
+# genddl output dir
+cmd/genddl/out/

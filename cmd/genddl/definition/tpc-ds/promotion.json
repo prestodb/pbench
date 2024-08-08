@@ -1,0 +1,81 @@
+{
+  "name": "promotion",
+  "columns": [
+    {
+      "name": "p_promo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "p_promo_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "p_start_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "p_end_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "p_item_sk",
+      "type": "INT"
+    },
+    {
+      "name": "p_cost",
+      "type": "DECIMAL(15,2)"
+    },
+    {
+      "name": "p_response_targe",
+      "type": "INT"
+    },
+    {
+      "name": "p_promo_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "p_channel_dmail",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_email",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_catalog",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_tv",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_radio",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_press",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_event",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_demo",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "p_channel_details",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "p_purpose",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "p_discount_active",
+      "type": "VARCHAR(1)"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "inventory",
+  "partitioned": true,
+  "columns": [
+    {
+      "name": "inv_date_sk",
+      "type": "INT",
+      "partition_key": true
+    },
+    {
+      "name": "inv_item_sk",
+      "type": "INT"
+    },
+    {
+      "name": "inv_warehouse_sk",
+      "type": "INT"
+    },
+    {
+      "name": "inv_quantity_on_hand",
+      "type": "INT"
+    }
+  ]
+}
