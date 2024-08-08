@@ -52,6 +52,9 @@ type RegisterTable struct {
 	ExternalLocation *string
 }
 
+var fixedWorkload = "tpcds"
+var fixedDefinition = "tpc-ds"
+
 func Run(_ *cobra.Command, args []string) {
 	pathArg := args[0]
 	absPath, absErr := filepath.Abs(pathArg)
@@ -75,28 +78,40 @@ func Run(_ *cobra.Command, args []string) {
 		log.Fatal().Err(err).Msg("Failed to get working directory")
 	}
 	genDdlDir := wd + "/cmd/genddl"
-	defDir := genDdlDir + "/definition/tpc-ds"
+	defDir := genDdlDir + "/definition/" + fixedDefinition
+
+	// Get the specific named output directory (used in version control)
+	namedOutput, namedErr := getNamedOutput(content)
+	if namedErr != nil {
+		log.Fatal().Err(namedErr).Msg("Failed to get named output dir")
+	}
+	namedOutputDir := filepath.Join(genDdlDir, namedOutput)
 
 	outputDir := filepath.Join(genDdlDir, "out")
 	cleanErr := cleanOutputDir(outputDir)
 	if cleanErr != nil {
 		log.Warn().Err(cleanErr).Msg("Error cleaning output dir")
 	}
-	// Generate the output directory
+	// Generate the out directory
 	mkErr := os.MkdirAll(outputDir, os.ModePerm)
 	if mkErr != nil {
 		log.Fatal().Err(mkErr).Str("path", outputDir).Msg("Failed to make output directory")
+	}
+	// Generate the specific named output directory
+	mkNamedErr := os.MkdirAll(namedOutputDir, os.ModePerm)
+	if mkNamedErr != nil {
+		log.Fatal().Err(mkNamedErr).Str("path", namedOutputDir).Msg("Failed to make output directory")
 	}
 
 	step := 0
 	for _, schema := range schemas {
 		externalLoc := schema.getNonPartLocationName()
 
-		generateSchemaFromDef(schema, defDir, genDdlDir, outputDir, &externalLoc, &step)
+		generateSchemaFromDef(schema, defDir, genDdlDir, []string{outputDir, namedOutputDir}, &externalLoc, &step)
 	}
 }
 
-func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outputDir string, externalLoc *string, step *int) {
+func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outputDirs []string, externalLoc *string, step *int) {
 	_ = filepath.Walk(defDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			log.Fatal().Err(err).Send()
@@ -141,16 +156,16 @@ func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outp
 		return nil
 	})
 
-	generateCreateTable(schema, genDdlDir, outputDir, *step)
+	generateCreateTable(schema, genDdlDir, outputDirs, *step)
 	*step++
 
 	if schema.shouldGenInsert() {
-		generateInsertTable(schema, genDdlDir, outputDir, *step)
+		generateInsertTable(schema, genDdlDir, outputDirs, *step)
 		*step++
 	}
 }
 
-func generateCreateTable(schema *Schema, currDir string, outputDir string, step int) {
+func generateCreateTable(schema *Schema, currDir string, outputDirs []string, step int) {
 	genSubSteps := !schema.Iceberg && schema.Partitioned
 
 	tName := "create_table.sql.tmpl"
@@ -161,44 +176,44 @@ func generateCreateTable(schema *Schema, currDir string, outputDir string, step 
 	} else {
 		fName = strconv.Itoa(step+1) + "-create-" + schema.LocationName + ".sql"
 	}
-	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
 
 	if genSubSteps {
-		generateAwsS3Mv(schema, currDir, outputDir, step)     // Generate step b
-		generateCallAnalyze(schema, currDir, outputDir, step) // Generate step c
-		generateAwsS3Cp(schema, currDir, outputDir, step)     // Generate step d
+		generateAwsS3Mv(schema, currDir, outputDirs, step)     // Generate step b
+		generateCallAnalyze(schema, currDir, outputDirs, step) // Generate step c
+		generateAwsS3Cp(schema, currDir, outputDirs, step)     // Generate step d
 	}
 }
 
-func generateInsertTable(schema *Schema, currDir string, outputDir string, step int) {
+func generateInsertTable(schema *Schema, currDir string, outputDirs []string, step int) {
 	tName := "insert_table.sql.tmpl"
 	fName := strconv.Itoa(step+1) + "-insert-" + schema.LocationName + ".sql"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
 }
 
-func generateAwsS3Mv(schema *Schema, currDir string, outputDir string, step int) {
+func generateAwsS3Mv(schema *Schema, currDir string, outputDirs []string, step int) {
 	tName := "aws_s3_mv.sh.tmpl"
 	fName := strconv.Itoa(step+1) + "b-s3-mv-" + schema.LocationName + ".sh"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
 }
 
-func generateCallAnalyze(schema *Schema, currDir string, outputDir string, step int) {
+func generateCallAnalyze(schema *Schema, currDir string, outputDirs []string, step int) {
 	tName := "call_analyze.sql.tmpl"
 	fName := strconv.Itoa(step+1) + "c-call-analyze-" + schema.LocationName + ".sql"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
 }
 
-func generateAwsS3Cp(schema *Schema, currDir string, outputDir string, step int) {
+func generateAwsS3Cp(schema *Schema, currDir string, outputDirs []string, step int) {
 	tName := "aws_s3_cp.sh.tmpl"
 	fName := strconv.Itoa(step+1) + "d-s3-cp-" + schema.LocationName + ".sh"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDir)
+	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
 }
 
-func parseExecTemplate(schema *Schema, tName string, fName string, currDir string, outputDir string) {
+func parseExecTemplate(schema *Schema, tName string, fName string, currDir string, outputDirs []string) {
 	templateBytes, readErr := os.ReadFile(filepath.Join(currDir, tName))
 	if readErr != nil {
 		log.Fatal().Err(readErr).Str("file", tName).Msg("Failed to read file")
@@ -209,14 +224,17 @@ func parseExecTemplate(schema *Schema, tName string, fName string, currDir strin
 		log.Fatal().Err(parseErr).Str("file", tName).Msg("Failed to parse text template")
 	}
 
-	f, openErr := os.OpenFile(filepath.Join(outputDir, fName), utils.OpenNewFileFlags, 0644)
-	if openErr != nil {
-		log.Fatal().Err(openErr).Str("file", fName).Msg("Failed to open output file")
-	}
+	// Generate for each output dir
+	for _, singleOutDir := range outputDirs {
+		f, openErr := os.OpenFile(filepath.Join(singleOutDir, fName), utils.OpenNewFileFlags, 0644)
+		if openErr != nil {
+			log.Fatal().Err(openErr).Str("file", fName).Msg("Failed to open output file")
+		}
 
-	exErr := tmpl.Execute(f, *schema)
-	if exErr != nil {
-		log.Fatal().Err(exErr).Msg("Failed to execute template")
+		exErr := tmpl.Execute(f, *schema)
+		if exErr != nil {
+			log.Fatal().Err(exErr).Msg("Failed to execute template")
+		}
 	}
 }
 
@@ -258,6 +276,25 @@ func isInsertTable(table *Table, schema *Schema) bool {
 		return table.Partitioned
 	}
 	return true
+}
+
+func getNamedOutput(configData []byte) (string, error) {
+	var config map[string]string
+	if err := json.Unmarshal(configData, &config); err != nil {
+		return "", err
+	}
+
+	scaleFactor := config["scale_factor"]
+	fileFormat := config["file_format"]
+	compressionMethod := config["compression_method"]
+	var compressionSuffix string
+	if compressionMethod == "uncompressed" {
+		compressionSuffix = ""
+	} else {
+		compressionSuffix = "-" + compressionMethod
+	}
+
+	return fixedWorkload + "-sf" + scaleFactor + "-" + fileFormat + compressionSuffix, nil
 }
 
 func loadSchemas(data []byte) ([]*Schema, error) {
@@ -380,11 +417,11 @@ func (s *Schema) setNames() {
 	} else {
 		compression = ""
 	}
-	s.UncompressedName = "tpcds_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
+	s.UncompressedName = fixedWorkload + "_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
 	s.SchemaName = s.UncompressedName + compression
-	s.LocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg) + toHyphen(compression)
-	s.IcebergLocationName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + "-iceberg"
-	s.PartIcebergName = "tpcds-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + "-iceberg"
+	s.LocationName = fixedWorkload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg) + toHyphen(compression)
+	s.IcebergLocationName = fixedWorkload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + "-iceberg"
+	s.PartIcebergName = fixedWorkload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + "-iceberg"
 }
 
 func (s *Schema) getNonPartLocationName() string {
