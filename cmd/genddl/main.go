@@ -85,7 +85,7 @@ func Run(_ *cobra.Command, args []string) {
 	if namedErr != nil {
 		log.Fatal().Err(namedErr).Msg("Failed to get named output dir")
 	}
-	namedOutputDir := filepath.Join(genDdlDir, namedOutput)
+	namedOutputDir := filepath.Join(genDdlDir, "generated-examples", namedOutput)
 
 	outputDir := filepath.Join(genDdlDir, "out")
 	cleanErr := cleanOutputDir(outputDir)
