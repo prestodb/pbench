@@ -1,0 +1,182 @@
+{
+    "0": {
+        "plan": {
+            "id": "17",
+            "name": "Output",
+            "identifier": "[city_kpi_full.dynamic_timeframe, city_kpi_full.online_h, city_kpi_full.sessions]",
+            "details": "city_kpi_full.dynamic_timeframe := date_format_6 (3:7)\ncity_kpi_full.online_h := expr_13 (5:99)\ncity_kpi_full.sessions := expr_14 (6:5)\n",
+            "children": [
+                {
+                    "id": "515",
+                    "name": "TopN",
+                    "identifier": "[500 by (date_format_6 ASC_NULLS_LAST)]",
+                    "details": "",
+                    "children": [
+                        {
+                            "id": "630",
+                            "name": "LocalExchange",
+                            "identifier": "[SINGLE] ()",
+                            "details": "",
+                            "children": [
+                                {
+                                    "id": "556",
+                                    "name": "RemoteSource",
+                                    "identifier": "[1]",
+                                    "details": "",
+                                    "children": [],
+                                    "remoteSources": [
+                                        "1"
+                                    ]
+                                }
+                            ],
+                            "remoteSources": []
+                        }
+                    ],
+                    "remoteSources": []
+                }
+            ],
+            "remoteSources": []
+        }
+    },
+    "1": {
+        "plan": {
+            "id": "514",
+            "name": "TopNPartial",
+            "identifier": "[500 by (date_format_6 ASC_NULLS_LAST)]",
+            "details": "",
+            "children": [
+                {
+                    "id": "10",
+                    "name": "Project",
+                    "identifier": "[projectLocality = LOCAL]",
+                    "details": "expr_13 := ((REAL'1.0') * (CAST(COALESCE(sum, DECIMAL'0.00') AS real))) + ((REAL'1.0') * (CAST(COALESCE(sum_10, DECIMAL'0.00') AS real))) (5:100)\nexpr_14 := COALESCE(sum_11, BIGINT'0') (6:6)\n",
+                    "children": [
+                        {
+                            "id": "9",
+                            "name": "Aggregate(FINAL)[date_format_6][$hashvalue]",
+                            "identifier": "",
+                            "details": "sum_10 := \"presto.default.sum\"((sum_24)) (5:133)\nsum := \"presto.default.sum\"((sum_23)) (5:49)\nsum_11 := \"presto.default.sum\"((sum_25)) (6:14)\n",
+                            "children": [
+                                {
+                                    "id": "653",
+                                    "name": "LocalExchange",
+                                    "identifier": "[HASH][$hashvalue] (date_format_6)",
+                                    "details": "",
+                                    "children": [
+                                        {
+                                            "id": "659",
+                                            "name": "RemoteSource",
+                                            "identifier": "[2]",
+                                            "details": "",
+                                            "children": [],
+                                            "remoteSources": [
+                                                "2"
+                                            ]
+                                        }
+                                    ],
+                                    "remoteSources": []
+                                }
+                            ],
+                            "remoteSources": []
+                        }
+                    ],
+                    "remoteSources": []
+                }
+            ],
+            "remoteSources": []
+        }
+    },
+    "2": {
+        "plan": {
+            "id": "657",
+            "name": "Aggregate(PARTIAL)[date_format_6][$hashvalue_31]",
+            "identifier": "",
+            "details": "sum_23 := \"presto.default.sum\"((waiting_for_order_h)) (5:49)\nsum_24 := \"presto.default.sum\"((has_order_h)) (5:133)\nsum_25 := \"presto.default.sum\"((sessions)) (6:14)\n",
+            "children": [
+                {
+                    "id": "703",
+                    "name": "Project",
+                    "identifier": "[projectLocality = LOCAL]",
+                    "details": "$hashvalue_31 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(date_format_6), BIGINT'0')) (3:7)\n",
+                    "children": [
+                        {
+                            "id": "7",
+                            "name": "Project",
+                            "identifier": "[projectLocality = LOCAL]",
+                            "details": "date_format_6 := date_format(CAST(date AS timestamp), VARCHAR'%Y-%m') (7:7)\n",
+                            "children": [
+                                {
+                                    "id": "5",
+                                    "name": "InnerJoin",
+                                    "identifier": "[(\"expr_4\" = \"expr\") AND (\"date_format_5\" = \"date_format\")][$hashvalue_27, $hashvalue_28]",
+                                    "details": "Distribution: REPLICATED\n",
+                                    "children": [
+                                        {
+                                            "id": "701",
+                                            "name": "Project",
+                                            "identifier": "[projectLocality = LOCAL]",
+                                            "details": "$hashvalue_27 := combine_hash(combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr_4), BIGINT'0')), COALESCE($operator$hash_code(date_format_5), BIGINT'0')) (8:109)\n",
+                                            "children": [
+                                                {
+                                                    "id": "3",
+                                                    "name": "ScanFilterProject",
+                                                    "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=ng_public, tableName=etl_city_kpi_hourly, analyzePartitionValues=Optional.empty}', layout='Optional[ng_public.etl_city_kpi_hourly{}]'}, filterPredicate = (((CAST(CAST(period_hour_local_date AS date) AS timestamp)) >= (TIMESTAMP'2023-03-01 00:00:00.000')) AND ((CAST(CAST(period_hour_local_date AS date) AS timestamp)) < (TIMESTAMP'2024-06-01 00:00:00.000'))) AND ((not(IS_NULL(CAST(city_id_0 AS varchar)))) AND (not(IS_NULL(date_format(CAST(CAST(period_hour_local_date AS date) AS timestamp), VARCHAR'%Y-%m-%d'))))), projectLocality = LOCAL]",
+                                                    "details": "expr_4 := CAST(city_id_0 AS varchar) (8:12)\ndate_format_5 := date_format(CAST(CAST(period_hour_local_date AS date) AS timestamp), VARCHAR'%Y-%m-%d') (8:12)\nLAYOUT: ng_public.etl_city_kpi_hourly{}\ncity_id_0 := city_id:bigint:1:REGULAR (8:11)\nperiod_hour_local_date := period_hour_local_date:string:-13:PARTITION_KEY (8:11)\n    :: [[\"2023-03-01\", \"2024-05-31\"]]\nhas_order_h := has_order_h:decimal(10,2):37:REGULAR (8:11)\nsessions := sessions:bigint:60:REGULAR (8:11)\nwaiting_for_order_h := waiting_for_order_h:decimal(10,2):66:REGULAR (8:11)\n",
+                                                    "children": [],
+                                                    "remoteSources": []
+                                                }
+                                            ],
+                                            "remoteSources": []
+                                        },
+                                        {
+                                            "id": "628",
+                                            "name": "LocalExchange",
+                                            "identifier": "[HASH][$hashvalue_28] (expr, date_format)",
+                                            "details": "",
+                                            "children": [
+                                                {
+                                                    "id": "554",
+                                                    "name": "RemoteSource",
+                                                    "identifier": "[3]",
+                                                    "details": "",
+                                                    "children": [],
+                                                    "remoteSources": [
+                                                        "3"
+                                                    ]
+                                                }
+                                            ],
+                                            "remoteSources": []
+                                        }
+                                    ],
+                                    "remoteSources": []
+                                }
+                            ],
+                            "remoteSources": []
+                        }
+                    ],
+                    "remoteSources": []
+                }
+            ],
+            "remoteSources": []
+        }
+    },
+    "3": {
+        "plan": {
+            "id": "702",
+            "name": "Project",
+            "identifier": "[projectLocality = LOCAL]",
+            "details": "$hashvalue_30 := combine_hash(combine_hash(BIGINT'0', COALESCE($operator$hash_code(expr), BIGINT'0')), COALESCE($operator$hash_code(date_format), BIGINT'0')) (8:68)\n",
+            "children": [
+                {
+                    "id": "2",
+                    "name": "ScanProject",
+                    "identifier": "[table = TableHandle {connectorId='glue', connectorHandle='HiveTableHandle{schemaName=looker_scratch, tableName=lr_sh3yd1718099588916_city_kpi_full, analyzePartitionValues=Optional.empty}', layout='Optional[looker_scratch.lr_sh3yd1718099588916_city_kpi_full{filter=(((CAST(date AS timestamp)) >= (TIMESTAMP'2023-03-01 00:00:00.000')) AND ((CAST(date AS timestamp)) < (TIMESTAMP'2024-06-01 00:00:00.000'))) AND ((not(IS_NULL(CAST(city_id AS varchar)))) AND (not(IS_NULL(date_format(CAST(date AS timestamp), VARCHAR'%Y-%m-%d'))))), domains={city=[ [[\"Valmiera\"]] ], country=[ [[\"Latvia\"]] ]}}]'}, projectLocality = LOCAL]",
+                    "details": "expr := CAST(city_id AS varchar) (7:7)\ndate_format := date_format(CAST(date AS timestamp), VARCHAR'%Y-%m-%d') (7:7)\nLAYOUT: looker_scratch.lr_sh3yd1718099588916_city_kpi_full{filter=(((CAST(date AS timestamp)) >= (TIMESTAMP'2023-03-01 00:00:00.000')) AND ((CAST(date AS timestamp)) < (TIMESTAMP'2024-06-01 00:00:00.000'))) AND ((not(IS_NULL(CAST(city_id AS varchar)))) AND (not(IS_NULL(date_format(CAST(date AS timestamp), VARCHAR'%Y-%m-%d'))))), domains={city=[ [[\"Valmiera\"]] ], country=[ [[\"Latvia\"]] ]}}\ndate := date:date:-13:PARTITION_KEY (7:6)\n    :: [[\"2023-03-01\", \"2024-05-31\"]]\ncity_id := city_id:bigint:0:REGULAR (7:6)\ncity:string:1:REGULAR\n    :: [[\"Valmiera\"]]\ncountry:string:2:REGULAR\n    :: [[\"Latvia\"]]\n",
+                    "children": [],
+                    "remoteSources": []
+                }
+            ],
+            "remoteSources": []
+        }
+    }
+}

@@ -143,7 +143,7 @@ func (t PlanTree) ParseJoins() ([]Join, error) {
 		if node.Details != "" {
 			ast, parseErr := PlanNodeDetailParser.ParseString(id, node.Details)
 			if parseErr != nil {
-				return parseErr
+				return errors.Join(parseErr, fmt.Errorf("failed to parse node details: %s", node.Details))
 			}
 			// Must scan backwards.
 			for i := len(ast.Stmts) - 1; i >= 0; i-- {
@@ -155,14 +155,24 @@ func (t PlanTree) ParseJoins() ([]Join, error) {
 		if IsJoin[node.Name] {
 			preds, parseErr := PlanNodeJoinPredicatesParser.ParseString(id, node.Identifier)
 			if parseErr != nil {
-				return parseErr
+				return errors.Join(parseErr, fmt.Errorf("failed to parse identifier: %s", node.Identifier))
 			}
-			for _, pred := range preds.Predicates {
-				joins = append(joins, Join{
-					JoinType:   node.Name,
-					LeftValue:  assignmentMap[pred.Left],
-					RightValue: assignmentMap[pred.Right],
-				})
+			joinExps := preds.GetJoins()
+			if len(joinExps) == 0 {
+				return fmt.Errorf("empty join expression")
+			}
+
+			for _, joinExp := range joinExps {
+				for _, joinPred := range joinExp.GetJoinPredicates() {
+					leftAssignments, rightAssignments := joinPred.GetAssignments()
+					if len(leftAssignments) == 1 && len(rightAssignments) == 1 {
+						joins = append(joins, Join{
+							JoinType:   node.Name,
+							LeftValue:  assignmentMap[leftAssignments[0]],
+							RightValue: assignmentMap[rightAssignments[0]],
+						})
+					}
+				}
 			}
 		}
 		return nil
@@ -173,9 +183,13 @@ func (t PlanTree) ParseJoins() ([]Join, error) {
 }
 
 type Join struct {
-	JoinType   string
-	LeftValue  Value
-	RightValue Value
+	JoinType   string `json:"joinType"`
+	LeftValue  Value  `json:"left"`
+	RightValue Value  `json:"right"`
+}
+
+func (j Join) String() string {
+	return fmt.Sprintf("JoinType:%s, Left:%s, Right:%s", j.JoinType, j.LeftValue, j.RightValue)
 }
 
 type PlanEstimate struct {

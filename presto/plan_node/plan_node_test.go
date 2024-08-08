@@ -3,11 +3,12 @@ package plan_node_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
 	"pbench/presto/plan_node"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func testParseJoin(t *testing.T, fileName, expected string) {
@@ -30,8 +31,10 @@ func testParseJoin(t *testing.T, fileName, expected string) {
 
 func TestParseJoin(t *testing.T) {
 	testParseJoin(t, "sample.plan.json",
-		`[{RightJoin CAST(glue.ng_public.admin_system_city.id AS bigint) glue.lks.LR_branded_car_enrollment.city_id} {LeftJoin glue.lks.LR_branded_car_enrollment.country glue.lks.LR_admin_system_country.code} {InnerJoin CAST(glue.ng_public.fleet_car.id AS bigint) glue.ng_public.fleet_car_tag_binding.car_id} {LeftJoin glue.ng_public.fleet_car_tag_binding.car_tag_id CAST(glue.ng_public.fleet_car_tag.id AS bigint)} {LeftJoin glue.lks.LR_branded_car_enrollment.car_id CAST(glue.ng_public.fleet_car.id AS bigint)}]`)
-	testParseJoin(t, "arithmetics.plan.json", `[{InnerJoin (hive.test_join.t1.a) + (INTEGER '2') ((hive.test_join.t2.b) + (INTEGER '1')) - ((INTEGER '2') * (abs(hive.test_join.t2.c)))}]`)
+		`[JoinType:RightJoin, Left:CAST(glue.ng_public.admin_system_city.id AS bigint), Right:glue.lks.LR_branded_car_enrollment.city_id JoinType:LeftJoin, Left:glue.lks.LR_branded_car_enrollment.country, Right:glue.lks.LR_admin_system_country.code JoinType:InnerJoin, Left:CAST(glue.ng_public.fleet_car.id AS bigint), Right:glue.ng_public.fleet_car_tag_binding.car_id JoinType:LeftJoin, Left:glue.ng_public.fleet_car_tag_binding.car_tag_id, Right:CAST(glue.ng_public.fleet_car_tag.id AS bigint) JoinType:LeftJoin, Left:glue.lks.LR_branded_car_enrollment.car_id, Right:CAST(glue.ng_public.fleet_car.id AS bigint)]`)
+	testParseJoin(t, "arithmetics.plan.json", `[JoinType:InnerJoin, Left:(hive.test_join.t1.a) + (INTEGER '2'), Right:((hive.test_join.t2.b) + (INTEGER '1')) - ((INTEGER '2') * (abs(hive.test_join.t2.c)))]`)
+	testParseJoin(t, "sample1.json",
+		`[JoinType:InnerJoin, Left:CAST(glue.ng_public.etl_city_kpi_hourly.city_id AS varchar), Right:CAST(glue.looker_scratch.lr_sh3yd1718099588916_city_kpi_full.city_id AS varchar) JoinType:InnerJoin, Left:date_format(CAST(CAST(glue.ng_public.etl_city_kpi_hourly.period_hour_local_date AS date) AS timestamp), VARCHAR '%Y-%m-%d'), Right:date_format(CAST(glue.looker_scratch.lr_sh3yd1718099588916_city_kpi_full.date AS timestamp), VARCHAR '%Y-%m-%d')]`)
 }
 
 func TestJsonFloat64(t *testing.T) {

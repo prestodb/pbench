@@ -2,10 +2,11 @@ package plan_node_test
 
 import (
 	"fmt"
-	"github.com/alecthomas/participle/v2"
-	"github.com/stretchr/testify/assert"
 	"pbench/presto/plan_node"
 	"testing"
+
+	"github.com/alecthomas/participle/v2"
+	"github.com/stretchr/testify/assert"
 )
 
 func testParsing[T any](t *testing.T, options []participle.Option, testLiterals []string, expected []T) {
@@ -173,12 +174,17 @@ func TestParseAssignment(t *testing.T) {
 		[]string{
 			`$hashvalue_108 := $hashvalue_109`,
 			`country := country:string:1:REGULAR (23:6)
-    :: [["gh"]]`,
-			"$hashvalue_109 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(car_id), BIGINT'0')) (22:5)",
+			:: [["gh"]]`,
+			`$hashvalue_109 := combine_hash(BIGINT'0', COALESCE($operator$hash_code(car_id), BIGINT'0')) (22:5)`,
 			"expr_3 := CAST(id AS bigint) (24:12)",
 			`array_agg_51 := "presto.default.array_agg"((name_35)) ORDER BY OrderingScheme {orderBy='[Ordering {variable='name_35', sortOrder='ASC_NULLS_LAST'}]', orderings='{name_35=ASC_NULLS_LAST}'} (6:21)`,
 			`branded_car_enrollment.target_id := car_id (22:5)`,
 			`expr_5 := ((b) + (INTEGER'1')) - ((INTEGER'2') * (abs(c))) (10:6)`,
+			`expr_555 := CAST(valid_on_539 AS timestamp with time zone) (33:7)`,
+			"date_trunc := TIMESTAMP WITH TIME ZONE'7037190144000000'",
+			"lead := lead(start_date) RANGE UNBOUNDED_PRECEDING CURRENT_ROW (48:6)",
+			"lead := COALESCE($operator$hash_code(cast), BIGINT'0') (48:6)",
+			"expr_75 := (date_trunc_63) - (INTERVAL YEAR TO MONTH'0-3') (19:64)",
 		},
 		[]plan_node.Assignment{
 			{ // case 0
@@ -239,7 +245,7 @@ func TestParseAssignment(t *testing.T) {
 				Identifier: plan_node.IdentRef{Ident: "expr_3"},
 				AssignedValue: &plan_node.TypeCastedValue{
 					OriginalValue: &plan_node.IdentRef{Ident: "id"},
-					CastedType:    "bigint",
+					CastedType:    plan_node.DataType{Name: "bigint"},
 				},
 				Loc: &plan_node.SourceLocation{
 					RowNumber:    24,
@@ -291,6 +297,306 @@ func TestParseAssignment(t *testing.T) {
 					ColumnNumber: 6,
 				},
 			},
+			{ // case 7
+				Identifier: plan_node.IdentRef{Ident: "expr_555"},
+				AssignedValue: &plan_node.TypeCastedValue{
+					OriginalValue: &plan_node.IdentRef{
+						Ident: "valid_on_539",
+					},
+					CastedType: plan_node.DataType{
+						Name: "timestampwithtimezone",
+					}},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    33,
+					ColumnNumber: 7,
+				},
+			},
+			{ // case 8
+				Identifier: plan_node.IdentRef{Ident: "date_trunc"},
+				AssignedValue: &plan_node.TypedValue{
+					DataType:     "TIMESTAMPWITHTIMEZONE",
+					ValueLiteral: "7037190144000000",
+				},
+			},
+			{ // function options: "lead := lead(start_date) RANGE UNBOUNDED_PRECEDING CURRENT_ROW (48:6)
+				Identifier: plan_node.IdentRef{Ident: "lead"},
+				AssignedValue: &plan_node.FunctionCall{
+					FunctionName: "lead",
+					Parameters: []plan_node.Value{
+						&plan_node.IdentRef{
+							Ident: "start_date",
+						},
+					},
+					Options: []string{
+						"RANGE", "UNBOUNDED_PRECEDING", "CURRENT_ROW",
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    48,
+					ColumnNumber: 6,
+				},
+			},
+			{ //lead := COALESCE($operator$hash_code(city_id_151), BIGINT'0') (48:6)"
+				Identifier: plan_node.IdentRef{Ident: "lead"},
+				AssignedValue: &plan_node.FunctionCall{
+					FunctionName: "COALESCE",
+					Parameters: []plan_node.Value{
+						&plan_node.FunctionCall{
+							FunctionName: "$operator$hash_code",
+							Parameters: []plan_node.Value{
+								&plan_node.IdentRef{
+									Ident: "cast",
+								},
+							},
+						},
+						&plan_node.TypedValue{
+							DataType:     "BIGINT",
+							ValueLiteral: "0",
+						},
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    48,
+					ColumnNumber: 6,
+				},
+			},
+			{ //"expr_75 := (date_trunc_63) - (INTERVAL YEAR TO MONTH'0-3') (19:64)"
+				Identifier: plan_node.IdentRef{Ident: "expr_75"},
+				AssignedValue: &plan_node.MathExpr{
+					Left: &plan_node.IdentRef{Ident: "date_trunc_63"},
+					Op:   "-",
+					Right: &plan_node.TypedValue{
+						DataType:     "INTERVALYEARTOMONTH",
+						ValueLiteral: "0-3",
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    19,
+					ColumnNumber: 64,
+				},
+			},
+		})
+}
+
+func TestParseSwitch(t *testing.T) {
+	testParsing[plan_node.Assignment](t, plan_node.PlanNodeDetailParserOptions,
+		[]string{
+			"expr_106 := SWITCH(BOOLEAN'true', WHEN((min) = (rank), INTEGER'1'), INTEGER'0') (3:215)",
+			"expr_95 := SWITCH(BOOLEAN'true', WHEN(((state) = (VARCHAR'finished')) AND (IS_NULL(retry_to_try)), concat(CAST(city_id AS varchar), CAST(order_id AS varchar))), null) (5:8)",
+			"expr_41 := SWITCH(BOOLEAN'true', WHEN(is_deleted, VARCHAR'Yes'), VARCHAR'No') (15:70)",
+			"expr_41 := SWITCH(BOOLEAN'true', WHEN(lower(name) LIKE VARCHAR'%birmingham%', INTEGER'409'), VARCHAR'No') (15:70)",
+			"expr_103 := SWITCH(BOOLEAN'true', WHEN(((CAST(has_order AS decimal(12,2))) > (DECIMAL'0.00')) OR ((CAST(waiting_orders AS decimal(12,2))) > (DECIMAL'0.00')), driver_root_id ), null) (16:8)",
+		},
+		[]plan_node.Assignment{
+			{ // switch 1 "expr_106 := SWITCH(BOOLEAN'true', WHEN((min) = (rank), INTEGER'1'), INTEGER'0') (3:215)"
+				Identifier: plan_node.IdentRef{Ident: "expr_106"},
+				AssignedValue: &plan_node.Switch{
+					DataType: &plan_node.TypedValue{
+						DataType:     "BOOLEAN",
+						ValueLiteral: "true",
+					},
+					When: []plan_node.SwitchWhen{
+						{
+							Exp: &plan_node.CompareWhenExp{
+								Left: &plan_node.IdentRef{
+									Ident: "min",
+								},
+								Op: "=",
+								Right: &plan_node.IdentRef{
+									Ident: "rank",
+								},
+							},
+							Value: &plan_node.TypedValue{
+								DataType:     "INTEGER",
+								ValueLiteral: "1",
+							},
+						},
+					},
+					DefaultValue: &plan_node.TypedValue{
+						DataType:     "INTEGER",
+						ValueLiteral: "0",
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    3,
+					ColumnNumber: 215,
+				},
+			},
+			{ // switch 2 "expr_95 := SWITCH(BOOLEAN'true', WHEN(((state) = (VARCHAR'finished')) AND (IS_NULL(retry_to_try)), concat(CAST(city_id AS varchar), CAST(order_id AS varchar))), null) (5:8)"
+				Identifier: plan_node.IdentRef{Ident: "expr_95"},
+				AssignedValue: &plan_node.Switch{
+					DataType: &plan_node.TypedValue{
+						DataType:     "BOOLEAN",
+						ValueLiteral: "true",
+					},
+					When: []plan_node.SwitchWhen{
+						{
+							Exp: &plan_node.AndOrWhenExp{
+								Left: &plan_node.CompareWhenExp{
+									Left: &plan_node.IdentRef{
+										Ident: "state",
+									},
+									Op: "=",
+									Right: &plan_node.TypedValue{
+										DataType:     "VARCHAR",
+										ValueLiteral: "finished",
+									},
+								},
+								Op: "AND",
+								Right: &plan_node.BooleanWhenExp{
+									Eval: &plan_node.FunctionCall{
+										FunctionName: "IS_NULL",
+										Parameters: []plan_node.Value{
+											&plan_node.IdentRef{
+												Ident: "retry_to_try",
+											},
+										},
+									},
+								},
+							},
+							Value: &plan_node.FunctionCall{
+								FunctionName: "concat",
+								Parameters: []plan_node.Value{
+									&plan_node.TypeCastedValue{
+										OriginalValue: &plan_node.IdentRef{
+											Ident: "city_id",
+										},
+										CastedType: plan_node.DataType{
+											Name: "varchar",
+										},
+									},
+									&plan_node.TypeCastedValue{
+										OriginalValue: &plan_node.IdentRef{
+											Ident: "order_id",
+										},
+										CastedType: plan_node.DataType{
+											Name: "varchar",
+										},
+									},
+								},
+							},
+						},
+					},
+					DefaultValue: &plan_node.IdentRef{
+						Ident: "null",
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    5,
+					ColumnNumber: 8,
+				},
+			},
+			{ // expr_41 := SWITCH(BOOLEAN'true', WHEN(is_deleted, VARCHAR'Yes'), VARCHAR'No') (15:70)
+				Identifier: plan_node.IdentRef{Ident: "expr_41"},
+				AssignedValue: &plan_node.Switch{
+					DataType: &plan_node.TypedValue{
+						DataType:     "BOOLEAN",
+						ValueLiteral: "true",
+					},
+					When: []plan_node.SwitchWhen{
+						{
+							Exp: &plan_node.BooleanWhenExp{
+								Eval: &plan_node.IdentRef{
+									Ident: "is_deleted",
+								},
+							},
+							Value: &plan_node.TypedValue{
+								DataType:     "VARCHAR",
+								ValueLiteral: "Yes",
+							},
+						},
+					},
+					DefaultValue: &plan_node.TypedValue{
+						DataType:     "VARCHAR",
+						ValueLiteral: "No",
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    15,
+					ColumnNumber: 70,
+				},
+			},
+			{ // expr_41 := SWITCH(BOOLEAN'true', WHEN(lower(name) LIKE VARCHAR'%birmingham%', INTEGER'409'), VARCHAR'No') (15:70)
+				Identifier: plan_node.IdentRef{Ident: "expr_41"},
+				AssignedValue: &plan_node.Switch{
+					DataType: &plan_node.TypedValue{
+						DataType:     "BOOLEAN",
+						ValueLiteral: "true",
+					},
+					When: []plan_node.SwitchWhen{
+						{
+							Exp: &plan_node.LikeWhenExp{
+								Left: &plan_node.FunctionCall{
+									FunctionName: "lower",
+									Parameters: []plan_node.Value{
+										&plan_node.IdentRef{
+											Ident: "name",
+										},
+									},
+								},
+								Right: plan_node.TypedValue{
+									DataType:     "VARCHAR",
+									ValueLiteral: "%birmingham%",
+								},
+							},
+							Value: &plan_node.TypedValue{
+								DataType:     "INTEGER",
+								ValueLiteral: "409",
+							},
+						},
+					},
+					DefaultValue: &plan_node.TypedValue{
+						DataType:     "VARCHAR",
+						ValueLiteral: "No",
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    15,
+					ColumnNumber: 70,
+				},
+			},
+			{ // "expr_103 := SWITCH(BOOLEAN'true', WHEN(((CAST(has_order AS decimal(12,2))) > (DECIMAL'0.00')) OR ((CAST(waiting_orders AS decimal(12,2))) > (DECIMAL'0.00')), driver_root_id ), null) (16:8)"
+				Identifier: plan_node.IdentRef{Ident: "expr_103"},
+				AssignedValue: &plan_node.Switch{
+					DataType: &plan_node.TypedValue{
+						DataType:     "BOOLEAN",
+						ValueLiteral: "true",
+					},
+					When: []plan_node.SwitchWhen{
+						{
+							Exp: &plan_node.AndOrWhenExp{
+								Left: &plan_node.CompareWhenExp{
+									Left: &plan_node.TypeCastedValue{
+										OriginalValue: &plan_node.IdentRef{Ident: "has_order"},
+										CastedType:    plan_node.DataType{Name: "decimal", Option: "12,2"},
+									},
+									Op:    ">",
+									Right: &plan_node.TypedValue{DataType: "DECIMAL", ValueLiteral: "0.00"},
+								},
+								Op: "OR",
+								Right: &plan_node.CompareWhenExp{
+									Left: &plan_node.TypeCastedValue{
+										OriginalValue: &plan_node.IdentRef{Ident: "waiting_orders"},
+										CastedType:    plan_node.DataType{Name: "decimal", Option: "12,2"},
+									},
+									Op:    ">",
+									Right: &plan_node.TypedValue{DataType: "DECIMAL", ValueLiteral: "0.00"},
+								},
+							},
+							Value: &plan_node.IdentRef{
+								Ident: "driver_root_id",
+							},
+						},
+					},
+					DefaultValue: &plan_node.IdentRef{
+						Ident: "null",
+					},
+				},
+				Loc: &plan_node.SourceLocation{
+					RowNumber:    16,
+					ColumnNumber: 8,
+				},
+			},
 		})
 }
 
@@ -340,7 +646,7 @@ has_order_h := has_order_h:decimal(10,2):37:REGULAR (8:11)
 						Identifier: plan_node.IdentRef{Ident: "expr_4"},
 						AssignedValue: &plan_node.TypeCastedValue{
 							OriginalValue: &plan_node.IdentRef{Ident: "city_id_0"},
-							CastedType:    "varchar",
+							CastedType:    plan_node.DataType{Name: "varchar"},
 						},
 						Loc: &plan_node.SourceLocation{
 							RowNumber:    8,
@@ -355,9 +661,9 @@ has_order_h := has_order_h:decimal(10,2):37:REGULAR (8:11)
 								&plan_node.TypeCastedValue{
 									OriginalValue: &plan_node.TypeCastedValue{
 										OriginalValue: &plan_node.IdentRef{Ident: "period_hour_local_date"},
-										CastedType:    "date",
+										CastedType:    plan_node.DataType{Name: "date"},
 									},
-									CastedType: "timestamp",
+									CastedType: plan_node.DataType{Name: "timestamp"},
 								},
 								&plan_node.TypedValue{
 									DataType:     "VARCHAR",
