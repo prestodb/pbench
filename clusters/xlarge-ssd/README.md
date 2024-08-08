@@ -1,5 +1,5 @@
 # `xlarge-ssd` cluster
-r5d.16xlarge (vCPU: 64, Memory: 490 GB) * 16
+r6id.16xlarge (vCPU: 64, Memory: 490 GB) * 16
 
 ### This configuration includes an SSD Cache of 500GB
 ### Global

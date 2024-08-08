@@ -232,6 +232,7 @@ func processFile(ctx context.Context, path string) {
 }
 
 func processPath(ctx context.Context, path string) error {
+	utils.ExpandHomeDirectory(&path)
 	stat, err := os.Stat(path)
 	if err != nil {
 		return err

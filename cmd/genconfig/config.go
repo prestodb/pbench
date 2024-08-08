@@ -24,6 +24,10 @@ type ClusterConfig struct {
 	NativeQueryMemGb              uint                 `json:"-"`
 	JoinMaxBroadcastTableSizeMb   uint                 `json:"-"`
 	Path                          string               `json:"-"`
+	FragmentResultCacheSizeGb     uint                 `json:"-"`
+	FragmentCacheEnabled          bool                 `json:"fragment_result_cache_enabled"`
+	DataCacheSizeGb               uint                 `json:"-"`
+	DataCacheEnabled              bool                 `json:"data_cache_enabled"`
 }
 
 func (c *ClusterConfig) Calculate() {
@@ -38,4 +42,6 @@ func (c *ClusterConfig) Calculate() {
 	c.NativeSystemMemGb = c.ContainerMemoryGb - c.NativeBufferMemGb - c.NativeProxygenMemGb
 	c.NativeQueryMemGb = uint(math.Floor(float64(c.NativeSystemMemGb) * c.GeneratorParameters.NativeQueryMemPercentOfSysMem))
 	c.JoinMaxBroadcastTableSizeMb = uint(math.Ceil(float64(c.ContainerMemoryGb) * c.GeneratorParameters.JoinMaxBcastSizePercentOfContainerMem * 1024))
+	c.FragmentResultCacheSizeGb = uint(math.Ceil(float64(c.MemoryPerNodeGb*2) * float64(0.95)))
+	c.DataCacheSizeGb = uint(math.Ceil(float64(c.MemoryPerNodeGb*3) * float64(0.95)))
 }
