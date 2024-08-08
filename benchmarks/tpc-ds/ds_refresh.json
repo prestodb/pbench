@@ -1,0 +1,19 @@
+{
+  "description": "Sequentially run the first refresh run for tpc-ds and then verify the results.",
+  "query_files": [
+    "queries/refresh/LF_CR.sql",
+    "queries/refresh/LF_CS.sql",
+    "queries/refresh/LF_SR.sql",
+    "queries/refresh/LF_SS.sql",
+    "queries/refresh/LF_WR.sql",
+    "queries/refresh/LF_WS.sql",
+    "queries/refresh/LF_I.sql",
+    "queries/refresh/verify_LF_CR.sql",
+    "queries/refresh/verify_LF_CS.sql",
+    "queries/refresh/verify_LF_SR.sql",
+    "queries/refresh/verify_LF_SS.sql",
+    "queries/refresh/verify_LF_WR.sql",
+    "queries/refresh/verify_LF_WS.sql",
+    "queries/refresh/verify_LF_I.sql"
+  ]
+}
