@@ -30,3 +30,4 @@
 
 * `system-memory-gb = ContainerMemory - NativeBufferMemGb - NativeProxygenMemGb = {{ .ContainerMemoryGb }} - {{ .NativeBufferMemGb }} - {{ .NativeProxygenMemGb }} = {{ .NativeSystemMemGb }}`
 * `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor({{ .NativeSystemMemGb }} * {{ .GeneratorParameters.NativeQueryMemPercentOfSysMem }}) = {{ .NativeQueryMemGb }}`
+### For Spark clusters: TODO

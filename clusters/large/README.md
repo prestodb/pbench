@@ -24,3 +24,4 @@ r6i.8xlarge (vCPU: 32, Memory: 248 GB) * 16
 
 * `system-memory-gb = ContainerMemory - NativeBufferMemGb - NativeProxygenMemGb = 246 - 13 - 2 = 231`
 * `query-memory-gb = query.max-memory-per-node = floor(system-memory-gb * NativeQueryMemPercentOfSysMem) = floor(231 * 0.95) = 219`
+### For Spark clusters: TODO
