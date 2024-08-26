@@ -87,6 +87,10 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
+
+	s.PostQeryShellScripts = append(s.PostQeryShellScripts, other.PostQeryShellScripts...)
+	s.PostStageShellScripts = append(s.PostStageShellScripts, other.PostStageShellScripts...)
+
 	return s
 }
 
