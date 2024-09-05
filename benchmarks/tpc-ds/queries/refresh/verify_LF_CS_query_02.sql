@@ -1,9 +1,6 @@
 -- ==============================================
--- 1447686
 -- fd 54 dc 73 48 5d da 70
 -- ==============================================
-select count(*) from catalog_sales;
-
 with column_checksums as (
     select array[
                checksum(cs_sold_date_sk),

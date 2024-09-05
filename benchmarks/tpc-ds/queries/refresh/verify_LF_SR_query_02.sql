@@ -1,9 +1,6 @@
 -- ==============================================
--- 288714
 -- be ab 61 0d ae 90 25 86
 -- ==============================================
-select count(*) from store_returns;
-
 with column_checksums as (
     select array[
                checksum(sr_returned_date_sk),

@@ -1,9 +1,6 @@
 -- ==============================================
--- 12015000
 -- a1 56 0d 3e 9a f7 5f 9d
 -- ==============================================
-select count(*) from inventory;
-
 with column_checksums as (
     select array[
                checksum(inv_date_sk),

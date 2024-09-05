@@ -1,9 +1,6 @@
 -- ==============================================
--- 144662
 -- 08 39 4f 4a 5b b6 95 4e
 -- ==============================================
-select count(*) from catalog_returns;
-
 with column_checksums as (
     select array[
                checksum(cr_returned_date_sk),

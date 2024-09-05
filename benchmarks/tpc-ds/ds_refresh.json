@@ -8,12 +8,19 @@
     "queries/refresh/LF_WR.sql",
     "queries/refresh/LF_WS.sql",
     "queries/refresh/LF_I.sql",
-    "queries/refresh/verify_LF_CR.sql",
-    "queries/refresh/verify_LF_CS.sql",
-    "queries/refresh/verify_LF_SR.sql",
-    "queries/refresh/verify_LF_SS.sql",
-    "queries/refresh/verify_LF_WR.sql",
-    "queries/refresh/verify_LF_WS.sql",
-    "queries/refresh/verify_LF_I.sql"
+    "queries/refresh/verify_LF_CR_query_01.sql",
+    "queries/refresh/verify_LF_CR_query_02.sql",
+    "queries/refresh/verify_LF_CS_query_01.sql",
+    "queries/refresh/verify_LF_CS_query_02.sql",
+    "queries/refresh/verify_LF_SR_query_01.sql",
+    "queries/refresh/verify_LF_SR_query_02.sql",
+    "queries/refresh/verify_LF_SS_query_01.sql",
+    "queries/refresh/verify_LF_SS_query_02.sql",
+    "queries/refresh/verify_LF_WR_query_01.sql",
+    "queries/refresh/verify_LF_WR_query_02.sql",
+    "queries/refresh/verify_LF_WS_query_01.sql",
+    "queries/refresh/verify_LF_WS_query_02.sql",
+    "queries/refresh/verify_LF_I_query_01.sql",
+    "queries/refresh/verify_LF_I_query_02.sql"
   ]
 }

@@ -1,9 +1,6 @@
 -- ==============================================
--- 72083
 -- ec 74 b5 fe ad 2c 44 57
 -- ==============================================
-select count(*) from web_returns;
-
 with column_checksums as (
     select array[
                checksum(wr_returned_date_sk),

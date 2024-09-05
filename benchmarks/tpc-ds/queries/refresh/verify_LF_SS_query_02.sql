@@ -1,9 +1,6 @@
 -- ==============================================
--- 2892668
 -- 91 7f 5e 5c 0b 2d 03 72
 -- ==============================================
-select count(*) from store_sales;
-
 with column_checksums as (
     select array[
                checksum(ss_sold_date_sk),

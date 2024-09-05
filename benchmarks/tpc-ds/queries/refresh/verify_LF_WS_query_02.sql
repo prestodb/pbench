@@ -1,9 +1,6 @@
 -- ==============================================
--- 722456
 -- 28 ec 0b 0b ac 1b fb 1b
 -- ==============================================
-select count(*) from web_sales;
-
 with column_checksums as (
     select array[
                checksum(ws_sold_date_sk),
