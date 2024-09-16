@@ -40,10 +40,10 @@ type Stage struct {
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.
 	QueryFiles []string `json:"query_files,omitempty"`
-	// Run shell scripts after executing all the queries of a stage.
+	// Run shell scripts after executing all the queries in a stage.
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
-	// Run shell scripts after executing each queries.
-	PostQeryShellScripts []string `json:"post_query_scripts,omitempty"`
+	// Run shell scripts after executing each query.
+	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
 	// Can use regexp as key to match multiple [catalog.schema] pairs.
@@ -237,8 +237,9 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		log.Info().Msg("no query to run.")
 	}
 
+	postStageErr := s.runShellScripts(ctx, s.PostStageShellScripts)
 	if returnErr == nil {
-		returnErr = s.runShellScripts(ctx, s.PostStageShellScripts)
+		returnErr = postStageErr
 	}
 	return
 }
@@ -552,6 +553,9 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		return nil
 	})
 	// run post query shell scripts
-	s.runShellScripts(ctx, s.PostQeryShellScripts)
+	postQueryErr := s.runShellScripts(ctx, s.PostQueryShellScripts)
+	if err == nil {
+		err = postQueryErr
+	}
 	return result, err
 }

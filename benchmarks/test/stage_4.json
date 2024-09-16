@@ -8,11 +8,11 @@
   ],
   "post_stage_scripts": [
     "echo \"run this script after this stage is complete\"",
-    "python3 my_post_stage_script.py"
+    "python3 my_post_stage_script.py count.txt"
   ],
   "post_query_scripts": [
     "echo \"run this script after each query in this stage is complete\"",
-    "python3 my_post_query_script.py"
+    "python3 my_post_query_script.py count.txt"
   ],
   "next": [
     "stage_5.json"

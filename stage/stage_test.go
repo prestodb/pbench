@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"pbench/presto"
+	"strconv"
 	"syscall"
 	"testing"
 )
@@ -17,7 +17,7 @@ func assertStage(t *testing.T, stage *Stage, prerequisites, next []*Stage, queri
 	assert.Equal(t, queryFiles, len(stage.QueryFiles))
 }
 
-func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, expectedRowCount int, expectedErrors []string) {
+func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, expectedRowCount int, expectedErrors []string, expectedScriptCount int) {
 	/** from top to bottom
 	       stage_1
 	       /      \
@@ -29,8 +29,8 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	          |
 	       stage_6
 	*/
-	stage1, stages, err := ParseStageGraphFromFile("../benchmarks/test/stage_1.json")
-	assert.Nil(t, err)
+	stage1, stages, parseErr := ParseStageGraphFromFile("../benchmarks/test/stage_1.json")
+	assert.Nil(t, parseErr)
 	stage1.InitStates()
 	stage2 := stages.Get("stage_2")
 	stage3 := stages.Get("stage_3")
@@ -56,7 +56,7 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	}
 
 	stage1.Run(context.Background())
-	assert.Nil(t, os.RemoveAll(stage1.States.OutputPath))
+	defer assert.Nil(t, os.RemoveAll(stage1.States.OutputPath))
 
 	assert.Equal(t, totalQueryCount, queryCount)
 	assert.Equal(t, len(expectedErrors), len(errs))
@@ -64,21 +64,31 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 		if errors.Is(err, syscall.ECONNREFUSED) {
 			t.Fatalf("%v: this test requires Presto Hive query runner to run.", err)
 		}
-		var qe *presto.QueryError
-		assert.True(t, errors.As(err, &qe))
-		assert.Equal(t, expectedErrors[i], qe.Message)
+		assert.Equal(t, expectedErrors[i], err.Error())
 	}
 	assert.Equal(t, expectedRowCount, rowCount)
+	const scriptCountFilePath = "../benchmarks/test/count.txt"
+	countBytes, ioErr := os.ReadFile(scriptCountFilePath)
+	if !assert.Nil(t, ioErr) {
+		t.FailNow()
+	}
+	_ = os.Remove(scriptCountFilePath)
+	scriptCount, convErr := strconv.Atoi(string(countBytes))
+	if !assert.Nil(t, convErr) {
+		t.FailNow()
+	}
+	assert.Equal(t, expectedScriptCount, scriptCount)
 }
 
 func TestParseStageGraph(t *testing.T) {
 	t.Run("abortOnError = true", func(t *testing.T) {
-		testParseAndExecute(t, true, 9, 16, []string{"Table tpch.sf1.foo does not exist"})
+		testParseAndExecute(t, true, 10, 16, []string{
+			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist"}, 3)
 	})
 	t.Run("abortOnError = false", func(t *testing.T) {
 		testParseAndExecute(t, false, 15, 24, []string{
-			"Table tpch.sf1.foo does not exist",
-			"line 1:11: Function sum1 not registered"})
+			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist",
+			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 4)
 	})
 }
 
