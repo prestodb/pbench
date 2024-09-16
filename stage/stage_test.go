@@ -30,8 +30,8 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 	       stage_6
 	*/
 	stage1, stages, err := ParseStageGraphFromFile("../benchmarks/test/stage_1.json")
-	stage1.InitStates()
 	assert.Nil(t, err)
+	stage1.InitStates()
 	stage2 := stages.Get("stage_2")
 	stage3 := stages.Get("stage_3")
 	stage4 := stages.Get("stage_4")
@@ -84,6 +84,7 @@ func TestParseStageGraph(t *testing.T) {
 
 func TestHttpError(t *testing.T) {
 	stage, _, err := ParseStageGraphFromFile("../benchmarks/test/http_error.json")
+	assert.Nil(t, err)
 	queryCount := 0
 	stage.InitStates()
 	stage.States.OnQueryCompletion = func(result *QueryResult) {
