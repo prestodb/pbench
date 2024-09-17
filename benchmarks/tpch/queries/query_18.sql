@@ -7,15 +7,15 @@ select
     o.totalprice,
     sum(l.quantity)
 from
-    "customer" AS c,
-    "orders" AS o,
-    "lineitem" AS l
+    customer AS c,
+    orders AS o,
+    lineitem AS l
 where
     o.orderkey in (
         select
             l.orderkey
         from
-            "lineitem" AS l
+            lineitem AS l
         group by
             l.orderkey having
             sum(l.quantity) > 314
