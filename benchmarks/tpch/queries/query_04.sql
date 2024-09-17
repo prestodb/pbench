@@ -3,7 +3,7 @@ SELECT
     o.orderpriority,
     count(*) AS order_count
 FROM
-    "orders" o
+    orders o
 WHERE
     o.orderdate >= DATE '1993-07-01'
   AND o.orderdate < DATE '1993-07-01' + INTERVAL '3' MONTH
