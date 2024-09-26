@@ -49,7 +49,7 @@ WITH (
     {{- end }}
 );
 {{ end }}
-{{ if (and (not .Iceberg) (not .Partitioned)) }}
+{{- if (and (not .Iceberg) (not .Partitioned)) }}
 {{- range .InsertTables -}}
 ANALYZE {{ .Name }};
 {{ end -}}
