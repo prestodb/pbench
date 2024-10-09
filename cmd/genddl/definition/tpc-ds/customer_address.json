@@ -1,0 +1,57 @@
+{
+  "name": "customer_address",
+  "columns": [
+    {
+      "name": "ca_address_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ca_address_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "ca_street_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "ca_street_name",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "ca_street_type",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "ca_suite_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "ca_city",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "ca_county",
+      "type": "VARCHAR(30)"
+    },
+    {
+      "name": "ca_state",
+      "type": "VARCHAR(2)"
+    },
+    {
+      "name": "ca_zip",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "ca_country",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "ca_gmt_offset",
+      "type": "DECIMAL(5,2)"
+    },
+    {
+      "name": "ca_location_type",
+      "type": "VARCHAR(20)"
+    }
+  ]
+}

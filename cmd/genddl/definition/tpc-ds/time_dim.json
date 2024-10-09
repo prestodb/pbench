@@ -1,0 +1,45 @@
+{
+  "name": "time_dim",
+  "columns": [
+    {
+      "name": "t_time_sk",
+      "type": "INT"
+    },
+    {
+      "name": "t_time_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "t_time",
+      "type": "INT"
+    },
+    {
+      "name": "t_hour",
+      "type": "INT"
+    },
+    {
+      "name": "t_minute",
+      "type": "INT"
+    },
+    {
+      "name": "t_second",
+      "type": "INT"
+    },
+    {
+      "name": "t_am_pm",
+      "type": "VARCHAR(2)"
+    },
+    {
+      "name": "t_shift",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "t_sub_shift",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "t_meal_time",
+      "type": "VARCHAR(20)"
+    }
+  ]
+}
