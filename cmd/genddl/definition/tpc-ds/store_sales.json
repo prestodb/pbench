@@ -1,0 +1,99 @@
+{
+  "name": "store_sales",
+  "partitioned": true,
+  "columns": [
+    {
+      "name": "ss_sold_date_sk",
+      "type": "INT",
+      "partition_key": true
+    },
+    {
+      "name": "ss_sold_time_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_item_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_customer_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_cdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_hdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_addr_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_store_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_promo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ss_ticket_number",
+      "type": "BIGINT"
+    },
+    {
+      "name": "ss_quantity",
+      "type": "INT"
+    },
+    {
+      "name": "ss_wholesale_cost",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_list_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_sales_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_ext_discount_amt",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_ext_sales_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_ext_wholesale_cost",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_ext_list_price",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_ext_tax",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_coupon_amt",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_net_paid",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_net_paid_inc_tax",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "ss_net_profit",
+      "type": "DECIMAL(7,2)"
+    }
+  ]
+}

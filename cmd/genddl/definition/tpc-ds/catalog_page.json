@@ -1,0 +1,41 @@
+{
+  "name": "catalog_page",
+  "columns": [
+    {
+      "name": "cp_catalog_page_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cp_catalog_page_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "cp_start_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cp_end_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cp_department",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "cp_catalog_number",
+      "type": "INT"
+    },
+    {
+      "name": "cp_catalog_page_number",
+      "type": "INT"
+    },
+    {
+      "name": "cp_description",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "cp_type",
+      "type": "VARCHAR(100)"
+    }
+  ]
+}

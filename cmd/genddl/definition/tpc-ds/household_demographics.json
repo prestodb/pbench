@@ -1,0 +1,25 @@
+{
+  "name": "household_demographics",
+  "columns": [
+    {
+      "name": "hd_demo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "hd_income_band_sk",
+      "type": "INT"
+    },
+    {
+      "name": "hd_buy_potential",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "hd_dep_count",
+      "type": "INT"
+    },
+    {
+      "name": "hd_vehicle_count",
+      "type": "INT"
+    }
+  ]
+}

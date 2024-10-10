@@ -1,0 +1,61 @@
+{
+  "name": "warehouse",
+  "columns": [
+    {
+      "name": "w_warehouse_sk",
+      "type": "INT"
+    },
+    {
+      "name": "w_warehouse_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "w_warehouse_name",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "w_warehouse_sq_ft",
+      "type": "INT"
+    },
+    {
+      "name": "w_street_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "w_street_name",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "w_street_type",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "w_suite_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "w_city",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "w_county",
+      "type": "VARCHAR(30)"
+    },
+    {
+      "name": "w_state",
+      "type": "VARCHAR(2)"
+    },
+    {
+      "name": "w_zip",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "w_country",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "w_gmt_offset",
+      "type": "DECIMAL(5,2)"
+    }
+  ]
+}
