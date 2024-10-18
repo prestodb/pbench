@@ -95,3 +95,5 @@ services:
     - /home/centos/presto/spilled_data:/opt/presto-server/spilled_data
     networks:
       presto-swarm:
+    cap_add:
+    - PERFMON

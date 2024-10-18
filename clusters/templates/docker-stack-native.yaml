@@ -97,3 +97,5 @@ services:
     {{ end -}}
     networks:
       presto-swarm:
+    cap_add:
+    - PERFMON

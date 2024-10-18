@@ -1,7 +1,7 @@
 # `large-ssd` cluster
 r6id.8xlarge (vCPU: 32, Memory: 248 GB) * 16
 
-### This configuration includes an SSD Cache of 500GB
+### This configuration includes an SSD Cache of 1800GB
 ### Global
 * `SysReservedMemCapGb = 2`
 * `SysReservedMemPercent = 0.05`
