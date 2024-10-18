@@ -93,3 +93,5 @@ services:
     - /home/centos/presto/plugin/presto-udf-nielsen/:/opt/presto-server/plugin/udfs/
     networks:
       presto-swarm:
+    cap_add:
+    - PERFMON
