@@ -1,0 +1,17 @@
+{
+  "name": "reason",
+  "columns": [
+    {
+      "name": "r_reason_sk",
+      "type": "INT"
+    },
+    {
+      "name": "r_reason_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "r_reason_desc",
+      "type": "VARCHAR(100)"
+    }
+  ]
+}
