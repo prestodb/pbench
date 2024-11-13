@@ -1,4 +1,4 @@
-select c, sum1(a) as sum, count(*) as count, max(b) as max
+select c, sum(a) as sum, count(*) as count, max(b) as max
 from (values (1, 2, 'shanghai'),
              (3, 4, 'dalian'),
              (5, 6, 'new york'),
