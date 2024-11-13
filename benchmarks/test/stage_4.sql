@@ -1,3 +1,3 @@
 select 'query 6'
-from region;
+from foo;
 select 'query 7';
