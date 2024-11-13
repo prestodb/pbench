@@ -1,0 +1,29 @@
+{
+  "name": "ship_mode",
+  "columns": [
+    {
+      "name": "sm_ship_mode_sk",
+      "type": "INT"
+    },
+    {
+      "name": "sm_ship_mode_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "sm_type",
+      "type": "VARCHAR(30)"
+    },
+    {
+      "name": "sm_code",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "sm_carrier",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "sm_contract",
+      "type": "VARCHAR(20)"
+    }
+  ]
+}

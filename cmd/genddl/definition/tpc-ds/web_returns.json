@@ -1,0 +1,103 @@
+{
+  "name": "web_returns",
+  "partitioned_min_scale": 10000,
+  "columns": [
+    {
+      "name": "wr_returned_date_sk",
+      "type": "INT",
+      "partition_key": true
+    },
+    {
+      "name": "wr_returned_time_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_item_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_refunded_customer_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_refunded_cdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_refunded_hdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_refunded_addr_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_returning_customer_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_returning_cdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_returning_hdemo_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_returning_addr_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_web_page_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_reason_sk",
+      "type": "INT"
+    },
+    {
+      "name": "wr_order_number",
+      "type": "BIGINT"
+    },
+    {
+      "name": "wr_return_quantity",
+      "type": "INT"
+    },
+    {
+      "name": "wr_return_amt",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_return_tax",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_return_amt_inc_tax",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_fee",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_return_ship_cost",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_refunded_cash",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_reversed_charge",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_account_credit",
+      "type": "DECIMAL(7,2)"
+    },
+    {
+      "name": "wr_net_loss",
+      "type": "DECIMAL(7,2)"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "scale_factor": "10",
+  "file_format": "parquet",
+  "compression_method": "uncompressed"
+}

@@ -1,0 +1,129 @@
+{
+  "name": "call_center",
+  "columns": [
+    {
+      "name": "cc_call_center_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cc_call_center_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "cc_rec_start_date",
+      "type": "DATE"
+    },
+    {
+      "name": "cc_rec_end_date",
+      "type": "DATE"
+    },
+    {
+      "name": "cc_closed_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cc_open_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "cc_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "cc_class",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "cc_employees",
+      "type": "INT"
+    },
+    {
+      "name": "cc_sq_ft",
+      "type": "INT"
+    },
+    {
+      "name": "cc_hours",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "cc_manager",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "cc_mkt_id",
+      "type": "INT"
+    },
+    {
+      "name": "cc_mkt_class",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "cc_mkt_desc",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "cc_market_manager",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "cc_division",
+      "type": "INT"
+    },
+    {
+      "name": "cc_division_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "cc_company",
+      "type": "INT"
+    },
+    {
+      "name": "cc_company_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "cc_street_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "cc_street_name",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "cc_street_type",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "cc_suite_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "cc_city",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "cc_county",
+      "type": "VARCHAR(30)"
+    },
+    {
+      "name": "cc_state",
+      "type": "VARCHAR(2)"
+    },
+    {
+      "name": "cc_zip",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "cc_country",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "cc_gmt_offset",
+      "type": "DECIMAL(5,2)"
+    },
+    {
+      "name": "cc_tax_percentage",
+      "type": "DECIMAL(5,2)"
+    }
+  ]
+}

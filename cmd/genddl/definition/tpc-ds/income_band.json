@@ -1,0 +1,17 @@
+{
+  "name": "income_band",
+  "columns": [
+    {
+      "name": "ib_income_band_sk",
+      "type": "INT"
+    },
+    {
+      "name": "ib_lower_bound",
+      "type": "INT"
+    },
+    {
+      "name": "ib_upper_bound",
+      "type": "INT"
+    }
+  ]
+}

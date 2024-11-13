@@ -1,0 +1,121 @@
+{
+  "name": "store",
+  "columns": [
+    {
+      "name": "s_store_sk",
+      "type": "INT"
+    },
+    {
+      "name": "s_store_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "s_rec_start_date",
+      "type": "DATE"
+    },
+    {
+      "name": "s_rec_end_date",
+      "type": "DATE"
+    },
+    {
+      "name": "s_closed_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "s_store_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "s_number_employees",
+      "type": "INT"
+    },
+    {
+      "name": "s_floor_space",
+      "type": "INT"
+    },
+    {
+      "name": "s_hours",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "s_manager",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "s_market_id",
+      "type": "INT"
+    },
+    {
+      "name": "s_geography_class",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "s_market_desc",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "s_market_manager",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "s_division_id",
+      "type": "INT"
+    },
+    {
+      "name": "s_division_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "s_company_id",
+      "type": "INT"
+    },
+    {
+      "name": "s_company_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "s_street_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "s_street_name",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "s_street_type",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "s_suite_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "s_city",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "s_county",
+      "type": "VARCHAR(30)"
+    },
+    {
+      "name": "s_state",
+      "type": "VARCHAR(2)"
+    },
+    {
+      "name": "s_zip",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "s_country",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "s_gmt_offset",
+      "type": "DECIMAL(5,2)"
+    },
+    {
+      "name": "s_tax_precentage",
+      "type": "DECIMAL(5,2)"
+    }
+  ]
+}

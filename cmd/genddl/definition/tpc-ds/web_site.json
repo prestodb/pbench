@@ -1,0 +1,109 @@
+{
+  "name": "web_site",
+  "columns": [
+    {
+      "name": "web_site_sk",
+      "type": "INT"
+    },
+    {
+      "name": "web_site_id",
+      "type": "VARCHAR(16)"
+    },
+    {
+      "name": "web_rec_start_date",
+      "type": "DATE"
+    },
+    {
+      "name": "web_rec_end_date",
+      "type": "DATE"
+    },
+    {
+      "name": "web_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "web_open_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "web_close_date_sk",
+      "type": "INT"
+    },
+    {
+      "name": "web_class",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "web_manager",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "web_mkt_id",
+      "type": "INT"
+    },
+    {
+      "name": "web_mkt_class",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "web_mkt_desc",
+      "type": "VARCHAR(100)"
+    },
+    {
+      "name": "web_market_manager",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "web_company_id",
+      "type": "INT"
+    },
+    {
+      "name": "web_company_name",
+      "type": "VARCHAR(50)"
+    },
+    {
+      "name": "web_street_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "web_street_name",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "web_street_type",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "web_suite_number",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "web_city",
+      "type": "VARCHAR(60)"
+    },
+    {
+      "name": "web_county",
+      "type": "VARCHAR(30)"
+    },
+    {
+      "name": "web_state",
+      "type": "VARCHAR(2)"
+    },
+    {
+      "name": "web_zip",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "web_country",
+      "type": "VARCHAR(20)"
+    },
+    {
+      "name": "web_gmt_offset",
+      "type": "DECIMAL(5,2)"
+    },
+    {
+      "name": "web_tax_percentage",
+      "type": "DECIMAL(5,2)"
+    }
+  ]
+}
