@@ -1,6 +1,5 @@
 import sys
 from utils import increment_file_value
-import os
 
 # Main function to handle the command-line argument
 if __name__ == "__main__":
