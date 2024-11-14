@@ -14,6 +14,10 @@
     "echo \"run this script after each query in this stage is complete\"",
     "python3 my_post_query_script.py count.txt"
   ],
+  "post_query_cycle_scripts": [
+    "echo \"execute this script after all runs of the same query in this stage have completed\"",
+    "python3 my_post_query_cycle_script.py count.txt"
+  ],
   "next": [
     "stage_5.json"
   ],

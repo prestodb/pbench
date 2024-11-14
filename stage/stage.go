@@ -44,6 +44,8 @@ type Stage struct {
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
 	// Run shell scripts after executing each query.
 	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
+	// Run shell scripts after finishing full query cycle runs each query.
+	PostQueryCycleShellScripts []string `json:"post_query_cycle_scripts,omitempty"`
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
 	// Can use regexp as key to match multiple [catalog.schema] pairs.
@@ -437,6 +439,11 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				continue
 			}
 			log.Info().EmbedObject(result).Msgf("query finished")
+		}
+		// run post query cycle shell scripts
+		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts)
+		if postQueryCycleErr != nil {
+			return fmt.Errorf("post-query script execution failed: %w", postQueryCycleErr)
 		}
 	}
 	return nil
