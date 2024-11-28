@@ -46,6 +46,8 @@ type Stage struct {
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
 	// Run shell scripts after executing each query.
 	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
+	// Run shell scripts before starting query cycle runs of each query.
+	PreQueryCycleShellScripts []string `json:"pre_query_cycle_scripts,omitempty"`
 	// Run shell scripts after finishing full query cycle runs each query.
 	PostQueryCycleShellScripts []string `json:"post_query_cycle_scripts,omitempty"`
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
@@ -408,6 +410,11 @@ func (s *Stage) runShellScripts(ctx context.Context, shellScripts []string) erro
 func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string, expectedRowCountStartIndex int) (retErr error) {
 	batchSize := len(queries)
 	for i, queryText := range queries {
+		// run pre query cycle shell scripts
+		preQueryCycleErr := s.runShellScripts(ctx, s.PreQueryCycleShellScripts)
+		if preQueryCycleErr != nil {
+			return fmt.Errorf("pre-query script execution failed: %w", preQueryCycleErr)
+		}
 		for j := 0; j < s.ColdRuns+s.WarmRuns; j++ {
 			query := &Query{
 				Text:             queryText,

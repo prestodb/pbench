@@ -83,12 +83,12 @@ func testParseAndExecute(t *testing.T, abortOnError bool, totalQueryCount int, e
 func TestParseStageGraph(t *testing.T) {
 	t.Run("abortOnError = true", func(t *testing.T) {
 		testParseAndExecute(t, true, 10, 16, []string{
-			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist"}, 6)
+			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist"}, 9)
 	})
 	t.Run("abortOnError = false", func(t *testing.T) {
 		testParseAndExecute(t, false, 15, 24, []string{
 			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist",
-			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 9)
+			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 13)
 	})
 }
 

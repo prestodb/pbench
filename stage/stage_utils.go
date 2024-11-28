@@ -91,6 +91,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.PreStageShellScripts = append(s.PreStageShellScripts, other.PreStageShellScripts...)
 	s.PostQueryShellScripts = append(s.PostQueryShellScripts, other.PostQueryShellScripts...)
 	s.PostStageShellScripts = append(s.PostStageShellScripts, other.PostStageShellScripts...)
+	s.PreQueryCycleShellScripts = append(s.PreQueryCycleShellScripts, other.PreQueryCycleShellScripts...)
 	s.PostQueryCycleShellScripts = append(s.PostQueryCycleShellScripts, other.PostQueryCycleShellScripts...)
 
 	return s
