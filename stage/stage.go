@@ -40,6 +40,8 @@ type Stage struct {
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.
 	QueryFiles []string `json:"query_files,omitempty"`
+	// Run shell scripts before starting the execution of queries in a stage.
+	PreStageShellScripts []string `json:"pre_stage_scripts,omitempty"`
 	// Run shell scripts after executing all the queries in a stage.
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
 	// Run shell scripts after executing each query.
@@ -229,6 +231,10 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.setDefaults()
 	s.prepareClient()
 	s.propagateStates()
+	preStageErr := s.runShellScripts(ctx, s.PreStageShellScripts)
+	if preStageErr != nil {
+		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
+	}
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
 		if *s.RandomExecution {
 			returnErr = s.runRandomly(ctx)
