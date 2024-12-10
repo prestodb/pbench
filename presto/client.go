@@ -56,6 +56,15 @@ func NewClient(serverUrl string, isTrino bool) (*Client, error) {
 		sessionParams: make(map[string]any),
 		isTrino:       isTrino,
 	}
+	client.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return http.ErrUseLastResponse
+		}
+		if len(via) > 0 {
+			req.Header = via[0].Header
+		}
+		return nil
+	}
 	client.User(DefaultUser)
 	return client, nil
 }
