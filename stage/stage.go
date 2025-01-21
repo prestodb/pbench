@@ -40,10 +40,16 @@ type Stage struct {
 	// If a stage has both Queries and QueryFiles, the queries in the Queries array will be executed first then
 	// the QueryFiles will be read and executed.
 	QueryFiles []string `json:"query_files,omitempty"`
+	// Run shell scripts before starting the execution of queries in a stage.
+	PreStageShellScripts []string `json:"pre_stage_scripts,omitempty"`
 	// Run shell scripts after executing all the queries in a stage.
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
 	// Run shell scripts after executing each query.
 	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
+	// Run shell scripts before starting query cycle runs of each query.
+	PreQueryCycleShellScripts []string `json:"pre_query_cycle_scripts,omitempty"`
+	// Run shell scripts after finishing full query cycle runs each query.
+	PostQueryCycleShellScripts []string `json:"post_query_cycle_scripts,omitempty"`
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
 	// Can use regexp as key to match multiple [catalog.schema] pairs.
@@ -227,6 +233,10 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.setDefaults()
 	s.prepareClient()
 	s.propagateStates()
+	preStageErr := s.runShellScripts(ctx, s.PreStageShellScripts)
+	if preStageErr != nil {
+		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
+	}
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
 		if *s.RandomExecution {
 			returnErr = s.runRandomly(ctx)
@@ -400,6 +410,11 @@ func (s *Stage) runShellScripts(ctx context.Context, shellScripts []string) erro
 func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string, expectedRowCountStartIndex int) (retErr error) {
 	batchSize := len(queries)
 	for i, queryText := range queries {
+		// run pre query cycle shell scripts
+		preQueryCycleErr := s.runShellScripts(ctx, s.PreQueryCycleShellScripts)
+		if preQueryCycleErr != nil {
+			return fmt.Errorf("pre-query script execution failed: %w", preQueryCycleErr)
+		}
 		for j := 0; j < s.ColdRuns+s.WarmRuns; j++ {
 			query := &Query{
 				Text:             queryText,
@@ -437,6 +452,11 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 				continue
 			}
 			log.Info().EmbedObject(result).Msgf("query finished")
+		}
+		// run post query cycle shell scripts
+		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts)
+		if postQueryCycleErr != nil {
+			return fmt.Errorf("post-query script execution failed: %w", postQueryCycleErr)
 		}
 	}
 	return nil
