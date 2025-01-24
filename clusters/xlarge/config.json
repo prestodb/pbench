@@ -7,6 +7,6 @@
     "number_of_workers": 16,
     "memory_per_node_gb": 490,
     "vcpu_per_worker": 64,
-    "fragment_result_cache_enabled": true,
-    "data_cache_enabled": true
+    "fragment_result_cache_enabled": false,
+    "data_cache_enabled": false
 }
