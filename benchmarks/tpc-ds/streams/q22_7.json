@@ -1,0 +1,7 @@
+{
+    "random_execution": true,
+    "randomly_execute_until": "60m",
+    "query_files": [
+      "../queries/query_22.sql"
+    ]
+}
