@@ -20,6 +20,11 @@ const (
 	DefaultStageFileExt = ".json"
 )
 
+var (
+	DefaultColdRunsValue = 1
+	DefaultWarmRunsValue = 0
+)
+
 type OnQueryCompletionFn func(result *QueryResult)
 
 var DefaultNewClientFn = func() *presto.Client {
@@ -66,10 +71,10 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	if other.RandomlyExecuteUntil != nil {
 		s.RandomlyExecuteUntil = other.RandomlyExecuteUntil
 	}
-	if other.ColdRuns > 0 {
+	if other.ColdRuns != nil {
 		s.ColdRuns = other.ColdRuns
 	}
-	if other.WarmRuns > 0 {
+	if other.WarmRuns != nil {
 		s.WarmRuns = other.WarmRuns
 	}
 	s.StartOnNewClient = other.StartOnNewClient
@@ -201,8 +206,14 @@ func (s *Stage) setDefaults() {
 	if s.SaveJson == nil {
 		s.SaveJson = &falseValue
 	}
-	if s.ColdRuns+s.WarmRuns == 0 {
-		s.ColdRuns = 1
+	if s.ColdRuns == nil {
+		s.ColdRuns = &DefaultColdRunsValue
+	}
+	if s.WarmRuns == nil {
+		s.WarmRuns = &DefaultWarmRunsValue
+	}
+	if *s.ColdRuns+*s.WarmRuns == 0 {
+		s.ColdRuns = &DefaultColdRunsValue
 	}
 }
 
@@ -234,11 +245,13 @@ func (s *Stage) propagateStates() {
 				nextStage.SessionParams[k] = v
 			}
 		}
-		if nextStage.ColdRuns == 0 {
+		if nextStage.ColdRuns == nil && nextStage.WarmRuns == nil {
 			nextStage.ColdRuns = s.ColdRuns
-		}
-		if nextStage.WarmRuns == 0 {
 			nextStage.WarmRuns = s.WarmRuns
+		} else if nextStage.ColdRuns == nil && nextStage.WarmRuns != nil {
+			nextStage.ColdRuns = &DefaultColdRunsValue
+		} else if nextStage.ColdRuns != nil && nextStage.WarmRuns == nil {
+			nextStage.WarmRuns = &DefaultWarmRunsValue
 		}
 		if nextStage.AbortOnError == nil {
 			nextStage.AbortOnError = s.AbortOnError
@@ -344,7 +357,7 @@ func (s *Stage) querySourceString(result *QueryResult) (sourceStr string) {
 	} else {
 		sourceStr = fmt.Sprintf("%s_%s", s.Id, sourceStr)
 	}
-	if s.ColdRuns+s.WarmRuns > 1 {
+	if *s.ColdRuns+*s.WarmRuns > 1 {
 		if result.Query.ColdRun {
 			sourceStr += "_c"
 		} else {
