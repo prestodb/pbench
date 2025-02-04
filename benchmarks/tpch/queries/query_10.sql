@@ -1,10 +1,10 @@
 --TPCH Q10
 SELECT
     c.custkey,
-    c.name,
+    c.name AS c_name,
     sum(l.extendedprice * (1 - l.discount)) AS revenue,
     c.acctbal,
-    n.name,
+    n.name AS n_name,
     c.address,
     c.phone,
     c.comment
