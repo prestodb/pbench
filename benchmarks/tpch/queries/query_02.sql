@@ -1,8 +1,8 @@
 --TPCH Q2
 SELECT
     s.acctbal,
-    s.name as s_name,
-    n.name as n_name,
+    s.name AS s_name,
+    n.name AS n_name,
     p.partkey,
     p.mfgr,
     s.address,
