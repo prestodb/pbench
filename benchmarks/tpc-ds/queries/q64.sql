@@ -11,7 +11,7 @@
    having sum(cs_ext_list_price)>2*sum(cr_refunded_cash+cr_reversed_charge+cr_store_credit)),
  cross_sales as
   (select i_product_name product_name, i_item_sk item_sk, s_store_name store_name, s_zip store_zip,
-          ad1.ca_street_number b_street_number, ad1.ca_street_name b_streen_name, ad1.ca_city b_city,
+          ad1.ca_street_number b_street_number, ad1.ca_street_name b_street_name, ad1.ca_city b_city,
           ad1.ca_zip b_zip, ad2.ca_street_number c_street_number, ad2.ca_street_name c_street_name,
           ad2.ca_city c_city, ad2.ca_zip c_zip, d1.d_year as syear, d2.d_year as fsyear, d3.d_year s2year,
           count(*) cnt, sum(ss_wholesale_cost) s1, sum(ss_list_price) s2, sum(ss_coupon_amt) s3
