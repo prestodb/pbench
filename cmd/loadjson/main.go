@@ -36,10 +36,9 @@ var (
 	mysqlDb                  *sql.DB
 	pseudoStage              *stage.Stage
 
-	parallelismGuard     chan struct{}
-	resultChan           = make(chan *stage.QueryResult)
-	runningTasks         sync.WaitGroup
-	DefaultColdRunsValue = 1
+	parallelismGuard chan struct{}
+	resultChan       = make(chan *stage.QueryResult)
+	runningTasks     sync.WaitGroup
 )
 
 func Run(_ *cobra.Command, args []string) {
@@ -76,7 +75,7 @@ func Run(_ *cobra.Command, args []string) {
 	// To reuse the `pbench run` code, especially run recorders, we create a pseudo main stage.
 	pseudoStage = &stage.Stage{
 		Id:       "load_json",
-		ColdRuns: &DefaultColdRunsValue,
+		ColdRuns: &stage.DefaultColdRunsValue,
 		States: &stage.SharedStageStates{
 			RunName:      RunName,
 			Comment:      Comment,

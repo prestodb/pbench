@@ -248,9 +248,9 @@ func (s *Stage) propagateStates() {
 		if nextStage.ColdRuns == nil && nextStage.WarmRuns == nil {
 			nextStage.ColdRuns = s.ColdRuns
 			nextStage.WarmRuns = s.WarmRuns
-		} else if nextStage.ColdRuns == nil && nextStage.WarmRuns != nil {
+		} else if nextStage.ColdRuns == nil {
 			nextStage.ColdRuns = &DefaultColdRunsValue
-		} else if nextStage.ColdRuns != nil && nextStage.WarmRuns == nil {
+		} else if nextStage.WarmRuns == nil {
 			nextStage.WarmRuns = &DefaultWarmRunsValue
 		}
 		if nextStage.AbortOnError == nil {
