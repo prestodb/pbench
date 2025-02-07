@@ -11,8 +11,8 @@ import (
 // https://github.com/prestodb/presto/blob/master/presto-main/src/main/java/com/facebook/presto/server/QueryStateInfo.java
 // Unused fields are commented out for now.
 type QueryStateInfo struct {
-	QueryId string `json:"queryId"`
-	//QueryState string `json:"queryState"`
+	QueryId    string `json:"queryId"`
+	QueryState string `json:"queryState"`
 	//ResourceGroupId []string  `json:"resourceGroupId"`
 	//Query          string    `json:"query"`
 	//QueryTruncated bool      `json:"queryTruncated"`
@@ -41,6 +41,14 @@ type QueryStateInfo struct {
 	//	CompletedDrivers         int  `json:"completedDrivers"`
 	//} `json:"progress"`
 	//WarningCodes []interface{} `json:"warningCodes"`
+	ErrorCode QueryStateError `json:"errorCode"`
+}
+
+type QueryStateError struct {
+	Code      int    `json:"code"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Retriable bool   `json:"retriable"`
 }
 
 // GetQueryStatsOptions includes parameters in https://github.com/prestodb/presto/blob/a7af002182098ba5a61248edfcaaa66e5d50e489/presto-main/src/main/java/com/facebook/presto/server/QueryStateInfoResource.java#L89-L95
