@@ -2,7 +2,6 @@ package forward
 
 import (
 	"context"
-	"github.com/spf13/cobra"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +15,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -28,16 +29,27 @@ var (
 	ReplacePatternStrings []string
 	SchemaMappingStrings  []string
 
-	excludePatterns []*regexp.Regexp
-	replacePatterns []*regexp.Regexp
-	replaceStrings  []string
-	schemaMappings  = make(map[string]string)
-	runningTasks    sync.WaitGroup
-	failedToForward atomic.Uint32
-	forwarded       atomic.Uint32
+	excludePatterns        []*regexp.Regexp
+	replacePatterns        []*regexp.Regexp
+	replaceStrings         []string
+	schemaMappings         = make(map[string]string)
+	runningTasks           sync.WaitGroup
+	failedToForward        atomic.Uint32
+	forwarded              atomic.Uint32
+	runningQueriesCacheMap = make(map[string]*[]QueryCache)
 )
 
-const maxRetry = 10
+const (
+	maxRetry                 = 10
+	queryStateErrorCancelled = "USER_CANCELED"
+	queryStateFailed         = "FAILED"
+)
+
+type QueryCache struct {
+	QueryId string
+	NextUri string
+	Client  *presto.Client
+}
 
 func waitForNextPoll(ctx context.Context) {
 	timer := time.NewTimer(PollInterval)
@@ -142,6 +154,10 @@ func Run(_ *cobra.Command, _ []string) {
 		// to process get filtered out.
 		newCutoffTime := lastQueryStateCheckCutoffTime
 		for _, state := range states {
+			//check if there is query in cancel status
+			if state.QueryState == queryStateFailed && state.ErrorCode.Name == queryStateErrorCancelled {
+				go checkAndCancelQuery(ctx, &state)
+			}
 			if !state.CreateTime.After(lastQueryStateCheckCutoffTime) {
 				// We looked at this query in the previous batch.
 				continue
@@ -169,6 +185,16 @@ func Run(_ *cobra.Command, _ []string) {
 	close(timeToExit)
 	log.Info().Uint32("forwarded", forwarded.Load()).Uint32("failed_to_forward", failedToForward.Load()).
 		Msgf("finished forwarding queries")
+}
+
+func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo) {
+	if queryCaches, ok := runningQueriesCacheMap[queryState.QueryId]; ok {
+		for _, q := range *queryCaches {
+			if q.NextUri != "" {
+				q.Client.CancelQuery(ctx, q.NextUri)
+			}
+		}
+	}
 }
 
 func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, clients []*presto.Client) {
@@ -226,9 +252,10 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 	}
 	successful, failed := atomic.Uint32{}, atomic.Uint32{}
 	forwardedQueries := sync.WaitGroup{}
+	cachedQueries := []QueryCache{}
 	for i := 1; i < len(clients); i++ {
 		forwardedQueries.Add(1)
-		go func(client *presto.Client) {
+		go func(client *presto.Client, cachedQueries *[]QueryCache) {
 			defer forwardedQueries.Done()
 			clientResult, _, queryErr := client.Query(ctx, queryInfo.Query, func(req *http.Request) {
 				if queryInfo.Session.Catalog != nil {
@@ -246,6 +273,10 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 				failed.Add(1)
 				return
 			}
+			//build cache for running query
+			if clientResult.NextUri != nil {
+				*cachedQueries = append(*cachedQueries, QueryCache{QueryId: clientResult.Id, NextUri: *clientResult.NextUri, Client: client})
+			}
 			rowCount := 0
 			drainErr := clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
 				rowCount += len(qr.Data)
@@ -260,10 +291,16 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			successful.Add(1)
 			log.Info().Str("source_query_id", queryInfo.QueryId).
 				Str("target_host", client.GetHost()).Int("row_count", rowCount).Msg("query executed successfully")
-		}(clients[i])
+		}(clients[i], &cachedQueries)
 	}
+	//Add running query into to cache
+	runningQueriesCacheMap[queryState.QueryId] = &cachedQueries
+	log.Info().Msg("adding query to cache" + queryState.QueryId)
 	forwardedQueries.Wait()
 	log.Info().Str("source_query_id", queryInfo.QueryId).Uint32("successful", successful.Load()).
 		Uint32("failed", failed.Load()).Msg("query forwarding finished")
 	forwarded.Add(1)
+	//remove finished query from cache
+	delete(runningQueriesCacheMap, queryState.QueryId)
+	log.Info().Msg("removing query from cache" + queryState.QueryId)
 }
