@@ -29,14 +29,17 @@ var (
 	ReplacePatternStrings []string
 	SchemaMappingStrings  []string
 
-	excludePatterns        []*regexp.Regexp
-	replacePatterns        []*regexp.Regexp
-	replaceStrings         []string
-	schemaMappings         = make(map[string]string)
-	runningTasks           sync.WaitGroup
-	failedToForward        atomic.Uint32
-	forwarded              atomic.Uint32
-	runningQueriesCacheMap = make(map[string]*[]QueryCache)
+	excludePatterns []*regexp.Regexp
+	replacePatterns []*regexp.Regexp
+	replaceStrings  []string
+	schemaMappings  = make(map[string]string)
+	runningTasks    sync.WaitGroup
+	failedToForward atomic.Uint32
+	forwarded       atomic.Uint32
+	//This is the cache map to cache the running queries
+	//the key is the queryId in source cluster. The values are the queries running on target clusters,
+	//it includes, nextUri and the pointer to the target client.
+	runningQueriesCacheMap = make(map[string]*[]QueryCacheEntry)
 )
 
 const (
@@ -45,8 +48,7 @@ const (
 	queryStateFailed         = "FAILED"
 )
 
-type QueryCache struct {
-	QueryId string
+type QueryCacheEntry struct {
 	NextUri string
 	Client  *presto.Client
 }
@@ -188,8 +190,8 @@ func Run(_ *cobra.Command, _ []string) {
 }
 
 func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo) {
-	if queryCaches, ok := runningQueriesCacheMap[queryState.QueryId]; ok {
-		for _, q := range *queryCaches {
+	if queryCacheEntries, ok := runningQueriesCacheMap[queryState.QueryId]; ok {
+		for _, q := range *queryCacheEntries {
 			if q.NextUri != "" {
 				q.Client.CancelQuery(ctx, q.NextUri)
 			}
@@ -252,10 +254,10 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 	}
 	successful, failed := atomic.Uint32{}, atomic.Uint32{}
 	forwardedQueries := sync.WaitGroup{}
-	cachedQueries := []QueryCache{}
+	cachedQueries := make([]QueryCacheEntry, len(clients)-1)
 	for i := 1; i < len(clients); i++ {
 		forwardedQueries.Add(1)
-		go func(client *presto.Client, cachedQueries *[]QueryCache) {
+		go func(client *presto.Client) {
 			defer forwardedQueries.Done()
 			clientResult, _, queryErr := client.Query(ctx, queryInfo.Query, func(req *http.Request) {
 				if queryInfo.Session.Catalog != nil {
@@ -275,7 +277,7 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			}
 			//build cache for running query
 			if clientResult.NextUri != nil {
-				*cachedQueries = append(*cachedQueries, QueryCache{QueryId: clientResult.Id, NextUri: *clientResult.NextUri, Client: client})
+				cachedQueries[i-1] = QueryCacheEntry{NextUri: *clientResult.NextUri, Client: client}
 			}
 			rowCount := 0
 			drainErr := clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
@@ -291,7 +293,7 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			successful.Add(1)
 			log.Info().Str("source_query_id", queryInfo.QueryId).
 				Str("target_host", client.GetHost()).Int("row_count", rowCount).Msg("query executed successfully")
-		}(clients[i], &cachedQueries)
+		}(clients[i])
 	}
 	//Add running query into to cache
 	runningQueriesCacheMap[queryState.QueryId] = &cachedQueries
