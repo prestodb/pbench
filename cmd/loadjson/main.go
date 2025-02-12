@@ -75,7 +75,7 @@ func Run(_ *cobra.Command, args []string) {
 	// To reuse the `pbench run` code, especially run recorders, we create a pseudo main stage.
 	pseudoStage = &stage.Stage{
 		Id:       "load_json",
-		ColdRuns: &stage.DefaultColdRunsValue,
+		ColdRuns: &stage.RunsValueOne,
 		States: &stage.SharedStageStates{
 			RunName:      RunName,
 			Comment:      Comment,

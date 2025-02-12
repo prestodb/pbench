@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	DefaultColdRunsValue = 1
-	DefaultWarmRunsValue = 0
+	RunsValueOne  = 1
+	RunsValueZero = 0
 )
 
 type OnQueryCompletionFn func(result *QueryResult)
@@ -207,13 +207,13 @@ func (s *Stage) setDefaults() {
 		s.SaveJson = &falseValue
 	}
 	if s.ColdRuns == nil {
-		s.ColdRuns = &DefaultColdRunsValue
+		s.ColdRuns = &RunsValueZero
 	}
 	if s.WarmRuns == nil {
-		s.WarmRuns = &DefaultWarmRunsValue
+		s.WarmRuns = &RunsValueZero
 	}
 	if *s.ColdRuns+*s.WarmRuns == 0 {
-		s.ColdRuns = &DefaultColdRunsValue
+		s.ColdRuns = &RunsValueOne
 	}
 }
 
@@ -249,9 +249,12 @@ func (s *Stage) propagateStates() {
 			nextStage.ColdRuns = s.ColdRuns
 			nextStage.WarmRuns = s.WarmRuns
 		} else if nextStage.ColdRuns == nil {
-			nextStage.ColdRuns = &DefaultColdRunsValue
+			nextStage.ColdRuns = &RunsValueZero
 		} else if nextStage.WarmRuns == nil {
-			nextStage.WarmRuns = &DefaultWarmRunsValue
+			nextStage.WarmRuns = &RunsValueZero
+		}
+		if *nextStage.ColdRuns+*nextStage.WarmRuns == 0 {
+			nextStage.ColdRuns = &RunsValueOne
 		}
 		if nextStage.AbortOnError == nil {
 			nextStage.AbortOnError = s.AbortOnError
