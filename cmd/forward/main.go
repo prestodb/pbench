@@ -193,7 +193,10 @@ func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo)
 	if queryCacheEntries, ok := runningQueriesCacheMap[queryState.QueryId]; ok {
 		for _, q := range *queryCacheEntries {
 			if q.NextUri != "" {
-				q.Client.CancelQuery(ctx, q.NextUri)
+				_, _, cancelQueryErr := q.Client.CancelQuery(ctx, q.NextUri)
+				if cancelQueryErr != nil {
+					log.Error().Msgf("cancel query failed on target cluter: %s error: %s", q.NextUri, cancelQueryErr.Error())
+				}
 			}
 		}
 	}
