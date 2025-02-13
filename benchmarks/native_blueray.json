@@ -1,6 +1,6 @@
 {
   "description": "BlueRay native engine configurations",
-  "catalog": "glue",
+  "catalog": "hive",
   "session_params": {
     "query_max_execution_time": "8h",
     "join_distribution_type": "AUTOMATIC",
