@@ -62,9 +62,9 @@ type Stage struct {
 	// before exiting.
 	RandomlyExecuteUntil *string `json:"randomly_execute_until,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
-	ColdRuns *int `json:"cold_runs,omitempty"`
+	ColdRuns *int `json:"cold_runs,omitempty" validate:"omitempty,gte=0"`
 	// If not set, the default is 0.
-	WarmRuns *int `json:"warm_runs,omitempty"`
+	WarmRuns *int `json:"warm_runs,omitempty" validate:"omitempty,gte=0"`
 	// If StartOnNewClient is set to true, this stage will create a new client to execute itself.
 	// This new client will be passed down to its descendant stages unless those stages also set StartOnNewClient to true.
 	// Each client can carry their own set of client information, tags, session properties, user credentials, etc.

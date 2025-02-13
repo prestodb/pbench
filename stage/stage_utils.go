@@ -212,8 +212,9 @@ func (s *Stage) setDefaults() {
 	if s.WarmRuns == nil {
 		s.WarmRuns = &RunsValueZero
 	}
-	if *s.ColdRuns+*s.WarmRuns == 0 {
+	if *s.ColdRuns+*s.WarmRuns <= 0 {
 		s.ColdRuns = &RunsValueOne
+		s.WarmRuns = &RunsValueZero
 	}
 }
 
@@ -253,8 +254,9 @@ func (s *Stage) propagateStates() {
 		} else if nextStage.WarmRuns == nil {
 			nextStage.WarmRuns = &RunsValueZero
 		}
-		if *nextStage.ColdRuns+*nextStage.WarmRuns == 0 {
+		if *nextStage.ColdRuns+*nextStage.WarmRuns <= 0 {
 			nextStage.ColdRuns = &RunsValueOne
+			nextStage.WarmRuns = &RunsValueZero
 		}
 		if nextStage.AbortOnError == nil {
 			nextStage.AbortOnError = s.AbortOnError
