@@ -2,7 +2,6 @@ package forward
 
 import (
 	"context"
-	"github.com/spf13/cobra"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +15,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -35,9 +36,22 @@ var (
 	runningTasks    sync.WaitGroup
 	failedToForward atomic.Uint32
 	forwarded       atomic.Uint32
+	//This is the cache map to cache the running queries
+	//the key is the queryId in source cluster. The values are the queries running on target clusters,
+	//it includes, nextUri and the pointer to the target client.
+	runningQueriesCacheMap = make(map[string]*[]QueryCacheEntry)
 )
 
-const maxRetry = 10
+const (
+	maxRetry                 = 10
+	queryStateErrorCancelled = "USER_CANCELED"
+	queryStateFailed         = "FAILED"
+)
+
+type QueryCacheEntry struct {
+	NextUri string
+	Client  *presto.Client
+}
 
 func waitForNextPoll(ctx context.Context) {
 	timer := time.NewTimer(PollInterval)
@@ -142,6 +156,10 @@ func Run(_ *cobra.Command, _ []string) {
 		// to process get filtered out.
 		newCutoffTime := lastQueryStateCheckCutoffTime
 		for _, state := range states {
+			//check if there is query in cancel status
+			if state.QueryState == queryStateFailed && state.ErrorCode.Name == queryStateErrorCancelled {
+				go checkAndCancelQuery(ctx, &state)
+			}
 			if !state.CreateTime.After(lastQueryStateCheckCutoffTime) {
 				// We looked at this query in the previous batch.
 				continue
@@ -169,6 +187,19 @@ func Run(_ *cobra.Command, _ []string) {
 	close(timeToExit)
 	log.Info().Uint32("forwarded", forwarded.Load()).Uint32("failed_to_forward", failedToForward.Load()).
 		Msgf("finished forwarding queries")
+}
+
+func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo) {
+	if queryCacheEntries, ok := runningQueriesCacheMap[queryState.QueryId]; ok {
+		for _, q := range *queryCacheEntries {
+			if q.NextUri != "" {
+				_, _, cancelQueryErr := q.Client.CancelQuery(ctx, q.NextUri)
+				if cancelQueryErr != nil {
+					log.Error().Msgf("cancel query failed on target cluter: %s error: %s", q.NextUri, cancelQueryErr.Error())
+				}
+			}
+		}
+	}
 }
 
 func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, clients []*presto.Client) {
@@ -226,6 +257,7 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 	}
 	successful, failed := atomic.Uint32{}, atomic.Uint32{}
 	forwardedQueries := sync.WaitGroup{}
+	cachedQueries := make([]QueryCacheEntry, len(clients)-1)
 	for i := 1; i < len(clients); i++ {
 		forwardedQueries.Add(1)
 		go func(client *presto.Client) {
@@ -246,6 +278,10 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 				failed.Add(1)
 				return
 			}
+			//build cache for running query
+			if clientResult.NextUri != nil {
+				cachedQueries[i-1] = QueryCacheEntry{NextUri: *clientResult.NextUri, Client: client}
+			}
 			rowCount := 0
 			drainErr := clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
 				rowCount += len(qr.Data)
@@ -262,8 +298,14 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 				Str("target_host", client.GetHost()).Int("row_count", rowCount).Msg("query executed successfully")
 		}(clients[i])
 	}
+	//Add running query into to cache
+	runningQueriesCacheMap[queryState.QueryId] = &cachedQueries
+	log.Info().Msg("adding query to cache" + queryState.QueryId)
 	forwardedQueries.Wait()
 	log.Info().Str("source_query_id", queryInfo.QueryId).Uint32("successful", successful.Load()).
 		Uint32("failed", failed.Load()).Msg("query forwarding finished")
 	forwarded.Add(1)
+	//remove finished query from cache
+	delete(runningQueriesCacheMap, queryState.QueryId)
+	log.Info().Msg("removing query from cache" + queryState.QueryId)
 }
