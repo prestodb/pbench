@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"pbench/log"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type Map map[string]*Stage
@@ -55,6 +57,11 @@ func ReadStageFromFile(filePath string) (*Stage, error) {
 		return nil, fmt.Errorf("failed to read %s: %w", filePath, err)
 	}
 	if err = json.Unmarshal(bytes, stage); err != nil {
+		return nil, fmt.Errorf("failed to parse json %s: %w", filePath, err)
+	}
+	validate := validator.New()
+	err = validate.Struct(stage)
+	if err != nil {
 		return nil, fmt.Errorf("failed to parse json %s: %w", filePath, err)
 	}
 	for i, queryFile := range stage.QueryFiles {
