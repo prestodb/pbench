@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -17,6 +16,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -74,7 +75,7 @@ func Run(_ *cobra.Command, args []string) {
 	// To reuse the `pbench run` code, especially run recorders, we create a pseudo main stage.
 	pseudoStage = &stage.Stage{
 		Id:       "load_json",
-		ColdRuns: 1,
+		ColdRuns: &stage.RunsValueOne,
 		States: &stage.SharedStageStates{
 			RunName:      RunName,
 			Comment:      Comment,
