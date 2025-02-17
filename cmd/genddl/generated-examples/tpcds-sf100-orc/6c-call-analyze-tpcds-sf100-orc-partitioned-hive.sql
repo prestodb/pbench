@@ -1,0 +1,31 @@
+USE hive.tpcds_sf100_orc_partitioned_hive;
+
+CALL system.sync_partition_metadata('tpcds_sf100_orc_partitioned_hive', 'catalog_sales', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf100_orc_partitioned_hive', 'inventory', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf100_orc_partitioned_hive', 'store_sales', 'FULL');
+CALL system.sync_partition_metadata('tpcds_sf100_orc_partitioned_hive', 'web_sales', 'FULL');
+
+ANALYZE call_center;
+ANALYZE catalog_page;
+ANALYZE catalog_returns;
+ANALYZE catalog_sales;
+ANALYZE customer;
+ANALYZE customer_address;
+ANALYZE customer_demographics;
+ANALYZE date_dim;
+ANALYZE household_demographics;
+ANALYZE income_band;
+ANALYZE inventory;
+ANALYZE item;
+ANALYZE promotion;
+ANALYZE reason;
+ANALYZE ship_mode;
+ANALYZE store;
+ANALYZE store_returns;
+ANALYZE store_sales;
+ANALYZE time_dim;
+ANALYZE warehouse;
+ANALYZE web_page;
+ANALYZE web_returns;
+ANALYZE web_sales;
+ANALYZE web_site;
