@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS {{ .Name }} (
 {{- end }}
 )
 WITH (
-    format = 'PARQUET',
+    format = '{{ $.FileFormat }}',
     {{- if $.Partitioned }}
     {{- if $.Iceberg}}
     partitioning = array['{{ .LastColumn.Name }}']
