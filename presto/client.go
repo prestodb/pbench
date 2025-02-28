@@ -147,8 +147,12 @@ func (c *Client) UserPassword(user, password string) *Client {
 	return c
 }
 
-func (c *Client) GetSessionParams() string {
-	return c.getHeader(SessionHeader)
+func (c *Client) GetSessionParams() map[string]any {
+	params := make(map[string]any)
+	for k, v := range c.sessionParams {
+		params[k] = v
+	}
+	return params
 }
 
 func (c *Client) ClearSessionParams() *Client {

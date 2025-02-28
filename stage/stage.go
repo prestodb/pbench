@@ -116,6 +116,13 @@ type Stage struct {
 	started atomic.Bool
 }
 
+func stringValue(s *string) string {
+	if s == nil {
+		return "<nil>"
+	}
+	return *s
+}
+
 // Run this stage and trigger its downstream stages.
 func (s *Stage) Run(ctx context.Context) int {
 	if s.States == nil {
@@ -296,10 +303,21 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 	}
 
 	file, err := os.Open(queryFile)
-	var queries []string
-	if err == nil {
-		queries, err = presto.SplitQueries(file)
+	if err != nil {
+		if !*s.AbortOnError {
+			log.Error().Err(err).Str("file_path", queryFile).Msg("failed to read queries from file")
+			err = nil
+			// If we run into errors reading the query file, then the offset in the expected row count array will be messed up.
+			// Reset it to nil to stop showing expected row counts and to avoid confusions.
+			s.expectedRowCountInCurrentSchema = nil
+		} else {
+			s.States.exitCode.CompareAndSwap(0, 1)
+		}
+		return err
 	}
+	defer file.Close()
+
+	queriesWithSession, err := presto.SplitQueriesWithSession(file)
 	if err != nil {
 		if !*s.AbortOnError {
 			log.Error().Err(err).Str("file_path", queryFile).Msg("failed to read queries from file")
@@ -314,12 +332,70 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 	}
 
 	if expectedRowCountStartIndex != nil {
-		err = s.runQueries(ctx, queries, fileAlias, *expectedRowCountStartIndex)
-		*expectedRowCountStartIndex += len(queries)
+		err = s.runQueriesInternal(ctx, queriesWithSession, fileAlias, *expectedRowCountStartIndex)
+		*expectedRowCountStartIndex += len(queriesWithSession)
 	} else {
-		err = s.runQueries(ctx, queries, fileAlias, 0)
+		err = s.runQueriesInternal(ctx, queriesWithSession, fileAlias, 0)
 	}
 	return err
+}
+
+func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string, expectedRowCountStartIndex int) (retErr error) {
+	batchSize := len(queries)
+	for i, queryText := range queries {
+		// run pre query cycle shell scripts
+		preQueryCycleErr := s.runShellScripts(ctx, s.PreQueryCycleShellScripts)
+		if preQueryCycleErr != nil {
+			return fmt.Errorf("pre-query script execution failed: %w", preQueryCycleErr)
+		}
+
+		// Dereference the pointers for arithmetic
+		totalRuns := *s.ColdRuns + *s.WarmRuns
+		for j := 0; j < totalRuns; j++ {
+			query := &Query{
+				Text:             queryText,
+				File:             queryFile,
+				Index:            i,
+				BatchSize:        batchSize,
+				ColdRun:          j < *s.ColdRuns,
+				SequenceNo:       j,
+				ExpectedRowCount: -1, // -1 means unspecified.
+			}
+			if len(s.expectedRowCountInCurrentSchema) > expectedRowCountStartIndex+i {
+				query.ExpectedRowCount = s.expectedRowCountInCurrentSchema[expectedRowCountStartIndex+i]
+			}
+
+			result, err := s.runQuery(ctx, query)
+			// err is already attached to the result, if not nil.
+			if s.States.OnQueryCompletion != nil {
+				s.States.OnQueryCompletion(result)
+			}
+			// Flags and options are checked within.
+			s.saveQueryJsonFile(result)
+			// Each query should have a query result sent to the channel, no matter
+			// its execution succeeded or not.
+			s.States.resultChan <- result
+			if err != nil {
+				if *s.AbortOnError || ctx.Err() != nil {
+					// If AbortOnError is set, we skip the rest queries in the same batch.
+					// Logging etc. will be handled in the parent stack.
+					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
+					s.States.exitCode.CompareAndSwap(0, 1)
+					return result
+				}
+				// Log the error information and continue running
+				s.logErr(ctx, result)
+				continue
+			}
+			log.Info().EmbedObject(result).Msgf("query finished")
+		}
+		// run post query cycle shell scripts
+		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts)
+		if postQueryCycleErr != nil {
+			return fmt.Errorf("post-query script execution failed: %w", postQueryCycleErr)
+		}
+	}
+	return nil
 }
 
 func (s *Stage) runRandomly(ctx context.Context) error {
@@ -358,7 +434,11 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 		if idx < len(s.Queries) {
 			// Run query embedded in the json file.
 			pseudoFileName := fmt.Sprintf("rand_%d", i)
-			if err := s.runQueries(ctx, s.Queries[idx:idx+1], &pseudoFileName, 0); err != nil {
+			queryWithSession := presto.QueryWithSession{
+				Query:         s.Queries[idx],
+				SessionParams: make(map[string]any),
+			}
+			if err := s.runQueriesInternal(ctx, []presto.QueryWithSession{queryWithSession}, &pseudoFileName, 0); err != nil {
 				return err
 			}
 		} else {
@@ -407,17 +487,34 @@ func (s *Stage) runShellScripts(ctx context.Context, shellScripts []string) erro
 	return nil
 }
 
-func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string, expectedRowCountStartIndex int) (retErr error) {
+func (s *Stage) runQueriesInternal(ctx context.Context, queries []presto.QueryWithSession, queryFile *string, expectedRowCountStartIndex int) error {
+	// Log the queries we're about to run
+	for i, q := range queries {
+		log.Info().
+			Str("stage_id", s.Id).
+			Int("query_index", i).
+			Str("query", q.Query).
+			Interface("session_params", q.SessionParams).
+			Str("file", stringValue(queryFile)).
+			Msg("preparing to execute query")
+	}
+
 	batchSize := len(queries)
-	for i, queryText := range queries {
-		// run pre query cycle shell scripts
-		preQueryCycleErr := s.runShellScripts(ctx, s.PreQueryCycleShellScripts)
-		if preQueryCycleErr != nil {
-			return fmt.Errorf("pre-query script execution failed: %w", preQueryCycleErr)
+	for i, queryWithSession := range queries {
+		// Store current session params to restore later
+		oldSessionParams := make(map[string]any)
+		for k, v := range s.Client.GetSessionParams() {
+			oldSessionParams[k] = v
 		}
+
+		// Apply query-specific session parameters
+		for name, value := range queryWithSession.SessionParams {
+			s.Client.SessionParam(name, value)
+		}
+
 		for j := 0; j < *s.ColdRuns+*s.WarmRuns; j++ {
 			query := &Query{
-				Text:             queryText,
+				Text:             queryWithSession.Query,
 				File:             queryFile,
 				Index:            i,
 				BatchSize:        batchSize,
@@ -430,33 +527,31 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			}
 
 			result, err := s.runQuery(ctx, query)
-			// err is already attached to the result, if not nil.
 			if s.States.OnQueryCompletion != nil {
 				s.States.OnQueryCompletion(result)
 			}
-			// Flags and options are checked within.
 			s.saveQueryJsonFile(result)
-			// Each query should have a query result sent to the channel, no matter
-			// its execution succeeded or not.
 			s.States.resultChan <- result
 			if err != nil {
+				// Restore original session parameters before returning
+				s.Client.ClearSessionParams()
+				for k, v := range oldSessionParams {
+					s.Client.SessionParam(k, v)
+				}
 				if *s.AbortOnError || ctx.Err() != nil {
-					// If AbortOnError is set, we skip the rest queries in the same batch.
-					// Logging etc. will be handled in the parent stack.
-					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
 					s.States.exitCode.CompareAndSwap(0, 1)
 					return result
 				}
-				// Log the error information and continue running
 				s.logErr(ctx, result)
 				continue
 			}
 			log.Info().EmbedObject(result).Msgf("query finished")
 		}
-		// run post query cycle shell scripts
-		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts)
-		if postQueryCycleErr != nil {
-			return fmt.Errorf("post-query script execution failed: %w", postQueryCycleErr)
+
+		// Restore original session parameters after query completes
+		s.Client.ClearSessionParams()
+		for k, v := range oldSessionParams {
+			s.Client.SessionParam(k, v)
 		}
 	}
 	return nil
