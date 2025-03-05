@@ -13,15 +13,21 @@ def get_workers_public_ips(data):
             worker_ips.append(value)
     return worker_ips
 
-def cleanup_worker_disk_cache(worker_public_ips, directory_to_cleanup, login_user, ssh_key_path):
-    cleanup_command = f'sudo rm -rf {directory_to_cleanup}/*'
+def cleanup_worker_disk_cache(worker_public_ips, login_user, ssh_key_path, worker_http_port):
+    ssd_cache_clean_commands = ["curl", "-X", "GET", f"http://localhost:{worker_http_port}/v1/operation/server/clearCache?type=ssd"]
     for worker_ip in worker_public_ips:
-        execute_ssh_command(worker_ip, login_user, ssh_key_path, cleanup_command)
+        execute_ssh_command(worker_ip, login_user, ssh_key_path, ssd_cache_clean_commands)
 
 def cleanup_worker_os_cache(worker_public_ips, login_user, ssh_key_path):
     for worker_ip in worker_public_ips:
         os_cache_clean_commands = ["sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches", "sudo swapoff -a; sudo swapon -a"]
-        for command in os_cache_clean_commands :
+        for command in os_cache_clean_commands:
+            execute_ssh_command(worker_ip, login_user, ssh_key_path, command)
+
+def cleanup_worker_memory_cache(worker_public_ips, login_user, ssh_key_path, worker_http_port):
+    for worker_ip in worker_public_ips:
+        memory_cache_clean_commands = ["curl", "-X", "GET", f"http://localhost:{worker_http_port}/v1/operation/server/clearCache?type=memory"]
+        for command in memory_cache_clean_commands:
             execute_ssh_command(worker_ip, login_user, ssh_key_path, command)
 
 # Main function to connect and run queries
@@ -61,10 +67,14 @@ if __name__ == "__main__":
 
     is_worker_disk_cache_cleanup_enabled = True
     is_worker_os_cache_cleanup_enabled = True
+    is_worker_memory_cache_cleanup_enabled = True
 
+    worker_http_port = "8080"
     if is_worker_disk_cache_cleanup_enabled:
-        native_cache_directory_worker = "/home/centos/presto/async_data_cache"
-        cleanup_worker_disk_cache(worker_public_ips, native_cache_directory_worker, "centos", args.sshkey)
+        cleanup_worker_disk_cache(worker_public_ips, "centos", args.sshkey, worker_http_port)
+
+    if is_worker_memory_cache_cleanup_enabled:
+        cleanup_worker_memory_cache(worker_public_ips, "centos", args.sshkey, worker_http_port)
 
     if is_worker_os_cache_cleanup_enabled:
         cleanup_worker_os_cache(worker_public_ips, "centos", args.sshkey)
