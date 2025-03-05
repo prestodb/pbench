@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     catalog_list = ["hive"]
     is_list_cache_cleanup_enabled = True
-    is_metadata_cache_cleanup_enabled = False
+    is_metadata_cache_cleanup_enabled = True
 
     # Directory list cache clean up
     if is_list_cache_cleanup_enabled:
