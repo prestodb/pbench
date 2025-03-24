@@ -11,6 +11,7 @@ import (
 	"pbench/log"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -42,6 +43,7 @@ type Client struct {
 	baseHeader    http.Header
 	isTrino       bool
 	forceHttps    bool
+	headerMutex   sync.RWMutex
 }
 
 func NewClient(serverUrl string, isTrino bool) (*Client, error) {
@@ -105,6 +107,8 @@ func (c *Client) GetHost() string {
 }
 
 func (c *Client) setHeader(key, value string) {
+	c.headerMutex.Lock()
+	defer c.headerMutex.Unlock()
 	if c.isTrino {
 		key = strings.Replace(key, "X-Presto", "X-Trino", 1)
 	}
@@ -112,6 +116,8 @@ func (c *Client) setHeader(key, value string) {
 }
 
 func (c *Client) delHeader(key string) {
+	c.headerMutex.Lock()
+	defer c.headerMutex.Unlock()
 	if c.isTrino {
 		key = strings.Replace(key, "X-Presto", "X-Trino", 1)
 	}
@@ -119,6 +125,8 @@ func (c *Client) delHeader(key string) {
 }
 
 func (c *Client) getHeader(key string) string {
+	c.headerMutex.RLock()
+	defer c.headerMutex.RUnlock()
 	if c.isTrino {
 		key = strings.Replace(key, "X-Presto", "X-Trino", 1)
 	}
@@ -280,7 +288,10 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}, opts ...Req
 		return nil, err
 	}
 
+	c.headerMutex.RLock()
 	req.Header = c.baseHeader.Clone()
+	c.headerMutex.RUnlock()
+
 	if password, ok := c.userInfo.Password(); ok {
 		req.SetBasicAuth(c.userInfo.Username(), password)
 	}
