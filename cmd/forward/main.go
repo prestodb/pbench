@@ -40,6 +40,7 @@ var (
 	// The key is the queryId in source cluster. The values are the queries running on target clusters,
 	// it includes nextUri and the pointer to the target cluster client.
 	runningQueriesCacheMap = make(map[string][]*QueryCacheEntry)
+	queryCacheMutex        = &sync.RWMutex{}
 )
 
 const (
@@ -190,7 +191,11 @@ func Run(_ *cobra.Command, _ []string) {
 }
 
 func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo) {
-	if queryCacheEntries, ok := runningQueriesCacheMap[queryState.QueryId]; ok {
+	queryCacheMutex.RLock()
+	queryCacheEntries, ok := runningQueriesCacheMap[queryState.QueryId]
+	queryCacheMutex.RUnlock()
+
+	if ok {
 		for _, q := range queryCacheEntries {
 			if q.NextUri != "" {
 				_, _, cancelQueryErr := q.Client.CancelQuery(ctx, q.NextUri)
@@ -299,13 +304,17 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 		}(clients[i])
 	}
 	//Add running query into to cache
+	queryCacheMutex.Lock()
 	runningQueriesCacheMap[queryState.QueryId] = cachedQueries
+	queryCacheMutex.Unlock()
 	log.Debug().Msg("adding query to cache" + queryState.QueryId)
 	forwardedQueries.Wait()
 	log.Info().Str("source_query_id", queryInfo.QueryId).Uint32("successful", successful.Load()).
 		Uint32("failed", failed.Load()).Msg("query forwarding finished")
 	forwarded.Add(1)
 	//remove finished query from cache
+	queryCacheMutex.Lock()
 	delete(runningQueriesCacheMap, queryState.QueryId)
+	queryCacheMutex.Unlock()
 	log.Info().Msg("removing query from cache" + queryState.QueryId)
 }
