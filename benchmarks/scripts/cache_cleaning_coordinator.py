@@ -1,14 +1,14 @@
-from presto_utils import execute_cluster_call
+from presto_utils import execute_presto_query
 import argparse
 import sys
 
 def clean_directory_list_cache(hostname, username, password, catalog_name):
     query = "CALL " + catalog_name + ".system.invalidate_directory_list_cache()"
-    return execute_cluster_call(hostname, username, password, catalog_name, query)
+    return execute_presto_query(hostname, username, password, catalog_name, query)
 
 def clean_metastore_cache(hostname, username, password, catalog_name):
     query = "CALL " + catalog_name + ".system.invalidate_metastore_cache()"
-    return execute_cluster_call(hostname, username, password, catalog_name, query)
+    return execute_presto_query(hostname, username, password, catalog_name, query)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Connect to PrestoDB')
