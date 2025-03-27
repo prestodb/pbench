@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+
+    <property>
+        <name>hive.metastore.uris</name>
+        <value>thrift://a74b6e20f132e4eac840a591d5caf0ba-c3bc190f0aee9cb5.elb.us-east-1.amazonaws.com:9083</value>
+    </property>
+
+</configuration>

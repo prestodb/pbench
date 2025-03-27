@@ -7,10 +7,7 @@ CREATE TABLE presto_benchmarks.operator_types
     KEY `presto_op_type_index` (`presto_op_type`),
     KEY `prestissimo_op_type_index` (`prestissimo_op_type`),
     KEY `op_category_index` (`op_category`)
-)
-    ENGINE = InnoDB
-             DEFAULT CHARSET = utf8mb4
-             COLLATE = utf8mb4_0900_ai_ci;
+);
 
 INSERT INTO presto_benchmarks.operator_types
 VALUES ('AggregationOperator', 'Aggregation', 'Aggregation'),

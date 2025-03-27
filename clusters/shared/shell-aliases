@@ -1,0 +1,6 @@
+alias dbash="docker exec -it $(docker ps | cut -d' ' -f1 | tail -n 1) bash"
+alias dexec="docker exec -it $(docker ps | cut -d' ' -f1 | tail -n 1)"
+alias spark-sql="docker exec -it $(docker ps | cut -d' ' -f1 | tail -n 1) /opt/spark/bin/spark-sql"
+alias spark-sql-gluten="docker exec -it $(docker ps | cut -d' ' -f1 | tail -n 1) /opt/spark/bin/spark-sql-gluten"
+alias show-spark-config="docker exec -it $(docker ps | cut -d' ' -f1 | tail -n 1) cat /opt/spark/conf/spark-defaults.conf"
+alias show-gluten-config="docker exec -it $(docker ps | cut -d' ' -f1 | tail -n 1) cat /opt/spark/conf/spark-native-defaults.conf"
