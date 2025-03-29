@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	cluster_configs "pbench/clusters"
+	"pbench/clusters"
 	"pbench/log"
 
 	"github.com/spf13/cobra"
@@ -38,7 +38,7 @@ func Run(_ *cobra.Command, args []string) {
 		}
 	}
 	if TemplatePath == "" {
-		TemplateFS = cluster_configs.BuiltinTemplate
+		TemplateFS = clusters.BuiltinTemplate
 		TemplatePath = "templates"
 	} else {
 		TemplateFS = os.DirFS(TemplatePath)
@@ -77,5 +77,5 @@ func Run(_ *cobra.Command, args []string) {
 }
 
 func PrintDefaultParams(_ *cobra.Command, _ []string) {
-	fmt.Print(string(cluster_configs.BuiltinGeneratorParametersBytes))
+	fmt.Print(string(clusters.BuiltinGeneratorParametersBytes))
 }

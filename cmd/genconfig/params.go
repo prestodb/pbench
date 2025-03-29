@@ -1,9 +1,8 @@
 package genconfig
 
 import (
-	_ "embed"
 	"encoding/json"
-	cluster_configs "pbench/clusters"
+	"pbench/clusters"
 )
 
 type GeneratorParameters struct {
@@ -21,12 +20,13 @@ type GeneratorParameters struct {
 	NativeQueryMemPercentOfSysMem         float64 `json:"native_query_mem_percent_of_sys_mem"`
 	JoinMaxBcastSizePercentOfContainerMem float64 `json:"join_max_bcast_size_percent_of_container_mem"`
 	MemoryPushBackStartBelowLimitGb       uint    `json:"memory_push_back_start_below_limit_gb"`
+	Trino                                 string  `json:"trino,omitempty"`
 }
 
 var DefaultGeneratorParameters = &GeneratorParameters{}
 
 func init() {
-	if err := json.Unmarshal(cluster_configs.BuiltinGeneratorParametersBytes, DefaultGeneratorParameters); err != nil {
+	if err := json.Unmarshal(clusters.BuiltinGeneratorParametersBytes, DefaultGeneratorParameters); err != nil {
 		panic(err)
 	}
 }
