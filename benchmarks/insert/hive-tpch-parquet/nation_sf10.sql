@@ -5,4 +5,4 @@ SELECT
     CAST(name AS VARCHAR(25)),
     regionkey,
     CAST(comment AS VARCHAR(152))
-FROM tpch.sf1.nation;
+FROM hive.tpch_sf10_parquet.nation;

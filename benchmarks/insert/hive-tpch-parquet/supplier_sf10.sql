@@ -8,4 +8,4 @@ SELECT
     CAST(phone AS VARCHAR(15)),
     CAST(acctbal AS DECIMAL(12,2)),
     CAST(comment AS VARCHAR(101))
-FROM tpch.sf1.supplier;
+FROM hive.tpch_sf10_parquet.supplier;

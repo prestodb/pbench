@@ -9,4 +9,4 @@ SELECT
     CAST(acctbal AS DECIMAL(12,2)),
     CAST(mktsegment AS VARCHAR(10)),
     CAST(comment AS VARCHAR(117))
-FROM tpch.sf1.customer;
+FROM hive.tpch_sf10_parquet.customer;
