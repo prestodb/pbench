@@ -17,4 +17,4 @@ SELECT
     CAST(shipinstruct AS VARCHAR(25)),
     CAST(shipmode AS VARCHAR(10)),
     CAST(comment AS VARCHAR(44))
-FROM tpch.sf1.lineitem;
+FROM hive.tpch_sf10_parquet.lineitem;
