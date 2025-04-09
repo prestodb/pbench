@@ -1,4 +1,3 @@
-USE tpch_sf10_load_iceberg;
 -- Inserting into partsupp
 INSERT INTO partsupp
 SELECT

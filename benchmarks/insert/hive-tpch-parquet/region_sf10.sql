@@ -1,4 +1,3 @@
-USE tpch_sf10_load_iceberg;
 -- Inserting into region
 INSERT INTO region
 SELECT
