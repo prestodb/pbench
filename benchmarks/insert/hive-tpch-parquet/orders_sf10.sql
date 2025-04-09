@@ -1,4 +1,3 @@
-USE tpch_sf10_load_iceberg;
 -- Inserting into orders
 INSERT INTO orders
 SELECT
