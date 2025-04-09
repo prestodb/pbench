@@ -1,0 +1,8 @@
+USE tpch_sf10_load_iceberg;
+-- Inserting into region
+INSERT INTO region
+SELECT
+    regionkey,
+    CAST(name AS VARCHAR(25)),
+    CAST(comment AS VARCHAR(152))
+FROM tpch.sf1.region;
