@@ -1,7 +1,7 @@
 -- Inserting into lineitem
-INSERT INTO lineitem orderkey
+INSERT INTO lineitem
 SELECT
-    l_orderkey,
+    orderkey,
     partkey,
     suppkey,
     linenumber,
