@@ -6,4 +6,4 @@ SELECT
     availqty,
     CAST(supplycost AS DECIMAL(12,2)),
     CAST(comment AS VARCHAR(199))
-FROM hive.tpch_sf10_parquet.partsupp;
+FROM tpch.sf100.partsupp;
