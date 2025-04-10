@@ -10,4 +10,4 @@ SELECT
     CAST(clerk AS VARCHAR(15)),
     shippriority,
     CAST(comment AS VARCHAR(79))
-FROM hive.tpch_sf10_parquet.orders;
+FROM tpch.sf100.orders;

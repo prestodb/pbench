@@ -1,0 +1,5 @@
+{
+  "description": "Specifies the schema for TPCH scale factor 10 GB.",
+  "catalog": "iceberg",
+  "schema": "load_tpch_sf100_parquet"
+}

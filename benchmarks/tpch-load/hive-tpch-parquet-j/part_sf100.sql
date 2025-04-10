@@ -10,4 +10,4 @@ SELECT
     CAST(container AS VARCHAR(10)),
     CAST(retailprice AS DECIMAL(12,2)),
     CAST(comment AS VARCHAR(23))
-FROM hive.tpch_sf10_parquet.part;
+FROM tpch.sf100.part;
