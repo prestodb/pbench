@@ -1,5 +1,5 @@
 {
   "description": "Specifies the schema for TPCH scale factor 10 GB.",
   "catalog": "hive",
-  "schema": "tpch_sf10_load_iceberg"
+  "schema": "load_tpch_sf100_parquet"
 }

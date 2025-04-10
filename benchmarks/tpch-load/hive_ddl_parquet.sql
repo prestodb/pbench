@@ -1,5 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS tpch_sf10_load_iceberg WITH (LOCATION = 's3a://presto-workload/tpch-sf10-load-iceberg/');
-USE tpch_sf10_load_iceberg;
+CREATE SCHEMA IF NOT EXISTS load_tpch_sf100_parquet WITH (LOCATION = 's3a://presto-workload/load_tpch_sf100_parquet/');
+USE load_tpch_sf100_parquet;
 
 -- Creating customer table with PARQUET format
 CREATE TABLE customer (
