@@ -1,4 +1,4 @@
-USE tpch_sf10_load_iceberg;
+USE load_tpch_sf100_parquet;
 DROP TABLE customer;
 DROP TABLE orders;
 DROP TABLE lineitem;

@@ -1,0 +1,29 @@
+{
+  "description": "Loading tpch with scaling factor 10 to hive parquet tables.",
+  "query_files": [
+    "hive_ddl_parquet.sql",
+    "hive-tpch-parquet-j/customer_sf100.sql",
+    "hive-tpch-parquet-j/lineitem_sf100.sql",
+    "hive-tpch-parquet-j/nation_sf100.sql",
+    "hive-tpch-parquet-j/orders_sf100.sql",
+    "hive-tpch-parquet-j/part_sf100.sql",
+    "hive-tpch-parquet-j/partsupp_sf100.sql",
+    "hive-tpch-parquet-j/region_sf100.sql",
+    "hive-tpch-parquet-j/supplier_sf100.sql",
+    "cleanup_sf100.sql"
+  ],
+  "expected_row_counts": {
+    "tpch_sf10_load_iceberg": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ]
+  }
+}

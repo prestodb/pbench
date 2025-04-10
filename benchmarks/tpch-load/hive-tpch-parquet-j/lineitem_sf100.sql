@@ -1,7 +1,7 @@
 -- Inserting into lineitem
-INSERT INTO lineitem
+INSERT INTO lineitem orderkey
 SELECT
-    orderkey,
+    l_orderkey,
     partkey,
     suppkey,
     linenumber,
@@ -17,4 +17,4 @@ SELECT
     CAST(shipinstruct AS VARCHAR(25)),
     CAST(shipmode AS VARCHAR(10)),
     CAST(comment AS VARCHAR(44))
-FROM hive.tpch_sf10_parquet.lineitem;
+FROM tpch.sf100.lineitem;
