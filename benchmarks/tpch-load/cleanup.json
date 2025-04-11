@@ -8,7 +8,8 @@
     "drop-table/part.sql",
     "drop-table/partsupp.sql",
     "drop-table/region.sql",
-    "drop-table/supplier.sql"
+    "drop-table/supplier.sql",
+    "drop-schema/drop_schema.sql"
   ],
   "expected_row_counts": {
     "load_tpch_sf100_parquet": [
