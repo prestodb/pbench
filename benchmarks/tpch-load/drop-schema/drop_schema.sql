@@ -1,1 +1,1 @@
-drop schema load_tpch_sf100_parquet;
+drop schema load_tpch_sf1000_parquet;
