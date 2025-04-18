@@ -14,21 +14,23 @@ def get_workers_public_ips(data):
     return worker_ips
 
 def cleanup_worker_disk_cache(worker_public_ips, login_user, ssh_key_path, worker_http_port):
-    ssd_cache_clean_commands = ["curl", "-X", "GET", f"http://localhost:{worker_http_port}/v1/operation/server/clearCache?type=ssd"]
+    ssd_cache_clean_command = f"docker exec $(docker ps -q --filter 'name=^presto_workers') curl -sS -X GET http://localhost:{worker_http_port}/v1/operation/server/clearCache?type=ssd"
     for worker_ip in worker_public_ips:
-        execute_ssh_command(worker_ip, login_user, ssh_key_path, ssd_cache_clean_commands)
+        execute_ssh_command(worker_ip, login_user, ssh_key_path, ssd_cache_clean_command)
+    print("cleanup_worker_disk_cache is successful!")
 
 def cleanup_worker_os_cache(worker_public_ips, login_user, ssh_key_path):
     for worker_ip in worker_public_ips:
         os_cache_clean_commands = ["sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches", "sudo swapoff -a; sudo swapon -a"]
         for command in os_cache_clean_commands:
             execute_ssh_command(worker_ip, login_user, ssh_key_path, command)
+    print("cleanup_worker_os_cache is successful!")
 
 def cleanup_worker_memory_cache(worker_public_ips, login_user, ssh_key_path, worker_http_port):
+    memory_cache_clean_command = f"docker exec $(docker ps -q --filter 'name=^presto_workers') curl -sS -X GET http://localhost:{worker_http_port}/v1/operation/server/clearCache?type=memory"
     for worker_ip in worker_public_ips:
-        memory_cache_clean_commands = ["curl", "-X", "GET", f"http://localhost:{worker_http_port}/v1/operation/server/clearCache?type=memory"]
-        for command in memory_cache_clean_commands:
-            execute_ssh_command(worker_ip, login_user, ssh_key_path, command)
+        execute_ssh_command(worker_ip, login_user, ssh_key_path, memory_cache_clean_command)
+    print("cleanup_worker_memory_cache is successful!")
 
 # Main function to connect and run queries
 if __name__ == "__main__":
