@@ -1,5 +1,5 @@
 {
-  "description": "Loading tpch with scaling factor 10 to hive parquet tables.",
+  "description": "Loading tpch with scaling factor 100 to hive/iceberg parquet tables.",
   "query_files": [
     "hive-tpch-parquet-n/customer_sf100.sql",
     "hive-tpch-parquet-n/lineitem_sf100.sql",

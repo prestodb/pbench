@@ -1,0 +1,18 @@
+{
+  "description": "Cleanup tables.",
+  "query_files": [
+    "drop-table/customer.sql",
+    "drop-table/lineitem.sql",
+    "drop-table/nation.sql",
+    "drop-table/orders.sql",
+    "drop-table/part.sql",
+    "drop-table/partsupp.sql",
+    "drop-table/region.sql",
+    "drop-table/supplier.sql",
+    "schema/drop_sf100.sql"
+  ],
+  "expected_row_counts": {
+    "load_tpch_sf100_parquet": [
+    ]
+  }
+}
