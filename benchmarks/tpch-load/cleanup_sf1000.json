@@ -9,10 +9,10 @@
     "drop-table/partsupp.sql",
     "drop-table/region.sql",
     "drop-table/supplier.sql",
-    "drop-schema/drop_schema.sql"
+    "schema/drop_sf1000.sql"
   ],
   "expected_row_counts": {
-    "load_tpch_sf100_parquet": [
+    "load_tpch_sf1000_parquet": [
     ]
   }
 }
