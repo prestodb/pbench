@@ -9,6 +9,8 @@ import (
 
 func SplitQueries(in io.Reader) ([]string, error) {
 	scanner := bufio.NewScanner(in)
+	// Set a large buffer size to handle large queries
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	scanner.Split(ScanSqlStmt)
 	stmts := make([]string, 0, 2)
 	for scanner.Scan() {
