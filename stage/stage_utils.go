@@ -176,7 +176,7 @@ func (s *Stage) prepareClient() {
 	}
 	if len(s.SessionParams) > 0 {
 		log.Info().EmbedObject(s).
-			Str("values", s.Client.GetSessionParams()).
+			Interface("session_params", s.Client.GetSessionParams()).
 			Msg("set session params")
 	}
 	if s.TimeZone != nil {
