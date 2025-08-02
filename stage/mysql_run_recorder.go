@@ -48,9 +48,9 @@ func NewMySQLRunRecorderWithDb(db *sql.DB) *MySQLRunRecorder {
 }
 
 func (m *MySQLRunRecorder) Start(_ context.Context, s *Stage) error {
-	recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time, queries_ran, failed, mismatch, comment)
-VALUES (?, ?, ?, 0, 0, 0, ?)`
-	res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.ServerFQDN, s.States.RunStartTime, s.States.Comment)
+	recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time, queries_ran, failed, mismatch, comment, workload)
+VALUES (?, ?, ?, 0, 0, 0, ?, ?)`
+	res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.ServerFQDN, s.States.RunStartTime, s.States.Comment, s.States.Workload)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Time("start_time", s.States.RunStartTime).
 			Msg("failed to add a new run to the MySQL database")

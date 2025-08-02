@@ -12,6 +12,7 @@ create table if not exists pbench_runs
     hidden       tinyint(1) default 0 not null,
     comment      varchar(255)         null,
     rand_seed    bigint               null,
+    workload     varchar(255)         null,
     constraint pbench_runs_run_id
         unique (run_id)
 );

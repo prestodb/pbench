@@ -18,6 +18,7 @@ type SharedStageStates struct {
 	RandSeedUsed  bool
 	RunStartTime  time.Time
 	RunFinishTime time.Time
+	Workload      string
 	// OutputPath is where we store the logs, query results, query json files, query column metadata files, etc.
 	// It should be set by the --output/-o command-line argument. Once set there, its value gets propagated to all the stages.
 	OutputPath string
