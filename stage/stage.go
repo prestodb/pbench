@@ -26,6 +26,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// StreamSpec defines a stream configuration with a base stream file and count
+type StreamSpec struct {
+	StreamName  string `json:"stream_name"`
+	StreamCount int    `json:"stream_count"`
+}
+
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
 	Id string `json:"-"`
@@ -87,6 +93,9 @@ type Stage struct {
 	// knob was not set to true.
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
+	// StreamSpecs allows specifying streams to launch dynamically with custom counts
+	// Format: [{"stream_name": "path/to/stream.json", "stream_count": 5}]
+	StreamSpecs []StreamSpec `json:"stream_specs,omitempty"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
@@ -182,7 +191,7 @@ func (s *Stage) Run(ctx context.Context) int {
 		case sig := <-timeToExit:
 			if sig != nil {
 				// Cancel the context and wait for the goroutines to exit.
-				s.States.AbortAll(fmt.Errorf(sig.String()))
+				s.States.AbortAll(fmt.Errorf("%s", sig.String()))
 				continue
 			}
 			s.States.RunFinishTime = time.Now()

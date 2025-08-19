@@ -91,6 +91,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 		s.SaveJson = other.SaveJson
 	}
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
+	s.StreamSpecs = append(s.StreamSpecs, other.StreamSpecs...)
 	s.BaseDir = other.BaseDir
 
 	s.PreStageShellScripts = append(s.PreStageShellScripts, other.PreStageShellScripts...)
