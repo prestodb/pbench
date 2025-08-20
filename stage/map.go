@@ -107,8 +107,8 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 		return stageFound, nil
 	}
 
-	// Process StreamSpecs to generate multiple instances of base streams
-	err := processStreamSpecs(stage)
+	// Process Streams to generate multiple instances of base streams
+	err := processStreams(stage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process stream specs for stage %s: %w", stage.Id, err)
 	}
@@ -197,13 +197,13 @@ func checkStageLinks(stage *Stage) error {
 }
 
 // processStreamSpecs expands StreamSpecs into NextStagePaths by generating multiple instances
-func processStreamSpecs(stage *Stage) error {
-	if len(stage.StreamSpecs) == 0 {
+func processStreams(stage *Stage) error {
+	if len(stage.Streams) == 0 {
 		return nil
 	}
 
 	// For each stream spec, expand it to multiple stage paths
-	for _, spec := range stage.StreamSpecs {
+	for _, spec := range stage.Streams {
 		if spec.StreamCount <= 0 {
 			return fmt.Errorf("stream_count must be positive, got %d for stream %s", spec.StreamCount, spec.StreamName)
 		}
@@ -232,7 +232,7 @@ func processStreamSpecs(stage *Stage) error {
 	}
 
 	// Clear StreamSpecs since they've been processed into NextStagePaths
-	stage.StreamSpecs = nil
+	stage.Streams = nil
 
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -27,7 +28,7 @@ import (
 )
 
 // StreamSpec defines a stream configuration with a base stream file and count
-type StreamSpec struct {
+type Streams struct {
 	StreamName  string `json:"stream_name"`
 	StreamCount int    `json:"stream_count"`
 }
@@ -95,7 +96,7 @@ type Stage struct {
 	NextStagePaths []string `json:"next,omitempty"`
 	// StreamSpecs allows specifying streams to launch dynamically with custom counts
 	// Format: [{"stream_name": "path/to/stream.json", "stream_count": 5}]
-	StreamSpecs []StreamSpec `json:"stream_specs,omitempty"`
+	Streams []Streams `json:"streams,omitempty"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
@@ -352,9 +353,15 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			return nil
 		}
 	}
-	r := rand.New(rand.NewSource(s.States.RandSeed))
+
+	// Use shared base seed with deterministic offset for each stream instance
+	// Ensures reproducibility while giving each stream a different random sequence
+	streamOffset := s.getStreamInstanceOffset()
+	effectiveSeed := s.States.RandSeed + int64(streamOffset*1000)
+	r := rand.New(rand.NewSource(effectiveSeed))
 	s.States.RandSeedUsed = true
-	log.Info().Int64("seed", s.States.RandSeed).Msg("random source seeded")
+	log.Info().Int64("base_seed", s.States.RandSeed).Int64("effective_seed", effectiveSeed).
+		Int("stream_offset", streamOffset).Msg("random source seeded")
 	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
 	for i := 1; continueExecution(i); i++ {
 		idx := r.Intn(randIndexUpperBound)
@@ -587,4 +594,26 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		err = postQueryErr
 	}
 	return result, err
+}
+
+// getStreamInstanceOffset extracts the stream instance number from stage ID for deterministic random offset
+// For stage IDs like "stream_intermediate_stream_1", "stream_intermediate_stream_2", etc.
+// Returns 0 for non-stream stages, 1-based instance number for stream stages
+func (s *Stage) getStreamInstanceOffset() int {
+	// Look for the pattern "_stream_N" at the end of the stage ID
+	id := s.Id
+
+	// Check for regular suffix (format: "_stream_1")
+	if idx := strings.LastIndex(id, "_stream_"); idx != -1 {
+		if instanceStr := id[idx+8:]; instanceStr != "" {
+			if instance, err := strconv.Atoi(instanceStr); err == nil {
+				log.Info().Str("suffix found in", id[idx:]).Int("instance", instance).
+					Msg("detected stream instance offset")
+				return instance
+			}
+		}
+	}
+
+	// Not a stream instance, return 0 (no offset)
+	return 0
 }
