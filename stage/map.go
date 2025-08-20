@@ -23,7 +23,7 @@ func ParseStageGraph(startingStage *Stage) (*Stage, Map, error) {
 	stages := make(Map)
 	startingStage, err := ParseStage(startingStage, stages)
 	if err == nil {
-		err = checkStageLinks(startingStage)
+		err = checkStageLinks(startingStage, make(map[string]bool), make(map[string]bool))
 	}
 	if err != nil {
 		return nil, nil, err
@@ -35,7 +35,7 @@ func ParseStageGraphFromFile(startingFile string) (*Stage, Map, error) {
 	stages := make(Map)
 	startingStage, err := ParseStageFromFile(startingFile, stages)
 	if err == nil {
-		err = checkStageLinks(startingStage)
+		err = checkStageLinks(startingStage, make(map[string]bool), make(map[string]bool))
 	}
 	if err != nil {
 		return nil, nil, err
@@ -137,16 +137,34 @@ func fileNameWithoutPathAndExt(filePath string) string {
 	return filePath[lastPathSeparator+1 : lastDot]
 }
 
-func checkStageLinks(stage *Stage) error {
+func checkStageLinks(stage *Stage, visited map[string]bool, visiting map[string]bool) error {
+	// Detect cycles
+	if visiting[stage.Id] {
+		return fmt.Errorf("cycle detected at stage %s", stage.Id)
+	}
+	// Skip already fully-visited stages
+	if visited[stage.Id] {
+		return nil
+	}
+
+	visiting[stage.Id] = true
+	defer delete(visiting, stage.Id)
+	visited[stage.Id] = true
+
 	nextStageMap := make(map[string]bool)
 	for _, nextStage := range stage.NextStages {
+		if nextStage == nil {
+			continue
+		}
 		if nextStageMap[nextStage.Id] {
-			return fmt.Errorf("stage %s got duplicated next stages %s", stage.Id, nextStage.Id)
+			return fmt.Errorf("stage %s has duplicated next stage %s", stage.Id, nextStage.Id)
 		}
 		nextStageMap[nextStage.Id] = true
-		if err := checkStageLinks(nextStage); err != nil {
+
+		if err := checkStageLinks(nextStage, visited, visiting); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
