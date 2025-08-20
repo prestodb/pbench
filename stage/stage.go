@@ -29,6 +29,8 @@ import (
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
 	Id string `json:"-"`
+	// ParentStageId is used to keep track of the parent stage of this child stage.
+	ParentStageId string `json:"-"`
 	// The values in Catalog, Schema, and SessionParams are inherited by the descendant stages. Please note that if
 	// they have new values assigned in a stage, those values are NOT applied tn the Presto client until a stage
 	// creates its own client by setting StartOnNewClient = true.
@@ -233,6 +235,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	s.setDefaults()
 	s.prepareClient()
 	s.propagateStates()
+	s.createNextStagesOutputDirectories()
 	preStageErr := s.runShellScripts(ctx, s.PreStageShellScripts)
 	if preStageErr != nil {
 		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
@@ -524,7 +527,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	)
 	if *s.SaveOutput {
 		queryOutputFile, err = os.OpenFile(
-			filepath.Join(s.States.OutputPath, querySourceStr)+".output",
+			filepath.Join(s.States.OutputPath, s.ParentStageId, s.Id, querySourceStr)+".output",
 			utils.OpenNewFileFlags, 0644)
 		if err != nil {
 			return result, err
