@@ -29,8 +29,9 @@ import (
 
 // StreamSpec defines a stream configuration with a base stream file and count
 type Streams struct {
-	StreamName  string `json:"stream_name"`
-	StreamCount int    `json:"stream_count"`
+	StreamName  string  `json:"stream_name"`
+	StreamCount int     `json:"stream_count"`
+	Seeds       []int64 `json:"seeds,omitempty"`
 }
 
 type Stage struct {
@@ -96,6 +97,7 @@ type Stage struct {
 	NextStagePaths []string `json:"next,omitempty"`
 	// StreamSpecs allows specifying streams to launch dynamically with custom counts
 	// Format: [{"stream_name": "path/to/stream.json", "stream_count": 5}]
+
 	Streams []Streams `json:"streams,omitempty"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
@@ -354,14 +356,32 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 		}
 	}
 
-	// Use shared base seed with deterministic offset for each stream instance
+	// Use custom seed if provided, otherwise use shared base seed with deterministic offset
 	// Ensures reproducibility while giving each stream a different random sequence
-	streamOffset := s.getStreamInstanceOffset()
-	effectiveSeed := s.States.RandSeed + int64(streamOffset*1000)
+	streamOffset, customSeed, hasCustomSeed := s.getStreamInstanceInfo()
+	var effectiveSeed int64
+
+	if hasCustomSeed {
+		effectiveSeed = customSeed
+	} else {
+		effectiveSeed = s.States.RandSeed + int64(streamOffset*1000)
+	}
+
 	r := rand.New(rand.NewSource(effectiveSeed))
 	s.States.RandSeedUsed = true
-	log.Info().Int64("base_seed", s.States.RandSeed).Int64("effective_seed", effectiveSeed).
-		Int("stream_offset", streamOffset).Msg("random source seeded")
+
+	if streamOffset > 0 {
+		if hasCustomSeed {
+			log.Info().Str("stream_instance", fmt.Sprintf("stream_%d", streamOffset)).
+				Int64("custom_seed", effectiveSeed).Msg("stream instance seeded with custom seed for random execution")
+		} else {
+			log.Info().Str("stream_instance", fmt.Sprintf("stream_%d", streamOffset)).
+				Int64("seed", effectiveSeed).Int64("base_seed", s.States.RandSeed).
+				Int("offset", streamOffset*1000).Msg("stream instance seeded for random execution")
+		}
+	} else {
+		log.Info().Int64("seed", effectiveSeed).Msg("main stage seeded for random execution")
+	}
 	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
 	for i := 1; continueExecution(i); i++ {
 		idx := r.Intn(randIndexUpperBound)
@@ -600,20 +620,44 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 // For stage IDs like "stream_intermediate_stream_1", "stream_intermediate_stream_2", etc.
 // Returns 0 for non-stream stages, 1-based instance number for stream stages
 func (s *Stage) getStreamInstanceOffset() int {
-	// Look for the pattern "_stream_N" at the end of the stage ID
+	offset, _, _ := s.getStreamInstanceInfo()
+	return offset
+}
+
+// getStreamInstanceInfo extracts stream instance number and custom seed from stage ID
+// Handles both formats: "stream_intermediate_stream_1" and "stream_intermediate_stream_1_seed_12345"
+// Returns (instanceNumber, customSeed, hasCustomSeed)
+func (s *Stage) getStreamInstanceInfo() (int, int64, bool) {
 	id := s.Id
 
-	// Check for regular suffix (format: "_stream_1")
-	if idx := strings.LastIndex(id, "_stream_"); idx != -1 {
-		if instanceStr := id[idx+8:]; instanceStr != "" {
-			if instance, err := strconv.Atoi(instanceStr); err == nil {
-				log.Info().Str("suffix found in", id[idx:]).Int("instance", instance).
-					Msg("detected stream instance offset")
-				return instance
+	// Check for custom seed format first (format: "_stream_1_seed_12345")
+	if idx := strings.LastIndex(id, "_seed_"); idx != -1 {
+		seedStr := id[idx+6:]
+		if customSeed, err := strconv.ParseInt(seedStr, 10, 64); err == nil {
+			// Extract instance number from the part before "_seed_"
+			beforeSeed := id[:idx]
+			if streamIdx := strings.LastIndex(beforeSeed, "_stream_"); streamIdx != -1 {
+				instanceStr := beforeSeed[streamIdx+8:]
+				if instance, err := strconv.Atoi(instanceStr); err == nil {
+					log.Info().Str("suffix", id[streamIdx:]).Int("instance", instance).
+						Int64("custom_seed", customSeed).Msg("detected stream instance with custom seed")
+					return instance, customSeed, true
+				}
 			}
 		}
 	}
 
-	// Not a stream instance, return 0 (no offset)
-	return 0
+	// Check for regular suffix without custom seed (format: "_stream_1")
+	if idx := strings.LastIndex(id, "_stream_"); idx != -1 {
+		instanceStr := id[idx+8:]
+		// Make sure this is just the instance number (no additional suffixes)
+		if !strings.Contains(instanceStr, "_") {
+			if instance, err := strconv.Atoi(instanceStr); err == nil {
+				return instance, 0, false
+			}
+		}
+	}
+
+	// Not a stream instance, return defaults
+	return 0, 0, false
 }

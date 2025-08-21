@@ -110,7 +110,7 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 	// Process Streams to generate multiple instances of base streams
 	err := processStreams(stage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to process stream specs for stage %s: %w", stage.Id, err)
+		return nil, fmt.Errorf("failed to process streams for stage %s: %w", stage.Id, err)
 	}
 
 	for i, nextStagePath := range stage.NextStagePaths {
@@ -208,6 +208,14 @@ func processStreams(stage *Stage) error {
 			return fmt.Errorf("stream_count must be positive, got %d for stream %s", spec.StreamCount, spec.StreamName)
 		}
 
+		// Validate seeds if provided
+		if len(spec.Seeds) > 0 {
+			if len(spec.Seeds) != 1 && len(spec.Seeds) != spec.StreamCount {
+				return fmt.Errorf("seeds array length (%d) must be either 1 or equal to stream_count (%d) for stream %s",
+					len(spec.Seeds), spec.StreamCount, spec.StreamName)
+			}
+		}
+
 		// Resolve relative paths
 		streamPath := spec.StreamName
 		if !filepath.IsAbs(streamPath) {
@@ -222,16 +230,30 @@ func processStreams(stage *Stage) error {
 		// Generate multiple copies by adding each instance to NextStagePaths
 		// Each instance gets a unique virtual path to ensure unique stage IDs
 		for i := 0; i < spec.StreamCount; i++ {
-			// Create a unique virtual path by appending instance number
+			// Create a unique virtual path by appending instance number and optional seed
 			virtualPath := fmt.Sprintf("%s#stream_%d", streamPath, i+1)
+
+			// If custom seeds are provided, append seed information to the virtual path
+			if len(spec.Seeds) > 0 {
+				var seed int64
+				if len(spec.Seeds) == 1 {
+					// Single base seed - use deterministic offset
+					seed = spec.Seeds[0] + int64(i*1000)
+				} else {
+					// Individual seeds provided
+					seed = spec.Seeds[i]
+				}
+				virtualPath = fmt.Sprintf("%s#stream_%d_seed_%d", streamPath, i+1, seed)
+			}
+
 			stage.NextStagePaths = append(stage.NextStagePaths, virtualPath)
 		}
 
-		log.Debug().Str("stream_name", spec.StreamName).Int("stream_count", spec.StreamCount).
-			Msg("expanded stream spec into next stage paths")
+		log.Info().Str("stream_name", spec.StreamName).Int("stream_count", spec.StreamCount).
+			Int("custom_seeds", len(spec.Seeds)).Msg("expanded stream spec into next stage paths")
 	}
 
-	// Clear StreamSpecs since they've been processed into NextStagePaths
+	// Clear Streams since they've been processed into NextStagePaths
 	stage.Streams = nil
 
 	return nil
