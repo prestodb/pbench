@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"pbench/log"
-	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -79,23 +78,17 @@ func ReadStageFromFile(filePath string) (*Stage, error) {
 }
 
 func ParseStageFromFile(filePath string, stages Map) (*Stage, error) {
-	// Generate unique stage ID that handles virtual paths
-	stageId := generateUniqueStageId(filePath)
-	stage, ok := stages[stageId]
+	// For regular files, just use the filename as stage ID
+	stage, ok := stages[fileNameWithoutPathAndExt(filePath)]
 	if ok {
 		log.Debug().Msgf("%s already parsed, returned", stage.Id)
 		return stage, nil
 	}
 
-	// Extract real file path for reading
-	realPath, _ := parseVirtualPath(filePath)
-	stage, err := ReadStageFromFile(realPath)
+	stage, err := ReadStageFromFile(filePath)
 	if err != nil {
 		return nil, err
 	}
-
-	// Override the stage ID to make it unique
-	stage.Id = stageId
 
 	return ParseStage(stage, stages)
 }
@@ -107,33 +100,29 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 		return stageFound, nil
 	}
 
-	// Process Streams to generate multiple instances of base streams
-	err := processStreams(stage)
+	// Process Streams to create multiple instances directly
+	err := processStreams(stage, stages)
 	if err != nil {
 		return nil, fmt.Errorf("failed to process streams for stage %s: %w", stage.Id, err)
 	}
 
+	// Process regular NextStagePaths
 	for i, nextStagePath := range stage.NextStagePaths {
-		// Extract real path for validation and path resolution
-		realPath, _ := parseVirtualPath(nextStagePath)
-
-		if !filepath.IsAbs(realPath) {
-			realPath = filepath.Join(stage.BaseDir, realPath)
-			// Update the virtual path with the absolute real path
-			if idx := strings.Index(nextStagePath, "#"); idx != -1 {
-				stage.NextStagePaths[i] = realPath + nextStagePath[idx:]
-			} else {
-				stage.NextStagePaths[i] = realPath
-			}
+		if !filepath.IsAbs(nextStagePath) {
+			nextStagePath = filepath.Join(stage.BaseDir, nextStagePath)
+			stage.NextStagePaths[i] = nextStagePath
 		}
 
-		if fileInfo, err := os.Stat(realPath); err != nil {
-			return nil, fmt.Errorf("%s links to an invalid next stage file %s: %w", stage.Id, realPath, err)
+		if fileInfo, err := os.Stat(nextStagePath); err != nil {
+			return nil, fmt.Errorf("%s links to an invalid next stage file %s: %w", stage.Id, nextStagePath, err)
 		} else if fileInfo.IsDir() {
-			return nil, fmt.Errorf("%s links to a directory as next stage: %s", stage.Id, realPath)
+			return nil, fmt.Errorf("%s links to a directory as next stage: %s", stage.Id, nextStagePath)
 		}
 	}
+
 	stages[stage.Id] = stage
+
+	// Parse regular next stages
 	for _, nextStagePath := range stage.NextStagePaths {
 		if nextStage, err := ParseStageFromFile(nextStagePath, stages); err != nil {
 			return nil, err
@@ -163,25 +152,6 @@ func fileNameWithoutPathAndExt(filePath string) string {
 	return filePath[lastPathSeparator+1 : lastDot]
 }
 
-// parseVirtualPath extracts the real file path and virtual suffix from a virtual path
-// Virtual paths have format: "/path/to/file.json#stream_1"
-func parseVirtualPath(virtualPath string) (realPath, suffix string) {
-	if idx := strings.Index(virtualPath, "#"); idx != -1 {
-		return virtualPath[:idx], virtualPath[idx+1:]
-	}
-	return virtualPath, ""
-}
-
-// generateUniqueStageId creates a unique stage ID for virtual paths
-func generateUniqueStageId(filePath string) string {
-	realPath, suffix := parseVirtualPath(filePath)
-	baseId := fileNameWithoutPathAndExt(realPath)
-	if suffix != "" {
-		return fmt.Sprintf("%s_%s", baseId, suffix)
-	}
-	return baseId
-}
-
 func checkStageLinks(stage *Stage) error {
 	nextStageMap := make(map[string]bool)
 	for _, nextStage := range stage.NextStages {
@@ -196,13 +166,13 @@ func checkStageLinks(stage *Stage) error {
 	return nil
 }
 
-// processStreamSpecs expands StreamSpecs into NextStagePaths by generating multiple instances
-func processStreams(stage *Stage) error {
+// processStreams expands StreamSpecs by directly creating stage instances
+func processStreams(stage *Stage, stages Map) error {
 	if len(stage.Streams) == 0 {
 		return nil
 	}
 
-	// For each stream spec, expand it to multiple stage paths
+	// For each stream spec, create multiple stage instances
 	for _, spec := range stage.Streams {
 		if spec.StreamCount <= 0 {
 			return fmt.Errorf("stream_count must be positive, got %d for stream %s", spec.StreamCount, spec.StreamName)
@@ -227,13 +197,24 @@ func processStreams(stage *Stage) error {
 			return fmt.Errorf("stream file %s does not exist: %w", streamPath, err)
 		}
 
-		// Generate multiple copies by adding each instance to NextStagePaths
-		// Each instance gets a unique virtual path to ensure unique stage IDs
+		// Create multiple stream instances directly
 		for i := 0; i < spec.StreamCount; i++ {
-			// Create a unique virtual path by appending instance number and optional seed
-			virtualPath := fmt.Sprintf("%s#stream_%d", streamPath, i+1)
+			instanceNumber := i + 1
 
-			// If custom seeds are provided, append seed information to the virtual path
+			// Read the base stream file
+			streamStage, err := ReadStageFromFile(streamPath)
+			if err != nil {
+				return fmt.Errorf("failed to read stream file %s: %w", streamPath, err)
+			}
+
+			// Set unique ID for this stream instance
+			baseId := fileNameWithoutPathAndExt(streamPath)
+			streamStage.Id = fmt.Sprintf("%s_stream_%d", baseId, instanceNumber)
+
+			// Set stream instance information directly
+			streamStage.StreamInstanceNumber = instanceNumber
+
+			// Calculate and set custom seed if provided
 			if len(spec.Seeds) > 0 {
 				var seed int64
 				if len(spec.Seeds) == 1 {
@@ -243,17 +224,20 @@ func processStreams(stage *Stage) error {
 					// Individual seeds provided
 					seed = spec.Seeds[i]
 				}
-				virtualPath = fmt.Sprintf("%s#stream_%d_seed_%d", streamPath, i+1, seed)
+				streamStage.CustomSeed = &seed
 			}
 
-			stage.NextStagePaths = append(stage.NextStagePaths, virtualPath)
+			// Add to stages map and NextStages
+			stages[streamStage.Id] = streamStage
+			stage.NextStages = append(stage.NextStages, streamStage)
+			streamStage.wgPrerequisites.Add(1)
 		}
 
 		log.Info().Str("stream_name", spec.StreamName).Int("stream_count", spec.StreamCount).
-			Int("custom_seeds", len(spec.Seeds)).Msg("expanded stream spec into next stage paths")
+			Int("custom_seeds", len(spec.Seeds)).Msg("created stream instances")
 	}
 
-	// Clear Streams since they've been processed into NextStagePaths
+	// Clear Streams since they've been processed
 	stage.Streams = nil
 
 	return nil

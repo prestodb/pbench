@@ -18,7 +18,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -112,6 +111,11 @@ type Stage struct {
 	NextStages []*Stage `json:"-"`
 	// Client is by default passed down to descendant stages.
 	Client *presto.Client `json:"-"`
+
+	// Stream instance information for custom seeding and identification
+	// These fields are set during stream processing and are not serialized to JSON
+	StreamInstanceNumber int    `json:"-"` // 1-based instance number for streams, 0 for non-stream stages
+	CustomSeed           *int64 `json:"-"` // Custom seed for this stream instance, nil if using default seeding
 
 	// Convenient access to the expected row count array under the current schema.
 	expectedRowCountInCurrentSchema []int
@@ -358,26 +362,27 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 
 	// Use custom seed if provided, otherwise use shared base seed with deterministic offset
 	// Ensures reproducibility while giving each stream a different random sequence
-	streamOffset, customSeed, hasCustomSeed := s.getStreamInstanceInfo()
 	var effectiveSeed int64
 
-	if hasCustomSeed {
-		effectiveSeed = customSeed
+	if s.CustomSeed != nil {
+		effectiveSeed = *s.CustomSeed
+	} else if s.StreamInstanceNumber > 0 {
+		effectiveSeed = s.States.RandSeed + int64(s.StreamInstanceNumber*1000)
 	} else {
-		effectiveSeed = s.States.RandSeed + int64(streamOffset*1000)
+		effectiveSeed = s.States.RandSeed
 	}
 
 	r := rand.New(rand.NewSource(effectiveSeed))
 	s.States.RandSeedUsed = true
 
-	if streamOffset > 0 {
-		if hasCustomSeed {
-			log.Info().Str("stream_instance", fmt.Sprintf("stream_%d", streamOffset)).
+	if s.StreamInstanceNumber > 0 {
+		if s.CustomSeed != nil {
+			log.Info().Str("stream_instance", fmt.Sprintf("stream_%d", s.StreamInstanceNumber)).
 				Int64("custom_seed", effectiveSeed).Msg("stream instance seeded with custom seed for random execution")
 		} else {
-			log.Info().Str("stream_instance", fmt.Sprintf("stream_%d", streamOffset)).
+			log.Info().Str("stream_instance", fmt.Sprintf("stream_%d", s.StreamInstanceNumber)).
 				Int64("seed", effectiveSeed).Int64("base_seed", s.States.RandSeed).
-				Int("offset", streamOffset*1000).Msg("stream instance seeded for random execution")
+				Int("offset", s.StreamInstanceNumber*1000).Msg("stream instance seeded for random execution")
 		}
 	} else {
 		log.Info().Int64("seed", effectiveSeed).Msg("main stage seeded for random execution")
@@ -614,50 +619,4 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		err = postQueryErr
 	}
 	return result, err
-}
-
-// getStreamInstanceOffset extracts the stream instance number from stage ID for deterministic random offset
-// For stage IDs like "stream_intermediate_stream_1", "stream_intermediate_stream_2", etc.
-// Returns 0 for non-stream stages, 1-based instance number for stream stages
-func (s *Stage) getStreamInstanceOffset() int {
-	offset, _, _ := s.getStreamInstanceInfo()
-	return offset
-}
-
-// getStreamInstanceInfo extracts stream instance number and custom seed from stage ID
-// Handles both formats: "stream_intermediate_stream_1" and "stream_intermediate_stream_1_seed_12345"
-// Returns (instanceNumber, customSeed, hasCustomSeed)
-func (s *Stage) getStreamInstanceInfo() (int, int64, bool) {
-	id := s.Id
-
-	// Check for custom seed format first (format: "_stream_1_seed_12345")
-	if idx := strings.LastIndex(id, "_seed_"); idx != -1 {
-		seedStr := id[idx+6:]
-		if customSeed, err := strconv.ParseInt(seedStr, 10, 64); err == nil {
-			// Extract instance number from the part before "_seed_"
-			beforeSeed := id[:idx]
-			if streamIdx := strings.LastIndex(beforeSeed, "_stream_"); streamIdx != -1 {
-				instanceStr := beforeSeed[streamIdx+8:]
-				if instance, err := strconv.Atoi(instanceStr); err == nil {
-					log.Info().Str("suffix", id[streamIdx:]).Int("instance", instance).
-						Int64("custom_seed", customSeed).Msg("detected stream instance with custom seed")
-					return instance, customSeed, true
-				}
-			}
-		}
-	}
-
-	// Check for regular suffix without custom seed (format: "_stream_1")
-	if idx := strings.LastIndex(id, "_stream_"); idx != -1 {
-		instanceStr := id[idx+8:]
-		// Make sure this is just the instance number (no additional suffixes)
-		if !strings.Contains(instanceStr, "_") {
-			if instance, err := strconv.Atoi(instanceStr); err == nil {
-				return instance, 0, false
-			}
-		}
-	}
-
-	// Not a stream instance, return defaults
-	return 0, 0, false
 }
