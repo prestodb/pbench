@@ -253,7 +253,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if preStageErr != nil {
 		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
 	}
-	if len(s.Queries)+len(s.QueryFiles) > 0 {
+	if len(s.Queries)+len(s.QueryFiles)+len(s.Streams) > 0 {
 		if *s.RandomExecution {
 			returnErr = s.runRandomly(ctx)
 		} else {
