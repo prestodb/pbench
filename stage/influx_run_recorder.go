@@ -57,6 +57,7 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 		"run_name": s.States.RunName,
 		"stage_id": result.StageId,
 		"query_id": result.QueryId,
+		"workload": s.States.Workload,
 	}
 	fields := map[string]interface{}{
 		"query_index":        result.Query.Index,
