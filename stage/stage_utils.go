@@ -68,6 +68,9 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	if other.RandomExecution != nil {
 		s.RandomExecution = other.RandomExecution
 	}
+	if other.NoRandomDuplicates != nil {
+		s.NoRandomDuplicates = other.NoRandomDuplicates
+	}
 	if other.RandomlyExecuteUntil != nil {
 		s.RandomlyExecuteUntil = other.RandomlyExecuteUntil
 	}
@@ -194,6 +197,9 @@ func (s *Stage) setDefaults() {
 	if s.RandomExecution == nil {
 		s.RandomExecution = &falseValue
 	}
+	if s.NoRandomDuplicates == nil {
+		s.NoRandomDuplicates = &falseValue
+	}
 	if s.AbortOnError == nil {
 		s.AbortOnError = &falseValue
 	}
@@ -237,6 +243,9 @@ func (s *Stage) propagateStates() {
 		}
 		if nextStage.RandomlyExecuteUntil == nil {
 			nextStage.RandomlyExecuteUntil = s.RandomlyExecuteUntil
+		}
+		if nextStage.NoRandomDuplicates == nil {
+			nextStage.NoRandomDuplicates = s.NoRandomDuplicates
 		}
 		for k, v := range s.SessionParams {
 			if v == nil {

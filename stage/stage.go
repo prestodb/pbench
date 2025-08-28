@@ -61,6 +61,10 @@ type Stage struct {
 	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
 	// before exiting.
 	RandomlyExecuteUntil *string `json:"randomly_execute_until,omitempty"`
+	// If NoRandomDuplicates is set to true, queries will not be repeated during random execution
+	// until all queries have been executed once. After that, the selection pool resets if more
+	// executions are needed.
+	NoRandomDuplicates *bool `json:"no_random_duplicates,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
 	ColdRuns *int `json:"cold_runs,omitempty" validate:"omitempty,gte=0"`
 	// If not set, the default is 0.
@@ -343,9 +347,17 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			return nil
 		}
 	}
+	
 	r := rand.New(rand.NewSource(s.States.RandSeed))
 	s.States.RandSeedUsed = true
 	log.Info().Int64("seed", s.States.RandSeed).Msg("random source seeded")
+	
+	// If NoRandomDuplicates is enabled, use bag-based selection
+	if s.NoRandomDuplicates != nil && *s.NoRandomDuplicates {
+		return s.runRandomlyWithoutDuplicates(ctx, r, continueExecution)
+	}
+	
+	// Original random execution logic (with duplicates allowed)
 	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
 	for i := 1; continueExecution(i); i++ {
 		idx := r.Intn(randIndexUpperBound)
@@ -374,6 +386,74 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 		}
 	}
 	log.Info().Msg("random execution concluded.")
+	return nil
+}
+
+func (s *Stage) runRandomlyWithoutDuplicates(ctx context.Context, r *rand.Rand, continueExecution func(int) bool) error {
+	// Create initial bag of all query indices
+	totalQueries := len(s.Queries) + len(s.QueryFiles)
+	if totalQueries == 0 {
+		log.Info().Msg("no queries available for random execution")
+		return nil
+	}
+	
+	// Initialize the bag with all available query indices
+	var bag []int
+	for i := 0; i < totalQueries; i++ {
+		bag = append(bag, i)
+	}
+	
+	log.Info().Int("total_queries", totalQueries).Bool("no_duplicates", true).Msg("starting random execution without duplicates")
+	
+	for i := 1; continueExecution(i); i++ {
+		// If bag is empty, refill it (reset)
+		if len(bag) == 0 {
+			log.Info().Int("execution_count", i-1).Msg("bag exhausted, refilling for next round")
+			for j := 0; j < totalQueries; j++ {
+				bag = append(bag, j)
+			}
+		}
+		
+		// Skip executions if needed
+		if i <= s.States.RandSkip {
+			if i == s.States.RandSkip {
+				log.Info().Msgf("skipped %d random selections", i)
+			}
+			continue
+		}
+		
+		// Randomly select an index from the bag
+		bagIndex := r.Intn(len(bag))
+		selectedIdx := bag[bagIndex]
+		
+		// Remove the selected index from the bag (no replacement)
+		bag = append(bag[:bagIndex], bag[bagIndex+1:]...)
+		
+		log.Debug().Int("selected_idx", selectedIdx).Int("remaining_in_bag", len(bag)).Msg("selected query from bag")
+		
+		// Execute the selected query
+		if selectedIdx < len(s.Queries) {
+			// Run query embedded in the json file
+			pseudoFileName := fmt.Sprintf("rand_%d", i)
+			if err := s.runQueries(ctx, s.Queries[selectedIdx:selectedIdx+1], &pseudoFileName, 0); err != nil {
+				return err
+			}
+		} else {
+			// Run query from file
+			queryFileIdx := selectedIdx - len(s.Queries)
+			queryFile := s.QueryFiles[queryFileIdx]
+			fileAlias := queryFile
+			if relPath, relErr := filepath.Rel(s.BaseDir, queryFile); relErr == nil {
+				fileAlias = relPath
+			}
+			fileAlias = fmt.Sprintf("rand_%d_%s", i, fileAlias)
+			if err := s.runQueryFile(ctx, queryFile, nil, &fileAlias); err != nil {
+				return err
+			}
+		}
+	}
+	
+	log.Info().Msg("random execution without duplicates concluded.")
 	return nil
 }
 
