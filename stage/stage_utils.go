@@ -290,7 +290,7 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 		querySourceStr := s.querySourceString(result)
 		{
 			queryJsonFile, err := os.OpenFile(
-				filepath.Join(s.States.OutputPath, querySourceStr)+".json",
+				filepath.Join(s.States.OutputPath, s.ParentStageId, s.Id, querySourceStr)+".json",
 				utils.OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
@@ -302,7 +302,7 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 		}
 		if result.QueryError != nil {
 			queryErrorFile, err := os.OpenFile(
-				filepath.Join(s.States.OutputPath, querySourceStr)+".error.json",
+				filepath.Join(s.States.OutputPath, s.ParentStageId, s.Id, querySourceStr)+".error.json",
 				utils.OpenNewFileFlags, 0644)
 			checkErr(err)
 			if err == nil {
@@ -332,7 +332,7 @@ func (s *Stage) saveColumnMetadataFile(qr *presto.QueryResults, result *QueryRes
 		}
 	}()
 	columnMetadataFile, ioErr := os.OpenFile(
-		filepath.Join(s.States.OutputPath, querySourceStr)+".cols.json",
+		filepath.Join(s.States.OutputPath, s.ParentStageId, s.Id, querySourceStr)+".cols.json",
 		utils.OpenNewFileFlags, 0644)
 	if ioErr != nil {
 		return ioErr
@@ -371,4 +371,13 @@ func (s *Stage) querySourceString(result *QueryResult) (sourceStr string) {
 		sourceStr += strconv.Itoa(result.Query.SequenceNo)
 	}
 	return
+}
+
+func (s *Stage) createNextStagesOutputDirectories() {
+	parentStageId := s.Id
+	for _, nextStage := range s.NextStages {
+		nextStage.ParentStageId = parentStageId
+		stageOutputPath := filepath.Join(s.States.OutputPath, s.Id, nextStage.Id)
+		utils.PrepareOutputDirectory(stageOutputPath)
+	}
 }
