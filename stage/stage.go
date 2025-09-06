@@ -150,6 +150,7 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	go func() {
 		s.States.wgExitMainStage.Wait()
+		close(s.States.resultChan)
 		// wgExitMainStage goes down to 0 after all the goroutines finish. Then we exit the driver by
 		// closing the timeToExit channel, which will trigger the graceful shutdown process -
 		// (flushing the log file, writing the final time log summary, etc.).
@@ -174,22 +175,31 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	for {
 		select {
-		case result := <-s.States.resultChan:
+		case result, ok := <-s.States.resultChan:
+			if !ok {
+				// resultChan closed: all results received, finalize and exit
+				s.States.RunFinishTime = time.Now()
+				for _, recorder := range s.States.runRecorders {
+					recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+				}
+				return int(s.States.exitCode.Load())
+			}
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
 				recorder.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), s, result)
 			}
-		case sig := <-timeToExit:
-			if sig != nil {
-				// Cancel the context and wait for the goroutines to exit.
-				s.States.AbortAll(fmt.Errorf(sig.String()))
+
+		case sig, ok := <-timeToExit:
+			if !ok {
+				// timeToExit channel closed, no more signals — continue to receive results
 				continue
 			}
-			s.States.RunFinishTime = time.Now()
-			for _, recorder := range s.States.runRecorders {
-				recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+			if sig != nil {
+				// Received shutdown signal; cancel ongoing queries
+				log.Info().Msgf("Shutdown signal received: %v. Aborting queries...", sig)
+				s.States.AbortAll(fmt.Errorf("%s", sig.String()))
+				// Keep receiving results until resultChan is closed
 			}
-			return int(s.States.exitCode.Load())
 		}
 	}
 }
