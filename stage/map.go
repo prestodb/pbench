@@ -108,6 +108,11 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 		}
 	}
 	stages[stage.Id] = stage
+	err := processStreams(stage, stages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process streams for stage %s: %w", stage.Id, err)
+	}
+
 	for _, nextStagePath := range stage.NextStagePaths {
 		if nextStage, err := ParseStageFromFile(nextStagePath, stages); err != nil {
 			return nil, err
@@ -148,5 +153,55 @@ func checkStageLinks(stage *Stage) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func processStreams(stage *Stage, stages Map) error {
+	if len(stage.Streams) == 0 {
+		return nil
+	}
+
+	for _, spec := range stage.Streams {
+		if spec.StreamCount <= 0 {
+			return fmt.Errorf("stream_count must be positive, got %d for stream %s", spec.StreamCount, spec.StreamName)
+		}
+
+		if len(spec.Seeds) > 0 {
+			if len(spec.Seeds) != 1 && len(spec.Seeds) != spec.StreamCount {
+				return fmt.Errorf("seeds array length (%d) must be either 1 or equal to stream_count (%d) for stream %s",
+					len(spec.Seeds), spec.StreamCount, spec.StreamName)
+			}
+		}
+
+		streamPath, err := spec.GetValidatedPath(stage.BaseDir)
+		if err != nil {
+			return err
+		}
+		for i := 1; i <= spec.StreamCount; i++ {
+			streamStage, err := ReadStageFromFile(streamPath)
+			if err != nil {
+				return fmt.Errorf("failed to read stream file %s: %w", streamPath, err)
+			}
+
+			// Set unique ID for this stream instance
+			baseId := fileNameWithoutPathAndExt(streamPath)
+			streamStage.Id = fmt.Sprintf("%s_stream_%d", baseId, i)
+
+			// Set custom seed if configured
+			if seed, hasCustomSeed := spec.GetSeedForInstance(i); hasCustomSeed {
+				streamStage.seed = seed
+			} else {
+				// No seed configured, use stage's RandSeed + instance offset
+				streamStage.seed = stage.States.RandSeed + int64(i)*1000
+			}
+
+			stages[streamStage.Id] = streamStage
+			stage.NextStages = append(stage.NextStages, streamStage)
+			streamStage.wgPrerequisites.Add(1)
+		}
+	}
+
+	stage.Streams = nil
+
 	return nil
 }

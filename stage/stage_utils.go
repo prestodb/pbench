@@ -68,6 +68,9 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	if other.RandomExecution != nil {
 		s.RandomExecution = other.RandomExecution
 	}
+	if other.NoRandomDuplicates != nil {
+		s.NoRandomDuplicates = other.NoRandomDuplicates
+	}
 	if other.RandomlyExecuteUntil != nil {
 		s.RandomlyExecuteUntil = other.RandomlyExecuteUntil
 	}
@@ -92,6 +95,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
+	s.Streams = append(s.Streams, other.Streams...)
 
 	s.PreStageShellScripts = append(s.PreStageShellScripts, other.PreStageShellScripts...)
 	s.PostQueryShellScripts = append(s.PostQueryShellScripts, other.PostQueryShellScripts...)
@@ -194,6 +198,9 @@ func (s *Stage) setDefaults() {
 	if s.RandomExecution == nil {
 		s.RandomExecution = &falseValue
 	}
+	if s.NoRandomDuplicates == nil {
+		s.NoRandomDuplicates = &falseValue
+	}
 	if s.AbortOnError == nil {
 		s.AbortOnError = &falseValue
 	}
@@ -234,6 +241,9 @@ func (s *Stage) propagateStates() {
 		}
 		if nextStage.RandomExecution == nil {
 			nextStage.RandomExecution = s.RandomExecution
+		}
+		if nextStage.NoRandomDuplicates == nil {
+			nextStage.NoRandomDuplicates = s.NoRandomDuplicates
 		}
 		if nextStage.RandomlyExecuteUntil == nil {
 			nextStage.RandomlyExecuteUntil = s.RandomlyExecuteUntil

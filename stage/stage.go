@@ -61,6 +61,10 @@ type Stage struct {
 	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
 	// before exiting.
 	RandomlyExecuteUntil *string `json:"randomly_execute_until,omitempty"`
+	// If NoRandomDuplicates is set to true, queries will not be repeated during random execution
+	// until all queries have been executed once. After that, the selection pool resets if more
+	// executions are needed.
+	NoRandomDuplicates *bool `json:"no_random_duplicates,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
 	ColdRuns *int `json:"cold_runs,omitempty" validate:"omitempty,gte=0"`
 	// If not set, the default is 0.
@@ -87,6 +91,9 @@ type Stage struct {
 	// knob was not set to true.
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
+	// StreamSpecs allows specifying streams to launch dynamically with custom counts and seeds
+	// Format: [{"stream_name": "path/to/stream.json", "stream_count": 5, "seeds": [123, 456]}]
+	Streams []Streams `json:"streams,omitempty"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
@@ -100,6 +107,9 @@ type Stage struct {
 	NextStages []*Stage `json:"-"`
 	// Client is by default passed down to descendant stages.
 	Client *presto.Client `json:"-"`
+
+	// Stream instance information for custom seeding and identification
+	seed int64 `json:"-"` // Custom seed for this stream instance, nil if using default seeding
 
 	// Convenient access to the expected row count array under the current schema.
 	expectedRowCountInCurrentSchema []int
@@ -150,6 +160,7 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	go func() {
 		s.States.wgExitMainStage.Wait()
+		close(s.States.resultChan)
 		// wgExitMainStage goes down to 0 after all the goroutines finish. Then we exit the driver by
 		// closing the timeToExit channel, which will trigger the graceful shutdown process -
 		// (flushing the log file, writing the final time log summary, etc.).
@@ -174,20 +185,30 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	for {
 		select {
-		case result := <-s.States.resultChan:
+		case result, ok := <-s.States.resultChan:
+			if !ok {
+				// resultChan closed: all results received, finalize and exit
+				s.States.RunFinishTime = time.Now()
+				for _, recorder := range s.States.runRecorders {
+					recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+				}
+				return int(s.States.exitCode.Load())
+			}
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
 				recorder.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), s, result)
 			}
-		case sig := <-timeToExit:
-			if sig != nil {
-				// Cancel the context and wait for the goroutines to exit.
-				s.States.AbortAll(fmt.Errorf(sig.String()))
+		case sig, ok := <-timeToExit:
+			if !ok {
+				// timeToExit channel closed, no more signals — continue to receive results
 				continue
 			}
 			s.States.RunFinishTime = time.Now()
-			for _, recorder := range s.States.runRecorders {
-				recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+			if sig != nil {
+				// Received shutdown signal; cancel ongoing queries
+				log.Info().Msgf("Shutdown signal received: %v. Aborting queries...", sig)
+				s.States.AbortAll(fmt.Errorf("%s", sig.String()))
+				// Keep receiving results until resultChan is closed
 			}
 			return int(s.States.exitCode.Load())
 		}
@@ -237,7 +258,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if preStageErr != nil {
 		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
 	}
-	if len(s.Queries)+len(s.QueryFiles) > 0 {
+	if len(s.Queries)+len(s.QueryFiles)+len(s.Streams) > 0 {
 		if *s.RandomExecution {
 			returnErr = s.runRandomly(ctx)
 		} else {
@@ -343,21 +364,57 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			return nil
 		}
 	}
-	r := rand.New(rand.NewSource(s.States.RandSeed))
+
+	r := rand.New(rand.NewSource(s.seed))
+	log.Info().Str("stream_id", s.Id).Int64("custom_seed", s.seed)
 	s.States.RandSeedUsed = true
-	log.Info().Int64("seed", s.States.RandSeed).Msg("random source seeded")
-	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
-	for i := 1; continueExecution(i); i++ {
-		idx := r.Intn(randIndexUpperBound)
-		if i <= s.States.RandSkip {
-			if i == s.States.RandSkip {
-				log.Info().Msgf("skipped %d random selections", i)
+
+	totalQueries := len(s.Queries) + len(s.QueryFiles)
+
+	// refreshIndices generates a new set of random indices for selecting queries.
+	// If NoRandomDuplicates is set to true, it generates a shuffled list of all indices.
+	// Otherwise, it generates a list of random indices with possible duplicates.
+	refreshIndices := func() []int {
+		indices := make([]int, totalQueries)
+		if *s.NoRandomDuplicates {
+			for i := 0; i < totalQueries; i++ {
+				indices[i] = i
 			}
+			r.Shuffle(len(indices), func(i, j int) {
+				indices[i], indices[j] = indices[j], indices[i]
+			})
+		} else {
+			for i := 0; i < totalQueries; i++ {
+				indices[i] = r.Intn(totalQueries)
+			}
+		}
+		return indices
+	}
+
+	executionCount := 1
+	var currentIndices []int
+	var indexPosition int
+
+	for continueExecution(executionCount) {
+		// Refresh indices when all queries have been used
+		if currentIndices == nil || indexPosition >= len(currentIndices) {
+			currentIndices = refreshIndices()
+			indexPosition = 0
+		}
+
+		idx := currentIndices[indexPosition]
+		indexPosition++
+
+		if executionCount <= s.States.RandSkip {
+			if executionCount == s.States.RandSkip {
+				log.Info().Msgf("skipped %d random selections", executionCount)
+			}
+			executionCount++
 			continue
 		}
+
 		if idx < len(s.Queries) {
-			// Run query embedded in the json file.
-			pseudoFileName := fmt.Sprintf("rand_%d", i)
+			pseudoFileName := fmt.Sprintf("rand_%d", executionCount)
 			if err := s.runQueries(ctx, s.Queries[idx:idx+1], &pseudoFileName, 0); err != nil {
 				return err
 			}
@@ -367,11 +424,12 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			if relPath, relErr := filepath.Rel(s.BaseDir, queryFile); relErr == nil {
 				fileAlias = relPath
 			}
-			fileAlias = fmt.Sprintf("rand_%d_%s", i, fileAlias)
+			fileAlias = fmt.Sprintf("rand_%d_%s", executionCount, fileAlias)
 			if err := s.runQueryFile(ctx, queryFile, nil, &fileAlias); err != nil {
 				return err
 			}
 		}
+		executionCount++
 	}
 	log.Info().Msg("random execution concluded.")
 	return nil
