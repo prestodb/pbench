@@ -12,6 +12,7 @@ import (
 	"os"
 	"pbench/log"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -163,8 +164,50 @@ func (p *PulumiMySQLRunRecorder) findPulumiStackFromClusterFQDN(ctx context.Cont
 	return nil
 }
 
+func (p *PulumiMySQLRunRecorder) findStackFromClusterFQDN(ctx context.Context, clusterFQDN string) *PulumiResource {
+	// Check if the cluster FQDN matches the Presto DB pattern
+	if strings.HasSuffix(clusterFQDN, ".ibm.prestodb.dev") {
+		return p.findPulumiStackFromClusterFQDN(ctx, clusterFQDN)
+	}
+
+	// Check if the cluster FQDN matches the blueray pattern
+	if strings.HasSuffix(clusterFQDN, ".cloud.ibm.com") {
+		return p.findBluerayStackFromClusterFQDN(clusterFQDN)
+	}
+
+	// Log if the FQDN doesn't match any known pattern
+	log.Warn().Str("cluster_fqdn", clusterFQDN).Msg("cluster FQDN does not match any known pattern")
+	return nil
+}
+
+func (p *PulumiMySQLRunRecorder) findBluerayStackFromClusterFQDN(clusterFQDN string) *PulumiResource {
+	// Extract cluster name as the first part of the FQDN (before the first dot)
+	parts := strings.SplitN(clusterFQDN, ".", 2)
+	if len(parts) < 2 {
+		log.Error().Str("cluster_fqdn", clusterFQDN).Msg("failed to extract cluster name from Blueray FQDN")
+		return nil
+	}
+
+	clusterName := parts[0]
+
+	// Create a PulumiResource with the extracted information
+	resource := &PulumiResource{
+		Type:    PulumiResourceTypeStack,
+		Created: time.Now(),
+	}
+
+	// Set the outputs
+	resource.Outputs.ClusterFQDN = clusterFQDN
+	resource.Outputs.ClusterName = clusterName
+
+	log.Info().Str("cluster_name", clusterName).Str("cluster_fqdn", clusterFQDN).
+		Msg("extracted cluster information from Blueray FQDN")
+
+	return resource
+}
+
 func (p *PulumiMySQLRunRecorder) Start(ctx context.Context, s *Stage) error {
-	stack := p.findPulumiStackFromClusterFQDN(ctx, s.States.ServerFQDN)
+	stack := p.findStackFromClusterFQDN(ctx, s.States.ServerFQDN)
 	if stack == nil {
 		log.Info().Msgf("did not find a matching Pulumi stack for %s", s.States.ServerFQDN)
 		return nil
