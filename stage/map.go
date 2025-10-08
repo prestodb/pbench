@@ -190,9 +190,11 @@ func processStreams(stage *Stage, stages Map) error {
 			// Set custom seed if configured
 			if seed, hasCustomSeed := spec.GetSeedForInstance(i); hasCustomSeed {
 				streamStage.seed = seed
+				log.Info().Str("stream_stage", streamStage.Id).Int64("custom_seed", seed).Int("instance", i).Msg("stream assigned custom seed")
 			} else {
 				// No seed configured, use stage's RandSeed + instance offset
 				streamStage.seed = stage.States.RandSeed + int64(i)*1000
+				log.Info().Str("stream_stage", streamStage.Id).Int64("generated_seed", streamStage.seed).Int64("base_seed", stage.States.RandSeed).Int("instance", i).Msg("stream assigned generated seed")
 			}
 
 			stages[streamStage.Id] = streamStage

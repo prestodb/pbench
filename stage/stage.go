@@ -366,7 +366,7 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	}
 
 	r := rand.New(rand.NewSource(s.seed))
-	log.Info().Str("stream_id", s.Id).Int64("custom_seed", s.seed)
+	log.Info().Str("stream_id", s.Id).Int64("custom_seed", s.seed).Msg("stream initialized with seed")
 	s.States.RandSeedUsed = true
 
 	totalQueries := len(s.Queries) + len(s.QueryFiles)
