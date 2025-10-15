@@ -92,7 +92,7 @@ type Stage struct {
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
 	// StreamSpecs allows specifying streams to launch dynamically with custom counts and seeds
-	// Format: [{"stream_name": "path/to/stream.json", "stream_count": 5, "seeds": [123, 456]}]
+	// Format: [{"stream_file_path": "path/to/stream.json", "stream_count": 5, "seeds": [123, 456]}]
 	Streams []Streams `json:"streams,omitempty"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
@@ -109,7 +109,9 @@ type Stage struct {
 	Client *presto.Client `json:"-"`
 
 	// Stream instance information for custom seeding and identification
-	seed int64 `json:"-"` // Custom seed for this stream instance, nil if using default seeding
+	// Descendant stages will **NOT** inherit this value from their parents so this is declared as a value not a pointer.
+	// Custom seed for this stage instance, nil if using default seeding
+	seed int64 `json:"-"`
 
 	// Convenient access to the expected row count array under the current schema.
 	expectedRowCountInCurrentSchema []int
@@ -260,6 +262,9 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	}
 	if len(s.Queries)+len(s.QueryFiles)+len(s.Streams) > 0 {
 		if *s.RandomExecution {
+			if s.RandomlyExecuteUntil == nil {
+				return fmt.Errorf("randomly_execute_until must be set for random execution in stage %s", s.Id)
+			}
 			returnErr = s.runRandomly(ctx)
 		} else {
 			returnErr = s.runSequentially(ctx)
@@ -366,7 +371,7 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	}
 
 	r := rand.New(rand.NewSource(s.seed))
-	log.Info().Str("stream_id", s.Id).Int64("custom_seed", s.seed).Msg("stream initialized with seed")
+	log.Info().Str("stream_id", s.Id).Int64("custom_seed", s.seed).Msg("initialized with seed")
 	s.States.RandSeedUsed = true
 
 	totalQueries := len(s.Queries) + len(s.QueryFiles)
@@ -376,7 +381,7 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	// Otherwise, it generates a list of random indices with possible duplicates.
 	refreshIndices := func() []int {
 		indices := make([]int, totalQueries)
-		if *s.NoRandomDuplicates {
+		if s.NoRandomDuplicates != nil && *s.NoRandomDuplicates {
 			for i := 0; i < totalQueries; i++ {
 				indices[i] = i
 			}

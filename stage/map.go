@@ -158,18 +158,19 @@ func checkStageLinks(stage *Stage) error {
 
 func processStreams(stage *Stage, stages Map) error {
 	if len(stage.Streams) == 0 {
+		stage.seed = stage.States.RandSeed
 		return nil
 	}
 
 	for _, spec := range stage.Streams {
 		if spec.StreamCount <= 0 {
-			return fmt.Errorf("stream_count must be positive, got %d for stream %s", spec.StreamCount, spec.StreamName)
+			return fmt.Errorf("stream_count must be positive, got %d for stream %s", spec.StreamCount, spec.StreamPath)
 		}
 
 		if len(spec.Seeds) > 0 {
 			if len(spec.Seeds) != 1 && len(spec.Seeds) != spec.StreamCount {
 				return fmt.Errorf("seeds array length (%d) must be either 1 or equal to stream_count (%d) for stream %s",
-					len(spec.Seeds), spec.StreamCount, spec.StreamName)
+					len(spec.Seeds), spec.StreamCount, spec.StreamPath)
 			}
 		}
 
