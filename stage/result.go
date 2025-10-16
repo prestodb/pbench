@@ -1,13 +1,15 @@
 package stage
 
 import (
-	"github.com/rs/zerolog"
 	"pbench/log"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type QueryResult struct {
 	StageId       string
+	Seed          int64
 	Query         *Query
 	QueryId       string
 	InfoUrl       string

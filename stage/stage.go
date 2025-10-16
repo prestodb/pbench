@@ -539,6 +539,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 
 	result = &QueryResult{
 		StageId:   s.Id,
+		Seed:      s.seed,
 		Query:     query,
 		StartTime: time.Now(),
 	}

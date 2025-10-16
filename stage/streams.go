@@ -50,11 +50,11 @@ func (s *Streams) GetSeedForInstance(instanceIndex int) (int64, bool) {
 	}
 
 	if len(s.Seeds) == 1 {
-		return s.Seeds[0] + int64((instanceIndex-1)*1000), true
+		return s.Seeds[0] + int64(instanceIndex), true
 	}
 
 	if instanceIndex <= len(s.Seeds) {
-		return s.Seeds[instanceIndex-1], true
+		return s.Seeds[instanceIndex], true
 	}
 
 	return 0, false

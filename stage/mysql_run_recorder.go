@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
-	_ "github.com/go-sql-driver/mysql"
 	"pbench/log"
 	"pbench/utils"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -65,7 +66,7 @@ VALUES (?, ?, ?, 0, 0, 0, ?)`
 
 func (m *MySQLRunRecorder) RecordQuery(_ context.Context, s *Stage, result *QueryResult) {
 	recordNewQuery := `INSERT INTO pbench_queries (run_id, stage_id, query_file, query_index, query_id, sequence_no,
-cold_run, succeeded, start_time, end_time, row_count, expected_row_count, duration_ms, info_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+cold_run, succeeded, start_time, end_time, row_count, expected_row_count, duration_ms, info_url, seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	var queryFile string
 	if result.Query.File != nil {
 		queryFile = *result.Query.File
@@ -83,11 +84,13 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 		result.RowCount, sql.NullInt32{
 			Int32: int32(result.Query.ExpectedRowCount),
 			Valid: result.Query.ExpectedRowCount >= 0,
-		}, result.Duration.Milliseconds(), result.InfoUrl)
+		}, result.Duration.Milliseconds(), result.InfoUrl, result.Seed)
+	log.Info().Str("stage_id", result.StageId).Stringer("start_time", result.StartTime).Stringer("end_time", result.EndTime).
+		Str("info_url", result.InfoUrl).Int64("seed", result.Seed).Msg("recorded query result to MySQL")
 	if err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to MySQL")
 	}
-	updateRunInfo := `UPDATE pbench_runs SET start_time = ?, queries_ran = queries_ran + 1, failed = ?, mismatch = ? WHERE run_id = ?`
+	updateRunInfo := `UPDATE pbench_runs SET start_time = ?, queries_ran = queries_ran + 1, failed = ? , mismatch = ? WHERE run_id = ?`
 	res, err := m.db.Exec(updateRunInfo, s.States.RunStartTime, m.failed, m.mismatch, m.runId)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
