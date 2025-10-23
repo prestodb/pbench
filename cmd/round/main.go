@@ -184,7 +184,7 @@ func processRoundDecimalFile(inputPath string) (err error) {
 				if err != nil {
 					return err
 				}
-				bufWriter = bufio.NewWriter(outputFile)
+				bufWriter = bufio.NewWriterSize(outputFile, 8192)
 				colCount = len(cols)
 			} else {
 				// no decimal column, quick exit
