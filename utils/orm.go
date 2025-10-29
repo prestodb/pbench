@@ -49,13 +49,16 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 		if len(rows) == 0 {
 			continue
 		}
-		placeholders := strings.Repeat("?,", rows[0].ColumnCount())
-		// Get rid of the trailing comma.
-		placeholders = placeholders[:len(placeholders)-1]
-		sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
-			table, strings.Join(rows[0].ColumnNames, ","), placeholders)
+		if len(rows) == 1 && rows[0].ColumnCount() <= 1 {
+			continue
+		}
 
 		for _, row := range rows {
+			placeholders := strings.Repeat("?,", row.ColumnCount())
+			// Get rid of the trailing comma.
+			placeholders = placeholders[:len(placeholders)-1]
+			sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+				table, strings.Join(row.ColumnNames, ","), placeholders)
 			//log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
 			_, err := tx.Exec(sqlStmt, row.Values...)
 			if err != nil {
