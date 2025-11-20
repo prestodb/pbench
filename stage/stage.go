@@ -61,6 +61,10 @@ type Stage struct {
 	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
 	// before exiting.
 	RandomlyExecuteUntil *string `json:"randomly_execute_until,omitempty"`
+	// If NoRandomDuplicates is set to true, queries will not be repeated during random execution
+	// until all queries have been executed once. After that, the selection pool resets if more
+	// executions are needed.
+	NoRandomDuplicates *bool `json:"no_random_duplicates,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
 	ColdRuns *int `json:"cold_runs,omitempty" validate:"omitempty,gte=0"`
 	// If not set, the default is 0.
@@ -87,6 +91,14 @@ type Stage struct {
 	// knob was not set to true.
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
+	// StreamCount specifies how many parallel instances of this stage should run.
+	// Each stream will execute the same queries with a different seed for reproducible randomization.
+	// If not set, the stage runs once with the default seed.
+	StreamCount *int `json:"stream_count,omitempty" validate:"omitempty,gte=1"`
+	// Seeds specifies custom seeds for stream instances.
+	// Length must be either 1 (base seed for all streams with offsets) or equal to stream_count (individual seeds).
+	// If empty and stream_count > 1, seeds will be auto-generated from States.RandSeed with offsets.
+	Seeds []int64 `json:"seeds,omitempty"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
@@ -100,6 +112,11 @@ type Stage struct {
 	NextStages []*Stage `json:"-"`
 	// Client is by default passed down to descendant stages.
 	Client *presto.Client `json:"-"`
+
+	// Stream instance information for custom seeding and identification
+	// Descendant stages will **NOT** inherit this value from their parents so this is declared as a value not a pointer.
+	// Custom seed for this stage instance, nil if using default seeding
+	seed int64 `json:"-"`
 
 	// Convenient access to the expected row count array under the current schema.
 	expectedRowCountInCurrentSchema []int
@@ -150,6 +167,7 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	go func() {
 		s.States.wgExitMainStage.Wait()
+		close(s.States.resultChan)
 		// wgExitMainStage goes down to 0 after all the goroutines finish. Then we exit the driver by
 		// closing the timeToExit channel, which will trigger the graceful shutdown process -
 		// (flushing the log file, writing the final time log summary, etc.).
@@ -174,20 +192,30 @@ func (s *Stage) Run(ctx context.Context) int {
 
 	for {
 		select {
-		case result := <-s.States.resultChan:
+		case result, ok := <-s.States.resultChan:
+			if !ok {
+				// resultChan closed: all results received, finalize and exit
+				s.States.RunFinishTime = time.Now()
+				for _, recorder := range s.States.runRecorders {
+					recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+				}
+				return int(s.States.exitCode.Load())
+			}
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
 				recorder.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), s, result)
 			}
-		case sig := <-timeToExit:
-			if sig != nil {
-				// Cancel the context and wait for the goroutines to exit.
-				s.States.AbortAll(fmt.Errorf(sig.String()))
+		case sig, ok := <-timeToExit:
+			if !ok {
+				// timeToExit channel closed, no more signals — continue to receive results
 				continue
 			}
 			s.States.RunFinishTime = time.Now()
-			for _, recorder := range s.States.runRecorders {
-				recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+			if sig != nil {
+				// Received shutdown signal; cancel ongoing queries
+				log.Info().Msgf("Shutdown signal received: %v. Aborting queries...", sig)
+				s.States.AbortAll(fmt.Errorf("%s", sig.String()))
+				// Keep receiving results until resultChan is closed
 			}
 			return int(s.States.exitCode.Load())
 		}
@@ -237,8 +265,17 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if preStageErr != nil {
 		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
 	}
+
+	// Check if this stage should execute as multiple parallel streams
+	if s.StreamCount != nil && *s.StreamCount > 1 {
+		return s.runAsMultipleStreams(ctx)
+	}
+
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
 		if *s.RandomExecution {
+			if s.RandomlyExecuteUntil == nil {
+				return fmt.Errorf("randomly_execute_until must be set for random execution in stage %s", s.Id)
+			}
 			returnErr = s.runRandomly(ctx)
 		} else {
 			returnErr = s.runSequentially(ctx)
@@ -252,6 +289,133 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		returnErr = postStageErr
 	}
 	return
+}
+
+// runAsMultipleStreams executes this stage as multiple parallel stream instances,
+// each with its own seed for reproducible randomization
+func (s *Stage) runAsMultipleStreams(ctx context.Context) error {
+	streamCount := *s.StreamCount
+
+	// Validate seeds configuration
+	if err := s.validateStreamSeeds(streamCount); err != nil {
+		return err
+	}
+
+	// Determine if we're using individual seeds (affects MySQL recording)
+	usingIndividualSeeds := len(s.Seeds) == streamCount
+	if usingIndividualSeeds {
+		s.States.RandSeedUsed = false
+		log.Info().
+			Str("stage_id", s.Id).
+			Int("stream_count", streamCount).
+			Msg("using individual seeds per stream; base rand_seed will not be recorded")
+	}
+
+	// Create channels for coordinating stream execution
+	errChan := make(chan error, streamCount)
+	var wg sync.WaitGroup
+
+	log.Info().
+		Str("stage_id", s.Id).
+		Int("stream_count", streamCount).
+		Msg("starting parallel stream execution")
+
+	// Launch each stream instance in parallel
+	for i := 0; i < streamCount; i++ {
+		wg.Add(1)
+		streamSeed := s.getSeedForStream(i)
+		streamIndex := i + 1 // 1-indexed for user-friendly logging
+
+		go func(index int, seed int64) {
+			defer wg.Done()
+
+			log.Info().
+				Str("stage_id", s.Id).
+				Int("stream_instance", index).
+				Int64("seed", seed).
+				Msg("stream instance started")
+
+			if err := s.runStreamInstance(ctx, index, seed); err != nil {
+				log.Error().
+					Err(err).
+					Str("stage_id", s.Id).
+					Int("stream_instance", index).
+					Msg("stream instance failed")
+				errChan <- fmt.Errorf("stream %d failed: %w", index, err)
+			} else {
+				log.Info().
+					Str("stage_id", s.Id).
+					Int("stream_instance", index).
+					Msg("stream instance completed successfully")
+			}
+		}(streamIndex, streamSeed)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Check if any stream reported an error
+	for err := range errChan {
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Info().
+		Str("stage_id", s.Id).
+		Int("stream_count", streamCount).
+		Msg("all stream instances completed successfully")
+
+	return nil
+}
+
+// validateStreamSeeds validates the seeds configuration for streams
+func (s *Stage) validateStreamSeeds(streamCount int) error {
+	if len(s.Seeds) == 0 {
+		// No seeds specified - will auto-generate from States.RandSeed
+		return nil
+	}
+
+	if len(s.Seeds) == 1 {
+		// Single base seed - all streams will derive from it with offsets
+		return nil
+	}
+
+	if len(s.Seeds) == streamCount {
+		// Individual seed for each stream - perfect
+		return nil
+	}
+
+	return fmt.Errorf("seeds array length (%d) must be either 1 (base seed) or equal to stream_count (%d), got %d seeds",
+		len(s.Seeds), streamCount, len(s.Seeds))
+}
+
+// getSeedForStream returns the appropriate seed for a given stream index (0-based)
+func (s *Stage) getSeedForStream(streamIndex int) int64 {
+	if len(s.Seeds) == 0 {
+		// No custom seeds: generate from base RandSeed + offset
+		return s.States.RandSeed + int64(streamIndex)*1000
+	}
+
+	if len(s.Seeds) == 1 {
+		// Single base seed: use it plus offset
+		return s.Seeds[0] + int64(streamIndex)*1000
+	}
+
+	// Individual seeds: use the specific seed for this instance
+	return s.Seeds[streamIndex]
+}
+
+func (s *Stage) runStreamInstance(ctx context.Context, streamIndex int, seed int64) error {
+	// Set the seed for this stream instance
+	// This affects the randomization in runRandomly()
+	s.seed = seed
+
+	// Execute queries based on execution mode
+	if *s.RandomExecution {
+		return s.runRandomly(ctx)
+	}
+	return s.runSequentially(ctx)
 }
 
 func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
@@ -343,21 +507,57 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			return nil
 		}
 	}
-	r := rand.New(rand.NewSource(s.States.RandSeed))
+
+	r := rand.New(rand.NewSource(s.seed))
+	log.Info().Str("stream_id", s.Id).Int64("custom_seed", s.seed).Msg("initialized with seed")
 	s.States.RandSeedUsed = true
-	log.Info().Int64("seed", s.States.RandSeed).Msg("random source seeded")
-	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
-	for i := 1; continueExecution(i); i++ {
-		idx := r.Intn(randIndexUpperBound)
-		if i <= s.States.RandSkip {
-			if i == s.States.RandSkip {
-				log.Info().Msgf("skipped %d random selections", i)
+
+	totalQueries := len(s.Queries) + len(s.QueryFiles)
+
+	// refreshIndices generates a new set of random indices for selecting queries.
+	// If NoRandomDuplicates is set to true, it generates a shuffled list of all indices.
+	// Otherwise, it generates a list of random indices with possible duplicates.
+	refreshIndices := func() []int {
+		indices := make([]int, totalQueries)
+		if s.NoRandomDuplicates != nil && *s.NoRandomDuplicates {
+			for i := 0; i < totalQueries; i++ {
+				indices[i] = i
 			}
+			r.Shuffle(len(indices), func(i, j int) {
+				indices[i], indices[j] = indices[j], indices[i]
+			})
+		} else {
+			for i := 0; i < totalQueries; i++ {
+				indices[i] = r.Intn(totalQueries)
+			}
+		}
+		return indices
+	}
+
+	executionCount := 1
+	var currentIndices []int
+	var indexPosition int
+
+	for continueExecution(executionCount) {
+		// Refresh indices when all queries have been used
+		if currentIndices == nil || indexPosition >= len(currentIndices) {
+			currentIndices = refreshIndices()
+			indexPosition = 0
+		}
+
+		idx := currentIndices[indexPosition]
+		indexPosition++
+
+		if executionCount <= s.States.RandSkip {
+			if executionCount == s.States.RandSkip {
+				log.Info().Msgf("skipped %d random selections", executionCount)
+			}
+			executionCount++
 			continue
 		}
+
 		if idx < len(s.Queries) {
-			// Run query embedded in the json file.
-			pseudoFileName := fmt.Sprintf("rand_%d", i)
+			pseudoFileName := fmt.Sprintf("rand_%d", executionCount)
 			if err := s.runQueries(ctx, s.Queries[idx:idx+1], &pseudoFileName, 0); err != nil {
 				return err
 			}
@@ -367,11 +567,12 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			if relPath, relErr := filepath.Rel(s.BaseDir, queryFile); relErr == nil {
 				fileAlias = relPath
 			}
-			fileAlias = fmt.Sprintf("rand_%d_%s", i, fileAlias)
+			fileAlias = fmt.Sprintf("rand_%d_%s", executionCount, fileAlias)
 			if err := s.runQueryFile(ctx, queryFile, nil, &fileAlias); err != nil {
 				return err
 			}
 		}
+		executionCount++
 	}
 	log.Info().Msg("random execution concluded.")
 	return nil
@@ -476,6 +677,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 
 	result = &QueryResult{
 		StageId:   s.Id,
+		Seed:      s.seed,
 		Query:     query,
 		StartTime: time.Now(),
 	}

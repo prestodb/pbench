@@ -108,6 +108,13 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 		}
 	}
 	stages[stage.Id] = stage
+
+	// Set the seed for this stage (only relevant for non-stream stages)
+	// Stream stages will have their seeds set during runAsMultipleStreams
+	if stage.StreamCount == nil || *stage.StreamCount <= 1 {
+		stage.seed = stage.States.RandSeed
+	}
+
 	for _, nextStagePath := range stage.NextStagePaths {
 		if nextStage, err := ParseStageFromFile(nextStagePath, stages); err != nil {
 			return nil, err

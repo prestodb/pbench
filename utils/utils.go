@@ -59,7 +59,7 @@ func InitLogFile(logPath string) (finalizer func()) {
 		// In this case, the global logger is not changed. Log messages are still printed to stderr.
 		return func() {}
 	} else {
-		bufWriter := bufio.NewWriter(logFile)
+		bufWriter := bufio.NewWriterSize(logFile, 8192)
 		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stderr, bufWriter)).With().Timestamp().Stack().Logger())
 		log.Info().Str("log_path", logPath).Msg("log file will be saved to this path")
 		return func() {
