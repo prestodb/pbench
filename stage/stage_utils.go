@@ -95,7 +95,14 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	}
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
-	s.Streams = append(s.Streams, other.Streams...)
+
+	// Stream configuration - use other's values if set
+	if other.StreamCount != nil {
+		s.StreamCount = other.StreamCount
+	}
+	if len(other.Seeds) > 0 {
+		s.Seeds = append(s.Seeds, other.Seeds...)
+	}
 
 	s.PreStageShellScripts = append(s.PreStageShellScripts, other.PreStageShellScripts...)
 	s.PostQueryShellScripts = append(s.PostQueryShellScripts, other.PostQueryShellScripts...)

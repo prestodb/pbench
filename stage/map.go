@@ -108,9 +108,11 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 		}
 	}
 	stages[stage.Id] = stage
-	err := processStreams(stage, stages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process streams for stage %s: %w", stage.Id, err)
+
+	// Set the seed for this stage (only relevant for non-stream stages)
+	// Stream stages will have their seeds set during runAsMultipleStreams
+	if stage.StreamCount == nil || *stage.StreamCount <= 1 {
+		stage.seed = stage.States.RandSeed
 	}
 
 	for _, nextStagePath := range stage.NextStagePaths {
@@ -153,59 +155,5 @@ func checkStageLinks(stage *Stage) error {
 			return err
 		}
 	}
-	return nil
-}
-
-func processStreams(stage *Stage, stages Map) error {
-	if len(stage.Streams) == 0 {
-		stage.seed = stage.States.RandSeed
-		return nil
-	}
-
-	for _, spec := range stage.Streams {
-		if spec.StreamCount <= 0 {
-			return fmt.Errorf("stream_count must be positive, got %d for stream %s", spec.StreamCount, spec.StreamPath)
-		}
-
-		if len(spec.Seeds) > 0 {
-			if len(spec.Seeds) != 1 && len(spec.Seeds) != spec.StreamCount {
-				return fmt.Errorf("seeds array length (%d) must be either 1 or equal to stream_count (%d) for stream %s",
-					len(spec.Seeds), spec.StreamCount, spec.StreamPath)
-			}
-			stage.States.RandSeed = 0 // Disable random seed generation when custom seeds are provided
-		}
-
-		streamPath, err := spec.GetValidatedPath(stage.BaseDir)
-		if err != nil {
-			return err
-		}
-		for i := 0; i < spec.StreamCount; i++ {
-			streamStage, err := ReadStageFromFile(streamPath)
-			if err != nil {
-				return fmt.Errorf("failed to read stream file %s: %w", streamPath, err)
-			}
-
-			// Set unique ID for this stream instance
-			baseId := fileNameWithoutPathAndExt(streamPath)
-			streamStage.Id = fmt.Sprintf("%s_stream_%d", baseId, i+1)
-
-			// Set custom seed if configured
-			if seed, hasCustomSeed := spec.GetSeedForInstance(i); hasCustomSeed {
-				streamStage.seed = seed
-				log.Info().Str("stream_stage", streamStage.Id).Int64("custom_seed", seed).Int("instance", i+1).Msg("stream assigned custom seed")
-			} else {
-				// No seed configured, use stage's RandSeed + instance offset
-				streamStage.seed = stage.States.RandSeed + int64(i-1)
-				log.Info().Str("stream_stage", streamStage.Id).Int64("generated_seed", streamStage.seed).Int64("base_seed", stage.States.RandSeed).Int("instance", i+1).Msg("stream assigned generated seed")
-			}
-
-			stages[streamStage.Id] = streamStage
-			stage.NextStages = append(stage.NextStages, streamStage)
-			streamStage.wgPrerequisites.Add(1)
-		}
-	}
-
-	stage.Streams = nil
-
 	return nil
 }

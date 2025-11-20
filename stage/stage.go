@@ -91,9 +91,14 @@ type Stage struct {
 	// knob was not set to true.
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
-	// StreamSpecs allows specifying streams to launch dynamically with custom counts and seeds
-	// Format: [{"stream_file_path": "path/to/stream.json", "stream_count": 5, "seeds": [123, 456]}]
-	Streams []Streams `json:"streams,omitempty"`
+	// StreamCount specifies how many parallel instances of this stage should run.
+	// Each stream will execute the same queries with a different seed for reproducible randomization.
+	// If not set, the stage runs once with the default seed.
+	StreamCount *int `json:"stream_count,omitempty" validate:"omitempty,gte=1"`
+	// Seeds specifies custom seeds for stream instances.
+	// Length must be either 1 (base seed for all streams with offsets) or equal to stream_count (individual seeds).
+	// If empty and stream_count > 1, seeds will be auto-generated from States.RandSeed with offsets.
+	Seeds []int64 `json:"seeds,omitempty"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
@@ -260,7 +265,13 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if preStageErr != nil {
 		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
 	}
-	if len(s.Queries)+len(s.QueryFiles)+len(s.Streams) > 0 {
+
+	// Check if this stage should execute as multiple parallel streams
+	if s.StreamCount != nil && *s.StreamCount > 1 {
+		return s.runAsMultipleStreams(ctx)
+	}
+
+	if len(s.Queries)+len(s.QueryFiles) > 0 {
 		if *s.RandomExecution {
 			if s.RandomlyExecuteUntil == nil {
 				return fmt.Errorf("randomly_execute_until must be set for random execution in stage %s", s.Id)
@@ -278,6 +289,133 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		returnErr = postStageErr
 	}
 	return
+}
+
+// runAsMultipleStreams executes this stage as multiple parallel stream instances,
+// each with its own seed for reproducible randomization
+func (s *Stage) runAsMultipleStreams(ctx context.Context) error {
+	streamCount := *s.StreamCount
+
+	// Validate seeds configuration
+	if err := s.validateStreamSeeds(streamCount); err != nil {
+		return err
+	}
+
+	// Determine if we're using individual seeds (affects MySQL recording)
+	usingIndividualSeeds := len(s.Seeds) == streamCount
+	if usingIndividualSeeds {
+		s.States.RandSeedUsed = false
+		log.Info().
+			Str("stage_id", s.Id).
+			Int("stream_count", streamCount).
+			Msg("using individual seeds per stream; base rand_seed will not be recorded")
+	}
+
+	// Create channels for coordinating stream execution
+	errChan := make(chan error, streamCount)
+	var wg sync.WaitGroup
+
+	log.Info().
+		Str("stage_id", s.Id).
+		Int("stream_count", streamCount).
+		Msg("starting parallel stream execution")
+
+	// Launch each stream instance in parallel
+	for i := 0; i < streamCount; i++ {
+		wg.Add(1)
+		streamSeed := s.getSeedForStream(i)
+		streamIndex := i + 1 // 1-indexed for user-friendly logging
+
+		go func(index int, seed int64) {
+			defer wg.Done()
+
+			log.Info().
+				Str("stage_id", s.Id).
+				Int("stream_instance", index).
+				Int64("seed", seed).
+				Msg("stream instance started")
+
+			if err := s.runStreamInstance(ctx, index, seed); err != nil {
+				log.Error().
+					Err(err).
+					Str("stage_id", s.Id).
+					Int("stream_instance", index).
+					Msg("stream instance failed")
+				errChan <- fmt.Errorf("stream %d failed: %w", index, err)
+			} else {
+				log.Info().
+					Str("stage_id", s.Id).
+					Int("stream_instance", index).
+					Msg("stream instance completed successfully")
+			}
+		}(streamIndex, streamSeed)
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	// Check if any stream reported an error
+	for err := range errChan {
+		if err != nil {
+			return err
+		}
+	}
+
+	log.Info().
+		Str("stage_id", s.Id).
+		Int("stream_count", streamCount).
+		Msg("all stream instances completed successfully")
+
+	return nil
+}
+
+// validateStreamSeeds validates the seeds configuration for streams
+func (s *Stage) validateStreamSeeds(streamCount int) error {
+	if len(s.Seeds) == 0 {
+		// No seeds specified - will auto-generate from States.RandSeed
+		return nil
+	}
+
+	if len(s.Seeds) == 1 {
+		// Single base seed - all streams will derive from it with offsets
+		return nil
+	}
+
+	if len(s.Seeds) == streamCount {
+		// Individual seed for each stream - perfect
+		return nil
+	}
+
+	return fmt.Errorf("seeds array length (%d) must be either 1 (base seed) or equal to stream_count (%d), got %d seeds",
+		len(s.Seeds), streamCount, len(s.Seeds))
+}
+
+// getSeedForStream returns the appropriate seed for a given stream index (0-based)
+func (s *Stage) getSeedForStream(streamIndex int) int64 {
+	if len(s.Seeds) == 0 {
+		// No custom seeds: generate from base RandSeed + offset
+		return s.States.RandSeed + int64(streamIndex)*1000
+	}
+
+	if len(s.Seeds) == 1 {
+		// Single base seed: use it plus offset
+		return s.Seeds[0] + int64(streamIndex)*1000
+	}
+
+	// Individual seeds: use the specific seed for this instance
+	return s.Seeds[streamIndex]
+}
+
+func (s *Stage) runStreamInstance(ctx context.Context, streamIndex int, seed int64) error {
+	// Set the seed for this stream instance
+	// This affects the randomization in runRandomly()
+	s.seed = seed
+
+	// Execute queries based on execution mode
+	if *s.RandomExecution {
+		return s.runRandomly(ctx)
+	}
+	return s.runSequentially(ctx)
 }
 
 func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
