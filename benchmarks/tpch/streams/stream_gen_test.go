@@ -22,8 +22,7 @@ func TestGenerateStreams(t *testing.T) {
 	reader, err := os.Open("query_streams.csv")
 	assert.Nil(t, err)
 	scanner := bufio.NewScanner(reader)
-	var streams [][]int
-	streams = make([][]int, 40)
+	streams := make([][]int, 40)
 	for row := 0; scanner.Scan(); row++ {
 		line := scanner.Text()
 		if row != 0 {

@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
-	"golang.org/x/sys/unix"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +14,9 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -24,7 +25,8 @@ const (
 )
 
 func GetCtxWithTimeout(timeout time.Duration) context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	return ctx
 }
 
@@ -60,7 +62,7 @@ func InitLogFile(logPath string) (finalizer func()) {
 		return func() {}
 	} else {
 		bufWriter := bufio.NewWriter(logFile)
-		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stderr, bufWriter)).With().Timestamp().Stack().Logger())
+		log.SetGlobalLogger(zerolog.New(zerolog.SyncWriter(io.MultiWriter(os.Stderr, bufWriter))).With().Timestamp().Stack().Logger())
 		log.Info().Str("log_path", logPath).Msg("log file will be saved to this path")
 		return func() {
 			_ = bufWriter.Flush()

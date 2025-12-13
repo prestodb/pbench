@@ -173,7 +173,7 @@ func processFile(ctx context.Context, path string) {
 	}
 	if queryInfo.ErrorCode != nil {
 		// Need to set this so the run recorders will mark this query as failed.
-		queryResult.QueryError = fmt.Errorf(*queryInfo.ErrorCode.Name)
+		queryResult.QueryError = fmt.Errorf("%s", *queryInfo.ErrorCode.Name)
 	}
 	// Unlike benchmarks run by pbench, we do not know when did the run start and finish when loading them from files.
 	// We infer that the whole run starts at min(queryStartTime) and ends at max(queryEndTime).
