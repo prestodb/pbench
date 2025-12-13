@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuiltinRows(t *testing.T) {
@@ -38,11 +39,11 @@ func TestPrestoUnmarshal(t *testing.T) {
 	rows, columnHeaders := getBuiltinRows(t)
 	var nilPtr *[]string
 	err := UnmarshalQueryData(rows, columnHeaders, nilPtr)
-	assert.ErrorIs(t, err, UnmarshalError) // nil pointer
+	assert.ErrorIs(t, err, ErrUnmarshal) // nil pointer
 
 	columnsStats := make([]ColumnStats, 8, 17)
 	err = UnmarshalQueryData(rows, columnHeaders, columnsStats)
-	assert.ErrorIs(t, err, UnmarshalError) // not a pointer
+	assert.ErrorIs(t, err, ErrUnmarshal) // not a pointer
 
 	newFloat64 := func(f float64) *float64 {
 		return &f

@@ -39,11 +39,11 @@ type Client struct {
 	serverUrl     *url.URL
 	userInfo      *url.Userinfo
 	sessionParams map[string]any
-	clientTags    []string
-	baseHeader    http.Header
-	isTrino       bool
-	forceHttps    bool
-	headerMutex   sync.RWMutex
+	//clientTags    []string
+	baseHeader  http.Header
+	isTrino     bool
+	forceHttps  bool
+	headerMutex sync.RWMutex
 }
 
 func NewClient(serverUrl string, isTrino bool) (*Client, error) {

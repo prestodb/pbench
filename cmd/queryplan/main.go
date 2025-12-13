@@ -51,7 +51,9 @@ func init() {
 }
 
 func run(c *cobra.Command, args []string) {
-	c.ValidateRequiredFlags()
+	if err := c.ValidateRequiredFlags(); err != nil {
+		log.Fatal().Err(err).Msg("invalid flags")
+	}
 	csvFile := args[0]
 
 	log.Info().Msgf("parsing the query plan at column %d in %s", queryPlanColumn, csvFile)
@@ -116,13 +118,17 @@ func processFile(csvFile string) error {
 				log.Err(err).Msgf("failed to serialize the joins at row:%d", rowNum)
 				failureCounter++
 			} else {
-				output.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum))
+				if _, err := output.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum)); err != nil {
+					return fmt.Errorf("failed to write to output: %w", err)
+				}
 				fmt.Fprint(output, string(out))
 				newline = ",\n"
 			}
 		}
 	}
-	output.WriteString("\n}")
+	if _, err := output.WriteString("\n}"); err != nil {
+		return fmt.Errorf("failed to write closing brace: %w", err)
+	}
 	return nil
 }
 

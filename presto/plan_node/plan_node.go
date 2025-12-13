@@ -23,10 +23,9 @@ const (
 )
 
 var (
-	nodeDepthCtxKey              = struct{}{}
-	NoRootPlanNodeError          = errors.New("no root plan node found")
-	NonExistentRemoteSourceError = errors.New("non-existent remote source")
-	IsJoin                       = map[string]bool{
+	ErrNoRootPlanNode          = errors.New("no root plan node found")
+	ErrNonExistentRemoteSource = errors.New("non-existent remote source")
+	IsJoin                     = map[string]bool{
 		LeftJoin:  true,
 		RightJoin: true,
 		InnerJoin: true,
@@ -44,6 +43,10 @@ type PlanNode struct {
 	RemoteSources []string       `json:"remoteSources"`
 	Estimates     []PlanEstimate `json:"estimates"`
 }
+
+type nodeDepthCtxKeyType struct{}
+
+var nodeDepthCtxKey = nodeDepthCtxKeyType{}
 
 func (n *PlanNode) GetTraverseDepth(ctx context.Context) int {
 	depth, ok := ctx.Value(nodeDepthCtxKey).(int)
@@ -86,7 +89,7 @@ func (n *PlanNode) Traverse(ctx context.Context, fn PlanNodeTraverseFunction, pl
 					return err
 				}
 			} else {
-				return fmt.Errorf("%w %s", NonExistentRemoteSourceError, remoteSourceId)
+				return fmt.Errorf("%w %s", ErrNonExistentRemoteSource, remoteSourceId)
 			}
 		}
 	} else if err := fn(ctx, n); err != nil {
@@ -106,7 +109,7 @@ func (t PlanTree) Traverse(ctx context.Context, fn PlanNodeTraverseFunction, mod
 	if node, exists := t["0"]; exists {
 		return node.Plan.Traverse(node.Plan.incrementTraverseDepth(ctx), fn, t, mode...)
 	}
-	return NoRootPlanNodeError
+	return ErrNoRootPlanNode
 }
 
 func traceValue(assignmentMap map[string]Value, tableHandle *HiveTableHandle, value Value) Value {

@@ -182,7 +182,7 @@ func (s *Stage) Run(ctx context.Context) int {
 		case sig := <-timeToExit:
 			if sig != nil {
 				// Cancel the context and wait for the goroutines to exit.
-				s.States.AbortAll(fmt.Errorf(sig.String()))
+				s.States.AbortAll(fmt.Errorf("received signal: %s", sig.String()))
 				continue
 			}
 			s.States.RunFinishTime = time.Now()

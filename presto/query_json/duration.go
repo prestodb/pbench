@@ -3,8 +3,9 @@ package query_json
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/xhit/go-str2duration/v2"
 	"time"
+
+	"github.com/xhit/go-str2duration/v2"
 )
 
 type Duration struct {
@@ -12,7 +13,7 @@ type Duration struct {
 }
 
 func (d *Duration) String() string {
-	return d.String()
+	return d.Duration.String()
 }
 
 func (d *Duration) MarshalJSON() ([]byte, error) {

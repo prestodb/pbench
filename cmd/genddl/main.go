@@ -3,7 +3,6 @@ package genddl
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/spf13/cobra"
 )
 
 type Schema struct {
@@ -258,10 +259,7 @@ func cleanOutputDir(dir string) error {
 }
 
 func (s *Schema) shouldGenInsert() bool {
-	if !s.Iceberg {
-		return false
-	}
-	return true
+	return s.Iceberg
 }
 
 func isRegisterTable(table *Table, schema *Schema) bool {
