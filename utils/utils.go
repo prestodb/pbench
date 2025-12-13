@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
-	"golang.org/x/sys/unix"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +14,9 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -24,7 +25,8 @@ const (
 )
 
 func GetCtxWithTimeout(timeout time.Duration) context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	return ctx
 }
 
