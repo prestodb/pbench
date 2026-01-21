@@ -1,0 +1,25 @@
+-- Analyze all tables in the TPC-DS schema
+ANALYZE TABLE call_center;
+ANALYZE TABLE catalog_page;
+ANALYZE TABLE catalog_returns;
+ANALYZE TABLE catalog_sales;
+ANALYZE TABLE customer;
+ANALYZE TABLE customer_address;
+ANALYZE TABLE customer_demographics;
+ANALYZE TABLE date_dim;
+ANALYZE TABLE household_demographics;
+ANALYZE TABLE income_band;
+ANALYZE TABLE inventory;
+ANALYZE TABLE item;
+ANALYZE TABLE promotion;
+ANALYZE TABLE reason;
+ANALYZE TABLE ship_mode;
+ANALYZE TABLE store;
+ANALYZE TABLE store_returns;
+ANALYZE TABLE store_sales;
+ANALYZE TABLE time_dim;
+ANALYZE TABLE warehouse;
+ANALYZE TABLE web_page;
+ANALYZE TABLE web_returns;
+ANALYZE TABLE web_sales;
+ANALYZE TABLE web_site;
