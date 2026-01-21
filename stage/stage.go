@@ -44,6 +44,8 @@ type Stage struct {
 	PreStageShellScripts []string `json:"pre_stage_scripts,omitempty"`
 	// Run shell scripts after executing all the queries in a stage.
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
+	// Run shell scripts before executing each query.
+	PreQueryShellScripts []string `json:"pre_query_scripts,omitempty"`
 	// Run shell scripts after executing each query.
 	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
 	// Run shell scripts before starting query cycle runs of each query.
@@ -479,6 +481,12 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		Query:     query,
 		StartTime: time.Now(),
 	}
+
+	// run pre query shell scripts
+    preQueryErr := s.runShellScripts(ctx, s.PreQueryShellScripts)
+    if preQueryErr != nil {
+        return result, preQueryErr
+    }
 
 	if ctx.Err() != nil {
 		return result, ctx.Err()

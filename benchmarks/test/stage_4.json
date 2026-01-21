@@ -1,4 +1,6 @@
 {
+  "cold_runs": 2,
+  "warm_runs": 2,
   "queries": [
     "select 'query 4'",
     "select 'query 5'"
@@ -17,6 +19,10 @@
   "pre_query_cycle_scripts": [
     "echo \"execute this script before starting all runs of the same query in this stage\"",
     "python3 my_pre_query_cycle_script.py count.txt"
+  ],
+  "pre_query_scripts": [
+    "echo \"run this script before each query in this stage is started\"",
+    "python3 my_pre_query_script.py count.txt"
   ],
   "post_query_scripts": [
     "echo \"run this script after each query in this stage is complete\"",
