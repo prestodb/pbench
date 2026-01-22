@@ -1,0 +1,9 @@
+{
+  "description": "Run analyze on all TPC-DS tables, then proceed to ds_power benchmark.",
+  "query_files": [
+    "queries/analyze_tables.sql"
+  ],
+  "next": [
+    "ds_power.json"
+  ]
+}
