@@ -587,7 +587,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		if err != nil {
 			return result, err
 		}
-		queryOutputWriter = bufio.NewWriterSize(queryOutputFile, 8192)
+		queryOutputWriter = bufio.NewWriterSize(queryOutputFile, 16384)
 		queryOutputChan = make(chan []json.RawMessage)
 		defer close(queryOutputChan)
 
