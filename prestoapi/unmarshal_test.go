@@ -94,7 +94,6 @@ func TestPrestoUnmarshal(t *testing.T) {
 	assert.Equal(t, expectedStats, columnsStats)
 }
 
-
 func getBuiltinRows(t *testing.T) ([]json.RawMessage, []presto.Column) {
 	rows := make([]json.RawMessage, 0, 17)
 	assert.Nil(t, json.Unmarshal(rowsBytes, &rows))

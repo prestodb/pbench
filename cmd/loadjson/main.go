@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ethanyzhang/presto-go/query_json"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/ethanyzhang/presto-go/query_json"
 
 	"github.com/spf13/cobra"
 )
@@ -149,9 +150,11 @@ func processFile(ctx context.Context, path string) {
 	// Note that this step can succeed with any valid JSON file. But we need to do some additional validation to skip
 	// invalid query JSON files.
 	if unmarshalErr := json.Unmarshal(bytes, queryInfo); unmarshalErr != nil {
+		log.Error().Err(unmarshalErr).Str("path", path).Msg("failed to unmarshal JSON")
 		return
 	}
 	if queryInfo.QueryId == "" || queryInfo.QueryStats == nil || queryInfo.QueryStats.CreateTime == nil {
+		log.Error().Msg("QueryId, QueryStats or QueryStats.CreateTime is empty")
 		return
 	}
 	log.Info().Str("path", path).Msg("start to process file")
