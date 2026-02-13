@@ -23,9 +23,8 @@ const (
 	DirectoryNameTimeFormat = "060102-150405"
 )
 
-func GetCtxWithTimeout(timeout time.Duration) context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), timeout)
-	return ctx
+func GetCtxWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), timeout)
 }
 
 func ExpandHomeDirectory(path *string) {

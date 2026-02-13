@@ -1,7 +1,7 @@
 package plan_node_test
 
 import (
-	"pbench/presto/plan_node"
+	"pbench/prestoapi/plan_node"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

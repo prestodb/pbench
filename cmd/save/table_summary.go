@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"pbench/log"
-	"pbench/presto"
+	"pbench/prestoapi"
 	"pbench/utils"
+
+	presto "github.com/ethanyzhang/presto-go"
 	"strings"
 	"syscall"
 )
@@ -61,12 +63,12 @@ var (
 )
 
 type TableSummary struct {
-	Name        string               `json:"name"`
-	Catalog     string               `json:"catalog"`
-	Schema      string               `json:"schema"`
-	Ddl         string               `json:"ddl"`
-	ColumnStats []presto.ColumnStats `json:"columnStats"`
-	RowCount    *int                 `json:"rowCount,omitempty"`
+	Name        string                  `json:"name"`
+	Catalog     string                  `json:"catalog"`
+	Schema      string                  `json:"schema"`
+	Ddl         string                  `json:"ddl"`
+	ColumnStats []prestoapi.ColumnStats `json:"columnStats"`
+	RowCount    *int                    `json:"rowCount,omitempty"`
 }
 
 func handleQueryError(err error, abortOnError bool) (retry bool) {
@@ -92,7 +94,7 @@ func handleQueryError(err error, abortOnError bool) (retry bool) {
 	return
 }
 
-func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client, analyze bool) {
+func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Session, analyze bool) {
 	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
 
 	defer func() {
@@ -101,9 +103,9 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 		}
 	}()
 
-	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl), true)
-	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats), true)
-	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats), true)
+	handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl), true)
+	handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats), true)
+	handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats), true)
 	// Find the row count from the table summary row (usually the last row)
 	for i := len(s.ColumnStats) - 1; i >= 0; i-- {
 		if stats := s.ColumnStats[i]; stats.ColumnName == "" && stats.RowCount != nil {
@@ -114,7 +116,7 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 	}
 	// Unlikely but if the row count is still NULL, then do SELECT COUNT(*)
 	if s.RowCount == nil {
-		handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount), true)
+		handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount), true)
 	}
 
 	// Zero rows, no need to do anything more.
@@ -167,7 +169,7 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 		}
 
 		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(statistics, ", "), fullyQualifiedTableName)
-		err := presto.QueryAndUnmarshal(ctx, client, query, stat)
+		err := prestoapi.QueryAndUnmarshal(ctx, client, query, stat)
 		if retry := handleQueryError(err, false); retry {
 			i--
 		}

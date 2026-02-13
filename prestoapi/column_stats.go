@@ -1,4 +1,4 @@
-package presto
+package prestoapi
 
 type ColumnStats struct {
 	ColumnName string `presto:"column_name" json:"column_name,omitempty"`

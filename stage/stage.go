@@ -13,8 +13,10 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
+	"pbench/prestoapi"
 	"pbench/utils"
+
+	presto "github.com/ethanyzhang/presto-go"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -177,17 +179,38 @@ func (s *Stage) Run(ctx context.Context) int {
 		case result := <-s.States.resultChan:
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), s, result)
+				rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				recorder.RecordQuery(rCtx, s, result)
+				rCancel()
 			}
 		case sig := <-timeToExit:
 			if sig != nil {
 				// Cancel the context and wait for the goroutines to exit.
-				s.States.AbortAll(fmt.Errorf(sig.String()))
+				s.States.AbortAll(fmt.Errorf("%s", sig.String()))
 				continue
+			}
+			// All stage goroutines are done (WaitGroup hit 0). Drain any results
+			// still buffered in resultChan — the select may have picked timeToExit
+			// over resultChan when both were ready simultaneously.
+		drainLoop:
+			for {
+				select {
+				case result := <-s.States.resultChan:
+					results = append(results, result)
+					for _, recorder := range s.States.runRecorders {
+						rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+						recorder.RecordQuery(rCtx, s, result)
+						rCancel()
+					}
+				default:
+					break drainLoop
+				}
 			}
 			s.States.RunFinishTime = time.Now()
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+				rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				recorder.RecordRun(rCtx, s, results)
+				rCancel()
 			}
 			return int(s.States.exitCode.Load())
 		}
@@ -298,7 +321,7 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 	file, err := os.Open(queryFile)
 	var queries []string
 	if err == nil {
-		queries, err = presto.SplitQueries(file)
+		queries, err = prestoapi.SplitQueries(file)
 	}
 	if err != nil {
 		if !*s.AbortOnError {
@@ -487,8 +510,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	querySourceStr := s.querySourceString(result)
 	clientResult, _, err := s.Client.Query(ctx, query.Text,
 		func(req *http.Request) {
-			req.Header.Set(presto.SourceHeader, querySourceStr)
-			req.Header.Set(presto.TrinoSourceHeader, querySourceStr)
+			req.Header.Set(s.Client.CanonicalHeader(presto.SourceHeader), querySourceStr)
 		})
 	if clientResult != nil {
 		result.QueryId = clientResult.Id

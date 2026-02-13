@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	presto "github.com/ethanyzhang/presto-go"
 	"os"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
 	"pbench/utils"
 	"strconv"
 	"time"
@@ -28,7 +28,7 @@ var (
 type OnQueryCompletionFn func(result *QueryResult)
 
 var DefaultNewClientFn = func() *presto.Client {
-	client, _ := presto.NewClient(utils.DefaultServerUrl, false)
+	client, _ := presto.NewClient(utils.DefaultServerUrl)
 	return client
 }
 
@@ -295,7 +295,9 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 			checkErr(err)
 			if err == nil {
 				// We need to save the query json file even if the stage context is canceled.
-				_, _, err = s.Client.GetQueryInfo(utils.GetCtxWithTimeout(time.Second*5), result.QueryId, false, queryJsonFile)
+				qCtx, qCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				_, err = s.Client.GetQueryInfo(qCtx, result.QueryId, queryJsonFile)
+				qCancel()
 				checkErr(err)
 				checkErr(queryJsonFile.Close())
 			}

@@ -35,3 +35,9 @@ pbench_*
 
 # genddl output dir
 cmd/genddl/out/
+
+# IDE
+.idea/
+
+# Python
+__pycache__/

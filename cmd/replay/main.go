@@ -10,8 +10,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
 	"pbench/utils"
+
+	presto "github.com/ethanyzhang/presto-go"
 	"sync"
 	"syscall"
 	"time"

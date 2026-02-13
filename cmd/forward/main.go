@@ -7,9 +7,10 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
-	"pbench/presto/query_json"
 	"pbench/utils"
+
+	presto "github.com/ethanyzhang/presto-go"
+	"github.com/ethanyzhang/presto-go/query_json"
 	"regexp"
 	"sync"
 	"sync/atomic"
@@ -140,7 +141,7 @@ func Run(_ *cobra.Command, _ []string) {
 	// Keep running until user interrupts or quits using Ctrl + C or Ctrl + D.
 	// When the cluster is unavailable to return the running queries, wait and retry for at most 10 times before quitting.
 	for attempt := 1; ctx.Err() == nil && attempt <= maxRetry; {
-		states, _, err := sourceClient.GetQueryState(ctx, &presto.GetQueryStatsOptions{
+		states, _, err := sourceClient.GetQueryState(ctx, &presto.GetQueryStateOptions{
 			IncludeAllQueries:  &trueValue,
 			QueryTextSizeLimit: &queryTextSizeLimit,
 		})
@@ -209,13 +210,12 @@ func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo)
 
 func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, clients []*presto.Client) {
 	defer runningTasks.Done()
-	var (
-		queryInfo    *query_json.QueryInfo
-		queryInfoErr error
-	)
+	var queryInfoErr error
+	queryInfo := new(query_json.QueryInfo)
 	for attempt := 1; attempt <= maxRetry; attempt++ {
-		queryInfo, _, queryInfoErr = clients[0].GetQueryInfo(ctx, queryState.QueryId, false, nil)
+		_, queryInfoErr = clients[0].GetQueryInfo(ctx, queryState.QueryId, queryInfo)
 		if queryInfoErr != nil {
+			queryInfo = new(query_json.QueryInfo)
 			log.Error().Str("source_query_id", queryState.QueryId).Err(queryInfoErr).
 				Msgf("failed to get query info for forwarding, attempt %d/%d", attempt, maxRetry)
 			waitForNextPoll(ctx)
@@ -223,7 +223,7 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			break
 		}
 	}
-	if queryInfo == nil {
+	if queryInfoErr != nil {
 		log.Error().Str("source_query_id", queryState.QueryId).
 			Msgf("cannot get query info for forwarding after %d retries, skipping", maxRetry)
 		failedToForward.Add(1)

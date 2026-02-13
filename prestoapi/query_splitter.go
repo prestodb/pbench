@@ -1,4 +1,4 @@
-package presto
+package prestoapi
 
 import (
 	"bufio"

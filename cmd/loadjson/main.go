@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/ethanyzhang/presto-go/query_json"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto/query_json"
 	"pbench/stage"
 	"pbench/utils"
 	"reflect"
@@ -117,7 +117,9 @@ func Run(_ *cobra.Command, args []string) {
 	pseudoStage.States.RunStartTime = runStartTime.GetTime()
 	pseudoStage.States.RunFinishTime = runEndTime.GetTime()
 	for _, r := range runRecorders {
-		r.RecordRun(utils.GetCtxWithTimeout(time.Second*5), pseudoStage, queryResults)
+		rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+		r.RecordRun(rCtx, pseudoStage, queryResults)
+		rCancel()
 	}
 
 	log.Info().Int("file_loaded", len(queryResults)).Send()
@@ -173,7 +175,7 @@ func processFile(ctx context.Context, path string) {
 	}
 	if queryInfo.ErrorCode != nil {
 		// Need to set this so the run recorders will mark this query as failed.
-		queryResult.QueryError = fmt.Errorf(*queryInfo.ErrorCode.Name)
+		queryResult.QueryError = fmt.Errorf("%s", *queryInfo.ErrorCode.Name)
 	}
 	// Unlike benchmarks run by pbench, we do not know when did the run start and finish when loading them from files.
 	// We infer that the whole run starts at min(queryStartTime) and ends at max(queryEndTime).
@@ -226,7 +228,9 @@ func processFile(ctx context.Context, path string) {
 		}
 	}
 	for _, r := range runRecorders {
-		r.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), pseudoStage, queryResult)
+		rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+		r.RecordQuery(rCtx, pseudoStage, queryResult)
+		rCancel()
 	}
 	log.Info().Str("path", path).Str("query_id", queryInfo.QueryId).Msg("success")
 	resultChan <- queryResult

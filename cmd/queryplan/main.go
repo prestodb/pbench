@@ -21,7 +21,7 @@ import (
 	"io"
 	"os"
 	"pbench/log"
-	"pbench/presto/plan_node"
+	"pbench/prestoapi/plan_node"
 
 	"github.com/spf13/cobra"
 )

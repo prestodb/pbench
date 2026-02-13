@@ -1,11 +1,12 @@
-package presto_test
+package prestoapi_test
 
 import (
 	_ "embed"
-	"github.com/stretchr/testify/assert"
-	"pbench/presto"
+	"pbench/prestoapi"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 //go:embed query_splitter_test.sql
@@ -29,7 +30,7 @@ another query;;missing semicolon, should be discarded
 		}, {fileWithTrailingComment[:663]},
 	}
 	for i, file := range files {
-		if queries, err := presto.SplitQueries(strings.NewReader(file)); err != nil {
+		if queries, err := prestoapi.SplitQueries(strings.NewReader(file)); err != nil {
 			t.Fatal(err)
 		} else {
 			assert.Equal(t, expectedQueries[i], queries)

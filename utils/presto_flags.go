@@ -1,8 +1,9 @@
 package utils
 
 import (
+	presto "github.com/ethanyzhang/presto-go"
+
 	"github.com/spf13/cobra"
-	"pbench/presto"
 )
 
 const DefaultServerUrl = "http://127.0.0.1:8080"
@@ -26,7 +27,8 @@ func (pf *PrestoFlags) Install(cmd *cobra.Command) {
 }
 
 func (pf *PrestoFlags) NewPrestoClient() *presto.Client {
-	client, _ := presto.NewClient(pf.ServerUrl, pf.IsTrino)
+	client, _ := presto.NewClient(pf.ServerUrl)
+	client.IsTrino(pf.IsTrino)
 	if pf.UserName != "" {
 		if pf.Password != "" {
 			client.UserPassword(pf.UserName, pf.Password)
@@ -35,7 +37,7 @@ func (pf *PrestoFlags) NewPrestoClient() *presto.Client {
 		}
 	}
 	if pf.ForceHttps {
-		client.ForceHttps()
+		client.ForceHTTPS(true)
 	}
 	return client
 }

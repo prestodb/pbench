@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"pbench/presto/plan_node"
+	"pbench/prestoapi/plan_node"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"pbench/presto/query_json"
+	"github.com/ethanyzhang/presto-go/query_json"
 	"reflect"
 	"strings"
 )

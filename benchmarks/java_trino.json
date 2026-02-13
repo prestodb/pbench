@@ -4,6 +4,7 @@
   "session_params": {
     "query_max_execution_time": "8h",
     "join_distribution_type": "AUTOMATIC",
-    "join_reordering_strategy": "AUTOMATIC"
+    "join_reordering_strategy": "AUTOMATIC",
+    "optimizer_use_histograms": null
   }
 }

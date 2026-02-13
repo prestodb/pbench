@@ -1,25 +1,25 @@
 module pbench
 
-go 1.22
+go 1.25.7
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.1
-	github.com/docker/go-units v0.5.0
+	github.com/ethanyzhang/presto-go v0.0.0-20260213025943-7e7cff89f9b3
 	github.com/go-playground/validator/v10 v10.24.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.32.0
+	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.9.0
-	github.com/xhit/go-str2duration/v2 v2.1.0
-	golang.org/x/sys v0.29.0
+	github.com/stretchr/testify v1.11.1
+	golang.org/x/sys v0.35.0
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -33,9 +33,12 @@ require (
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/ethanyzhang/presto-go => ../presto-go

@@ -1,4 +1,4 @@
-package presto
+package prestoapi
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+
+	presto "github.com/ethanyzhang/presto-go"
 )
 
 var (
@@ -89,7 +91,7 @@ func unmarshalRow(rawRowData json.RawMessage, v reflect.Value, columnFieldIndexe
 	return nil
 }
 
-func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
+func UnmarshalQueryData(data []json.RawMessage, columns []presto.Column, v any) error {
 	if len(data) == 0 {
 		return nil
 	}
@@ -167,13 +169,13 @@ func UnmarshalQueryData(data []json.RawMessage, columns []Column, v any) error {
 	return nil
 }
 
-func QueryAndUnmarshal(ctx context.Context, client *Client, query string, v any) error {
+func QueryAndUnmarshal(ctx context.Context, client *presto.Session, query string, v any) error {
 	clientResult, _, err := client.Query(ctx, query)
 	if err != nil {
 		return err
 	}
 	rows := make([]json.RawMessage, 0)
-	err = clientResult.Drain(ctx, func(qr *QueryResults) error {
+	err = clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
 		if len(qr.Data) > 0 {
 			rows = append(rows, qr.Data...)
 		}

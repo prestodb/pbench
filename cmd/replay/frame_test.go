@@ -2,9 +2,9 @@ package replay
 
 import (
 	"encoding/csv"
+	presto "github.com/ethanyzhang/presto-go"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"pbench/presto"
 	"sort"
 	"strings"
 	"testing"
@@ -28,7 +28,7 @@ func TestFrame(t *testing.T) {
 		assert.Equal(t, "20240415_112042_61088_qa5fd", frame.QueryId)
 		assert.Equal(t, "2024-04-15 11:20:42.755 UTC", frame.CreateTime.Format(CreateTimeFormat))
 		assert.Equal(t, 99993, frame.WallTimeMillis)
-		client, _ := presto.NewClient("http://127.0.0.1", false)
+		client, _ := presto.NewClient("http://127.0.0.1")
 		sessionParams := strings.Split(client.GenerateSessionParamsHeaderValue(frame.ParseSessionParams()), ",")
 		sort.Strings(sessionParams)
 		assert.Equal(t, []string{

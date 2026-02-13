@@ -1,36 +1,26 @@
-package presto
+package prestoapi
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	presto "github.com/ethanyzhang/presto-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuiltinRows(t *testing.T) {
-	pRows, pCols := getRowsFromPresto(t)
-	bRows, bCols := getBuiltinRows(t)
-	assert.Equal(t, pRows, bRows)
-	assert.Equal(t, pCols, bCols)
+	rows, cols := getBuiltinRows(t)
+	assert.Equal(t, 17, len(rows))
+	assert.Equal(t, 8, len(cols))
 }
 
 func TestPrestoUnmarshalScalar(t *testing.T) {
-	client, _ := NewClient("http://localhost:8080", false)
-	if _, _, err := client.GetClusterInfo(context.Background()); err != nil {
-		t.Skip("local cluster is not ready")
-	}
-	client.Catalog("tpch").Schema("sf1")
-	ctx := context.Background()
-	var ddl string
 	expectedDdl := "CREATE TABLE tpch.sf1.lineitem (\n   \"orderkey\" bigint NOT NULL,\n   \"partkey\" bigint NOT NULL,\n   \"suppkey\" bigint NOT NULL,\n   \"linenumber\" integer NOT NULL,\n   \"quantity\" double NOT NULL,\n   \"extendedprice\" double NOT NULL,\n   \"discount\" double NOT NULL,\n   \"tax\" double NOT NULL,\n   \"returnflag\" varchar(1) NOT NULL,\n   \"linestatus\" varchar(1) NOT NULL,\n   \"shipdate\" date NOT NULL,\n   \"commitdate\" date NOT NULL,\n   \"receiptdate\" date NOT NULL,\n   \"shipinstruct\" varchar(25) NOT NULL,\n   \"shipmode\" varchar(10) NOT NULL,\n   \"comment\" varchar(44) NOT NULL\n)"
 
-	if err := QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE lineitem", &ddl); err != nil {
-		fmt.Println(err)
-		columnHeaders := []Column{{Name: "Create Table"}}
-		rows := []json.RawMessage{json.RawMessage(`["CREATE TABLE tpch.sf1.lineitem (\n   \"orderkey\" bigint NOT NULL,\n   \"partkey\" bigint NOT NULL,\n   \"suppkey\" bigint NOT NULL,\n   \"linenumber\" integer NOT NULL,\n   \"quantity\" double NOT NULL,\n   \"extendedprice\" double NOT NULL,\n   \"discount\" double NOT NULL,\n   \"tax\" double NOT NULL,\n   \"returnflag\" varchar(1) NOT NULL,\n   \"linestatus\" varchar(1) NOT NULL,\n   \"shipdate\" date NOT NULL,\n   \"commitdate\" date NOT NULL,\n   \"receiptdate\" date NOT NULL,\n   \"shipinstruct\" varchar(25) NOT NULL,\n   \"shipmode\" varchar(10) NOT NULL,\n   \"comment\" varchar(44) NOT NULL\n)"]`)}
-		assert.Nil(t, UnmarshalQueryData(rows, columnHeaders, &ddl))
-	}
+	columnHeaders := []presto.Column{{Name: "Create Table"}}
+	rows := []json.RawMessage{json.RawMessage(`["CREATE TABLE tpch.sf1.lineitem (\n   \"orderkey\" bigint NOT NULL,\n   \"partkey\" bigint NOT NULL,\n   \"suppkey\" bigint NOT NULL,\n   \"linenumber\" integer NOT NULL,\n   \"quantity\" double NOT NULL,\n   \"extendedprice\" double NOT NULL,\n   \"discount\" double NOT NULL,\n   \"tax\" double NOT NULL,\n   \"returnflag\" varchar(1) NOT NULL,\n   \"linestatus\" varchar(1) NOT NULL,\n   \"shipdate\" date NOT NULL,\n   \"commitdate\" date NOT NULL,\n   \"receiptdate\" date NOT NULL,\n   \"shipinstruct\" varchar(25) NOT NULL,\n   \"shipmode\" varchar(10) NOT NULL,\n   \"comment\" varchar(44) NOT NULL\n)"]`)}
+	var ddl string
+	assert.Nil(t, UnmarshalQueryData(rows, columnHeaders, &ddl))
 	assert.Equal(t, expectedDdl, ddl)
 }
 
@@ -104,32 +94,11 @@ func TestPrestoUnmarshal(t *testing.T) {
 	assert.Equal(t, expectedStats, columnsStats)
 }
 
-func getRowsFromPresto(t *testing.T) ([]json.RawMessage, []Column) {
-	client, _ := NewClient("http://localhost:8080", false)
-	if _, _, err := client.GetClusterInfo(context.Background()); err != nil {
-		t.Skip("local cluster is not ready")
-	}
-	client.Catalog("tpch").Schema("sf1")
-	ctx := context.Background()
 
-	clientResult, _, err := client.Query(ctx, "SHOW STATS FOR lineitem")
-	assert.Nil(t, err)
-
-	rows := make([]json.RawMessage, 0, 17)
-	err = clientResult.Drain(ctx, func(qr *QueryResults) error {
-		rows = append(rows, qr.Data...)
-		return nil
-	})
-	if assert.Nil(t, err) {
-		return rows, clientResult.Columns
-	}
-	return rows, nil
-}
-
-func getBuiltinRows(t *testing.T) ([]json.RawMessage, []Column) {
+func getBuiltinRows(t *testing.T) ([]json.RawMessage, []presto.Column) {
 	rows := make([]json.RawMessage, 0, 17)
 	assert.Nil(t, json.Unmarshal(rowsBytes, &rows))
-	columnHeaders := make([]Column, 0, 8)
+	columnHeaders := make([]presto.Column, 0, 8)
 	assert.Nil(t, json.Unmarshal(columnHeaderBytes, &columnHeaders))
 	return rows, columnHeaders
 }

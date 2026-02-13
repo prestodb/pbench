@@ -2,7 +2,7 @@ package plan_node_test
 
 import (
 	"fmt"
-	"pbench/presto/plan_node"
+	"pbench/prestoapi/plan_node"
 	"testing"
 
 	"github.com/alecthomas/participle/v2"
