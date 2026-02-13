@@ -42,5 +42,5 @@ func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *
 }
 
 func (f *FileBasedRunRecorder) RecordRun(_ context.Context, s *Stage, _ []*QueryResult) {
-	_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), []byte(f.summaryBuilder.String()), 0644)
+	_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.States.RunName+"_summary.csv"), []byte(f.summaryBuilder.String()), 0644)
 }
