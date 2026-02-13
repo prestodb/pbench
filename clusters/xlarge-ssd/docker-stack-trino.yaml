@@ -24,7 +24,7 @@ services:
     - 9404:9404
     volumes:
     - /home/centos/presto/catalog/hive-trino.properties:/etc/trino/catalog/hive.properties
-    - /home/centos/presto/catalog/iceberg-trino.properties:/opt/presto-server/etc/catalog/iceberg.properties
+    - /home/centos/presto/catalog/iceberg-trino.properties:/etc/trino/catalog/iceberg.properties
     - /home/centos/presto/catalog/jmx.properties:/etc/trino/catalog/jmx.properties
     - /home/centos/presto/catalog/tpcds.properties:/etc/trino/catalog/tpcds.properties
     - /home/centos/presto/catalog/tpch.properties:/etc/trino/catalog/tpch.properties
@@ -60,7 +60,7 @@ services:
     - 8080:8080
     volumes:
     - /home/centos/presto/catalog/hive-trino.properties:/etc/trino/catalog/hive.properties
-    - /home/centos/presto/catalog/iceberg-trino.properties:/opt/presto-server/etc/catalog/iceberg.properties
+    - /home/centos/presto/catalog/iceberg-trino.properties:/etc/trino/catalog/iceberg.properties
     - /home/centos/presto/catalog/jmx.properties:/etc/trino/catalog/jmx.properties
     - /home/centos/presto/catalog/tpcds.properties:/etc/trino/catalog/tpcds.properties
     - /home/centos/presto/catalog/tpch.properties:/etc/trino/catalog/tpch.properties
