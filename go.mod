@@ -4,7 +4,7 @@ go 1.25.7
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.1
-	github.com/ethanyzhang/presto-go v0.0.0-20260213025943-7e7cff89f9b3
+	github.com/ethanyzhang/presto-go v0.0.0-20260213034428-95fd8b0a4ad6
 	github.com/go-playground/validator/v10 v10.24.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
@@ -40,5 +40,3 @@ require (
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/ethanyzhang/presto-go => ../presto-go

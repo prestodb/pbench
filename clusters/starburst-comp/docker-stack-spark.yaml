@@ -23,10 +23,10 @@ services:
       resources:
         limits:
           cpus: '31'
-          memory: 126G
+          memory: 122G
         reservations:
           cpus: '31'
-          memory: 126G
+          memory: 122G
     ports:
     - 80:8080
     - 4040:4040
@@ -76,10 +76,10 @@ services:
       resources:
         limits:
           cpus: '31'
-          memory: 126G
+          memory: 122G
         reservations:
           cpus: '31'
-          memory: 126G
+          memory: 122G
     entrypoint:
     - /bin/bash
     - /opt/entrypoint-spark.sh
