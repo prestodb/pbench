@@ -16,7 +16,6 @@ import (
 	"pbench/prestoapi"
 	"pbench/utils"
 
-	presto "github.com/ethanyzhang/presto-go"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -25,12 +24,14 @@ import (
 	"syscall"
 	"time"
 
+	presto "github.com/ethanyzhang/presto-go"
+
 	"github.com/rs/zerolog"
 )
 
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
-	Id string `json:"-"`
+	Id string `json:"id,omitempty"`
 	// The values in Catalog, Schema, and SessionParams are inherited by the descendant stages. Please note that if
 	// they have new values assigned in a stage, those values are NOT applied tn the Presto client until a stage
 	// creates its own client by setting StartOnNewClient = true.
