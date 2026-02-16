@@ -32,9 +32,11 @@ import (
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
 	Id string `json:"id,omitempty"`
-	// The values in Catalog, Schema, and SessionParams are inherited by the descendant stages. Please note that if
-	// they have new values assigned in a stage, those values are NOT applied tn the Presto client until a stage
-	// creates its own client by setting StartOnNewClient = true.
+	// Description is an optional human-readable description of what this stage does.
+	Description *string `json:"description,omitempty"`
+	// The values in Catalog, Schema, and SessionParams are inherited by the descendant stages. Catalog, Schema,
+	// and TimeZone are auto-detected: if a child stage sets a different value than what the inherited client has,
+	// a new client is automatically created. You can also force a new client by setting StartOnNewClient = true.
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`

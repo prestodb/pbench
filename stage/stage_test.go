@@ -382,6 +382,53 @@ func TestContextCancellation(t *testing.T) {
 	assert.Less(t, queryCount, 15)
 }
 
+func TestAutoNewClientOnCatalogChange(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	// Register parent and child queries
+	mock.AddQuery(&prestotest.MockQueryTemplate{
+		SQL:     "select 'parent'",
+		Columns: []presto.Column{{Name: "_col0", Type: "varchar"}},
+		Data:    [][]any{{"parent"}},
+	})
+	mock.AddQuery(&prestotest.MockQueryTemplate{
+		SQL:     "select 'child'",
+		Columns: []presto.Column{{Name: "_col0", Type: "varchar"}},
+		Data:    [][]any{{"child"}},
+	})
+
+	stage1, stages, parseErr := ParseStageGraphFromFile("../benchmarks/test/auto_new_client_stage.json")
+	assert.Nil(t, parseErr)
+	stage1.InitStates()
+
+	clientCount := 0
+	stage1.States.NewClient = func() *presto.Client {
+		clientCount++
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	queryCount := 0
+	stage1.States.OnQueryCompletion = func(result *QueryResult) {
+		queryCount++
+		assert.Nil(t, result.QueryError)
+	}
+
+	stage1.Run(context.Background())
+	defer assert.Nil(t, os.RemoveAll(stage1.States.OutputPath))
+
+	childStage := stages.Get("auto_new_client_child")
+	assert.NotNil(t, childStage)
+
+	// Parent creates 1 client, child should auto-create another because catalog/schema differ
+	assert.Equal(t, 2, clientCount, "expected 2 clients: parent + auto-created child")
+	assert.Equal(t, 2, queryCount, "expected 2 queries: parent + child")
+	// Verify child's client has the child's catalog/schema
+	assert.Equal(t, "child_catalog", childStage.Client.GetCatalog())
+	assert.Equal(t, "child_schema", childStage.Client.GetSchema())
+}
+
 func TestHttpError(t *testing.T) {
 	// Custom httptest server that returns 400 when schema is set but catalog is not,
 	// matching the behavior of a real Presto server.

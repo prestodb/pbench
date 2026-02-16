@@ -149,7 +149,23 @@ func (s *Stage) logErr(ctx context.Context, err error) {
 
 func (s *Stage) prepareClient() {
 	if s.Client != nil && !s.StartOnNewClient {
-		return
+		needsNewClient := false
+		if s.Catalog != nil && *s.Catalog != s.Client.GetCatalog() {
+			needsNewClient = true
+		}
+		if s.Schema != nil && *s.Schema != s.Client.GetSchema() {
+			needsNewClient = true
+		}
+		if s.TimeZone != nil && *s.TimeZone != s.Client.GetTimeZone() {
+			needsNewClient = true
+		}
+		if !needsNewClient {
+			s.currentCatalog = s.Client.GetCatalog()
+			s.currentSchema = s.Client.GetSchema()
+			s.currentTimeZone = s.Client.GetTimeZone()
+			return
+		}
+		log.Info().EmbedObject(s).Msg("auto-creating new client because catalog/schema/timezone changed")
 	}
 	if s.States.NewClient == nil {
 		s.States.NewClient = DefaultNewClientFn
