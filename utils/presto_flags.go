@@ -59,6 +59,8 @@ func (a *PrestoFlagsArray) Install(cmd *cobra.Command) {
 }
 
 // Pivot generates PrestoFlags array that is suitable for creating Presto clients conveniently.
+// Each optional array (IsTrino, ForceHttps, etc.) may be shorter than ServerUrl, so we
+// bounds-check before indexing to avoid panics.
 func (a *PrestoFlagsArray) Pivot() []PrestoFlags {
 	ret := make([]PrestoFlags, 0, len(a.ServerUrl))
 	for _, url := range a.ServerUrl {
@@ -67,16 +69,24 @@ func (a *PrestoFlagsArray) Pivot() []PrestoFlags {
 		})
 	}
 	for i, isTrino := range a.IsTrino {
-		ret[i].IsTrino = isTrino
+		if i < len(ret) {
+			ret[i].IsTrino = isTrino
+		}
 	}
 	for i, forceHttp := range a.ForceHttps {
-		ret[i].ForceHttps = forceHttp
+		if i < len(ret) {
+			ret[i].ForceHttps = forceHttp
+		}
 	}
 	for i, userName := range a.UserName {
-		ret[i].UserName = userName
+		if i < len(ret) {
+			ret[i].UserName = userName
+		}
 	}
 	for i, password := range a.Password {
-		ret[i].Password = password
+		if i < len(ret) {
+			ret[i].Password = password
+		}
 	}
 	return ret
 }

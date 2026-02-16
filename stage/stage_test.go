@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -223,6 +225,161 @@ func TestParseStageGraph(t *testing.T) {
 			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist",
 			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 13)
 	})
+}
+
+func TestRandomExecution(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	stage, _, parseErr := ParseStageGraphFromFile("../benchmarks/test/random_stage.json")
+	assert.Nil(t, parseErr)
+	stage.InitStates()
+	stage.States.RandSeed = 42
+	stage.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	queryCount := 0
+	stage.States.OnQueryCompletion = func(result *QueryResult) {
+		queryCount++
+		assert.Nil(t, result.QueryError)
+	}
+
+	stage.Run(context.Background())
+	defer assert.Nil(t, os.RemoveAll(stage.States.OutputPath))
+
+	// randomly_execute_until=6, so we should get exactly 6 queries
+	assert.Equal(t, 6, queryCount)
+	assert.True(t, stage.States.RandSeedUsed)
+}
+
+func TestWarmRuns(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	stage, _, parseErr := ParseStageGraphFromFile("../benchmarks/test/warm_runs_stage.json")
+	assert.Nil(t, parseErr)
+	stage.InitStates()
+	stage.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	coldRuns, warmRuns := 0, 0
+	stage.States.OnQueryCompletion = func(result *QueryResult) {
+		assert.Nil(t, result.QueryError)
+		if result.Query.ColdRun {
+			coldRuns++
+		} else {
+			warmRuns++
+		}
+	}
+
+	stage.Run(context.Background())
+	defer assert.Nil(t, os.RemoveAll(stage.States.OutputPath))
+
+	// cold_runs=1, warm_runs=2 for 1 query -> 1 cold + 2 warm = 3 total
+	assert.Equal(t, 1, coldRuns)
+	assert.Equal(t, 2, warmRuns)
+}
+
+func TestExpectedRowCount(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	stage, _, parseErr := ParseStageGraphFromFile("../benchmarks/test/expected_row_count_stage.json")
+	assert.Nil(t, parseErr)
+	stage.InitStates()
+	stage.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	queryCount := 0
+	stage.States.OnQueryCompletion = func(result *QueryResult) {
+		queryCount++
+		assert.Nil(t, result.QueryError)
+		// Both queries return 1 row, and expected row count is [1, 1]
+		assert.Equal(t, result.Query.ExpectedRowCount, result.RowCount)
+	}
+
+	stage.Run(context.Background())
+	defer assert.Nil(t, os.RemoveAll(stage.States.OutputPath))
+
+	assert.Equal(t, 2, queryCount)
+}
+
+func TestSaveOutput(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	s, _, parseErr := ParseStageGraphFromFile("../benchmarks/test/save_output_stage.json")
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	tmpDir := t.TempDir()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		assert.Nil(t, result.QueryError)
+	}
+
+	s.Run(context.Background())
+
+	// With save_output=true, an output file should have been created
+	// The actual output dir is OutputPath/RunName
+	outputDir := s.States.OutputPath
+	outputFiles, err := os.ReadDir(outputDir)
+	assert.Nil(t, err)
+	foundOutput := false
+	for _, f := range outputFiles {
+		if strings.HasSuffix(f.Name(), ".output") {
+			foundOutput = true
+			content, readErr := os.ReadFile(filepath.Join(outputDir, f.Name()))
+			assert.Nil(t, readErr)
+			assert.Greater(t, len(content), 0)
+		}
+	}
+	assert.True(t, foundOutput, "expected .output file in %s, found: %v", outputDir, outputFiles)
+}
+
+func TestContextCancellation(t *testing.T) {
+	mock := setupMockServer()
+	// Add a long-running latency to make cancellation observable
+	mock.SetDefaultLatency(100 * time.Millisecond)
+	defer mock.Close()
+
+	stage1, _, parseErr := ParseStageGraphFromFile("../benchmarks/test/stage_1.json")
+	assert.Nil(t, parseErr)
+	stage1.InitStates()
+	stage1.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	queryCount := 0
+	stage1.States.OnQueryCompletion = func(result *QueryResult) {
+		queryCount++
+		// Cancel after the first query finishes
+		if queryCount == 1 {
+			cancel()
+		}
+	}
+
+	// Set abort_on_error on root stage so cancellation propagates
+	trueVal := true
+	stage1.AbortOnError = &trueVal
+	stage1.Run(ctx)
+	defer assert.Nil(t, os.RemoveAll(stage1.States.OutputPath))
+
+	// We should have at least 1 query completed but not all 15
+	assert.GreaterOrEqual(t, queryCount, 1)
+	assert.Less(t, queryCount, 15)
 }
 
 func TestHttpError(t *testing.T) {

@@ -14,6 +14,9 @@ type ColumnStats struct {
 	TrueValuesCount    *float64 `presto:"true_values_count" json:"true_values_count,omitempty"`
 	NonNullValuesCount *float64 `presto:"non_null_values_count" json:"non_null_values_count,omitempty"`
 	// From DESCRIBE
-	DataType *string `presto:"Type" json:"data_type,omitempty"`
-	Extra    *string `presto:"Extra" json:"extra,omitempty"`
+	DataType  *string  `presto:"Type" json:"data_type,omitempty"`
+	Extra     *string  `presto:"Extra" json:"extra,omitempty"`
+	Precision *float64 `presto:"Precision" json:"precision,omitempty"`
+	Scale     *float64 `presto:"Scale" json:"scale,omitempty"`
+	Length    *float64 `presto:"Length" json:"length,omitempty"`
 }

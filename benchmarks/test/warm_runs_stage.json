@@ -1,0 +1,9 @@
+{
+  "queries": [
+    "select 'query 1'"
+  ],
+  "cold_runs": 1,
+  "warm_runs": 2,
+  "catalog": "tpch",
+  "schema": "sf1"
+}

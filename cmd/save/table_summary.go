@@ -120,7 +120,7 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Ses
 	}
 
 	// Zero rows, no need to do anything more.
-	if *s.RowCount == 0 || !analyze {
+	if s.RowCount == nil || *s.RowCount == 0 || !analyze {
 		return
 	}
 

@@ -1,0 +1,8 @@
+{
+  "queries": [
+    "select 'query 1'"
+  ],
+  "save_output": true,
+  "catalog": "tpch",
+  "schema": "sf1"
+}

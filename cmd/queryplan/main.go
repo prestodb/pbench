@@ -29,7 +29,7 @@ import (
 var (
 	queryPlanColumn int
 	hasHeader       bool
-	output          string
+	output          string // Note: shadowed by *os.File in processFile() line 85 — use caution when renaming.
 	failureCounter  = 0
 	validCounter    = 0
 )

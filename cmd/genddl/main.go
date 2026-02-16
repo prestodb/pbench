@@ -64,18 +64,18 @@ func Run(_ *cobra.Command, args []string) {
 
 	content, err := os.ReadFile(absPath)
 	if err != nil {
-		log.Err(err).Send()
+		log.Fatal().Err(err).Str("path", absPath).Msg("Failed to read config file")
 	}
 
 	schemas, loadErr := loadSchemas(content)
 	if loadErr != nil {
-		log.Err(err).Send()
+		log.Err(loadErr).Send()
 		return
 	}
 
 	wd, wdErr := os.Getwd()
 	if wdErr != nil {
-		log.Fatal().Err(err).Msg("Failed to get working directory")
+		log.Fatal().Err(wdErr).Msg("Failed to get working directory")
 	}
 	genDdlDir := wd + "/cmd/genddl"
 	defDir := genDdlDir + "/definition/" + fixedDefinition
@@ -122,10 +122,8 @@ func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outp
 			return nil
 		}
 
-		if f, readErr := os.ReadFile(defDir + "/" + info.Name()); err != nil {
-			if readErr != nil {
-				log.Fatal().Err(readErr).Str("file", info.Name()).Msg("Failed to read file")
-			}
+		if f, readErr := os.ReadFile(defDir + "/" + info.Name()); readErr != nil {
+			log.Fatal().Err(readErr).Str("file", info.Name()).Msg("Failed to read file")
 		} else {
 			tbl := new(Table)
 			umErr := json.Unmarshal(f, tbl)
@@ -232,6 +230,7 @@ func parseExecTemplate(schema *Schema, tName string, fName string, currDir strin
 		}
 
 		exErr := tmpl.Execute(f, *schema)
+		f.Close()
 		if exErr != nil {
 			log.Fatal().Err(exErr).Msg("Failed to execute template")
 		}

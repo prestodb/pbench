@@ -7,6 +7,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"pbench/log"
 	"pbench/utils"
+	"time"
 )
 
 var (
@@ -78,12 +79,21 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 	if result.Query.ExpectedRowCount >= 0 && result.Query.ExpectedRowCount != result.RowCount {
 		m.mismatch++
 	}
+	// EndTime and Duration are nil when ConcludeExecution was not called (e.g., query error).
+	var endTime time.Time
+	if result.EndTime != nil {
+		endTime = *result.EndTime
+	}
+	var durationMs int64
+	if result.Duration != nil {
+		durationMs = result.Duration.Milliseconds()
+	}
 	_, err := m.db.Exec(recordNewQuery, m.runId, result.StageId, queryFile, result.Query.Index, result.QueryId,
-		result.Query.SequenceNo, result.Query.ColdRun, result.QueryError == nil, result.StartTime, *result.EndTime,
+		result.Query.SequenceNo, result.Query.ColdRun, result.QueryError == nil, result.StartTime, endTime,
 		result.RowCount, sql.NullInt32{
 			Int32: int32(result.Query.ExpectedRowCount),
 			Valid: result.Query.ExpectedRowCount >= 0,
-		}, result.Duration.Milliseconds(), result.InfoUrl)
+		}, durationMs, result.InfoUrl)
 	if err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to MySQL")
 	}
@@ -92,9 +102,10 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to update the run information in the MySQL database")
+		return
 	}
 	if rowsAffected, _ := res.RowsAffected(); rowsAffected > 1 {
-		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).Int64("rows_affected", rowsAffected).
+		log.Error().Str("run_name", s.States.RunName).Int64("run_id", m.runId).Int64("rows_affected", rowsAffected).
 			Msg("more than 1 row was affected when trying to complete the run information in the MySQL database")
 	}
 }
@@ -110,9 +121,10 @@ func (m *MySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*Q
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to complete the run information in the MySQL database")
+		return
 	}
 	if rowsAffected, _ := res.RowsAffected(); rowsAffected > 1 {
-		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).Int64("rows_affected", rowsAffected).
+		log.Error().Str("run_name", s.States.RunName).Int64("run_id", m.runId).Int64("rows_affected", rowsAffected).
 			Msg("more than 1 row was affected when trying to complete the run information in the MySQL database")
 	}
 }

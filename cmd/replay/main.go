@@ -106,6 +106,7 @@ func QueryFrameScheduler(ctx context.Context) {
 			timer := time.NewTimer(waitTime)
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 			case <-timer.C:
 			}
 		}

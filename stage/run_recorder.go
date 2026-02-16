@@ -35,10 +35,19 @@ func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *
 	} else {
 		f.summaryBuilder.WriteString("inline")
 	}
+	// EndTime and Duration are nil when ConcludeExecution was not called (e.g., query error).
+	endTimeStr := ""
+	if result.EndTime != nil {
+		endTimeStr = result.EndTime.Format(time.RFC3339)
+	}
+	durationSecs := 0.0
+	if result.Duration != nil {
+		durationSecs = result.Duration.Seconds()
+	}
 	f.summaryBuilder.WriteString(fmt.Sprintf(",%d,%t,%d,%s,%t,%d,%d,%s,%s,%f\n",
 		result.Query.Index, result.Query.ColdRun, result.Query.SequenceNo, result.InfoUrl,
 		result.QueryError == nil, result.RowCount, result.Query.ExpectedRowCount, result.StartTime.Format(time.RFC3339),
-		result.EndTime.Format(time.RFC3339), result.Duration.Seconds()))
+		endTimeStr, durationSecs))
 }
 
 func (f *FileBasedRunRecorder) RecordRun(_ context.Context, s *Stage, _ []*QueryResult) {

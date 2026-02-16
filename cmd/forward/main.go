@@ -59,6 +59,7 @@ func waitForNextPoll(ctx context.Context) {
 	timer := time.NewTimer(PollInterval)
 	select {
 	case <-ctx.Done():
+		timer.Stop()
 	case <-timer.C:
 	}
 }
@@ -198,7 +199,8 @@ func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo)
 
 	if ok {
 		for _, q := range queryCacheEntries {
-			if q.NextUri != "" {
+			// Entries can be nil if the slice was pre-allocated but not yet populated by goroutines.
+			if q != nil && q.NextUri != "" {
 				_, _, cancelQueryErr := q.Client.CancelQuery(ctx, q.NextUri)
 				if cancelQueryErr != nil {
 					log.Error().Msgf("cancel query failed on target cluter: %s error: %s", q.NextUri, cancelQueryErr.Error())

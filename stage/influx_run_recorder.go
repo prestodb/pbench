@@ -10,6 +10,7 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"os"
 	"pbench/log"
+	"time"
 )
 
 type InfluxRunRecorder struct {
@@ -67,7 +68,10 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 		"row_count":          result.RowCount,
 		"expected_row_count": result.Query.ExpectedRowCount,
 		"start_time":         result.StartTime.UnixNano(),
-		"duration_ms":        result.Duration.Milliseconds(),
+	}
+	// Duration and EndTime are nil when ConcludeExecution was not called (e.g., query error).
+	if result.Duration != nil {
+		fields["duration_ms"] = result.Duration.Milliseconds()
 	}
 	if result.Query.ExpectedRowCount < 0 {
 		delete(fields, "expected_row_count")
@@ -82,7 +86,11 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 	} else {
 		fields["query_file"] = "inline"
 	}
-	point := write.NewPoint("queries", tags, fields, *result.EndTime)
+	var endTime time.Time
+	if result.EndTime != nil {
+		endTime = *result.EndTime
+	}
+	point := write.NewPoint("queries", tags, fields, endTime)
 	if err := i.influxWriter.WritePoint(ctx, point); err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to influxdb")
 	}
