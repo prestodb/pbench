@@ -29,7 +29,7 @@ import (
 var (
 	queryPlanColumn int
 	hasHeader       bool
-	output          string // Note: shadowed by *os.File in processFile() line 85 — use caution when renaming.
+	output          string
 	failureCounter  = 0
 	validCounter    = 0
 )
@@ -76,19 +76,19 @@ func processFile(csvFile string) error {
 	var rowNum = 1
 
 	if hasHeader {
-		if _, err := r.Read(); err != nil {
+		if _, err = r.Read(); err != nil {
 			log.Fatal().Err(err).Msg("failed to consume the header line")
 		}
 		rowNum++
 	}
 
-	output, err := os.Create(output)
+	outputFile, err := os.Create(output)
 	if err != nil {
 		return err
 	}
-	defer output.Close()
+	defer outputFile.Close()
 
-	if _, err := output.WriteString("{\n"); err != nil {
+	if _, err = outputFile.WriteString("{\n"); err != nil {
 		return err
 	}
 
@@ -116,13 +116,13 @@ func processFile(csvFile string) error {
 				log.Err(err).Msgf("failed to serialize the joins at row:%d", rowNum)
 				failureCounter++
 			} else {
-				output.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum))
-				fmt.Fprint(output, string(out))
+				outputFile.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum))
+				fmt.Fprint(outputFile, string(out))
 				newline = ",\n"
 			}
 		}
 	}
-	output.WriteString("\n}")
+	outputFile.WriteString("\n}")
 	return nil
 }
 
