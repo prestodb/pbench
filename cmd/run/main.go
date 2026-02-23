@@ -63,7 +63,7 @@ func Run(_ *cobra.Command, args []string) {
 				defaultRunNameBuilder.WriteString(st.Id)
 			}
 		} else {
-			os.Exit(-1)
+			os.Exit(1)
 		}
 	}
 	if defaultRunNameBuilder != nil {

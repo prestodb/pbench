@@ -21,7 +21,7 @@ import (
 	"io"
 	"os"
 	"pbench/log"
-	"pbench/presto/plan_node"
+	"pbench/prestoapi/plan_node"
 
 	"github.com/spf13/cobra"
 )
@@ -47,7 +47,7 @@ func init() {
 	}
 	Cmd.Flags().IntVarP(&queryPlanColumn, "column", "c", 0, `The column index for the Query Plans in the CSV file(index starts with 0)`)
 	Cmd.Flags().StringVarP(&output, "output", "o", "queryplan.json", "Output JSON file")
-	Cmd.Flags().BoolVarP(&hasHeader, "has-header", "s", true, "contain the header line or not")
+	Cmd.Flags().BoolVarP(&hasHeader, "has-header", "H", true, "contain the header line or not")
 }
 
 func run(c *cobra.Command, args []string) {
@@ -76,19 +76,19 @@ func processFile(csvFile string) error {
 	var rowNum = 1
 
 	if hasHeader {
-		if _, err := r.Read(); err != nil {
+		if _, err = r.Read(); err != nil {
 			log.Fatal().Err(err).Msg("failed to consume the header line")
 		}
 		rowNum++
 	}
 
-	output, err := os.Create(output)
+	outputFile, err := os.Create(output)
 	if err != nil {
 		return err
 	}
-	defer output.Close()
+	defer outputFile.Close()
 
-	if _, err := output.WriteString("{\n"); err != nil {
+	if _, err = outputFile.WriteString("{\n"); err != nil {
 		return err
 	}
 
@@ -102,6 +102,11 @@ func processFile(csvFile string) error {
 			return err
 		}
 
+		if queryPlanColumn >= len(record) {
+			log.Error().Int("column_index", queryPlanColumn).Int("record_length", len(record)).
+				Msgf("row %d has fewer columns than expected", rowNum)
+			continue
+		}
 		if record[queryPlanColumn] == "" {
 			log.Info().Msgf("empty query plan at row:%d", rowNum)
 			continue
@@ -116,13 +121,19 @@ func processFile(csvFile string) error {
 				log.Err(err).Msgf("failed to serialize the joins at row:%d", rowNum)
 				failureCounter++
 			} else {
-				output.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum))
-				fmt.Fprint(output, string(out))
+				if _, err := outputFile.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum)); err != nil {
+					return err
+				}
+				if _, err := fmt.Fprint(outputFile, string(out)); err != nil {
+					return err
+				}
 				newline = ",\n"
 			}
 		}
 	}
-	output.WriteString("\n}")
+	if _, err := outputFile.WriteString("\n}"); err != nil {
+		return err
+	}
 	return nil
 }
 

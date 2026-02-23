@@ -9,13 +9,14 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto/query_json"
 	"pbench/stage"
 	"pbench/utils"
 	"reflect"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/ethanyzhang/presto-go/query_json"
 
 	"github.com/spf13/cobra"
 )
@@ -117,11 +118,14 @@ func Run(_ *cobra.Command, args []string) {
 	pseudoStage.States.RunStartTime = runStartTime.GetTime()
 	pseudoStage.States.RunFinishTime = runEndTime.GetTime()
 	for _, r := range runRecorders {
-		r.RecordRun(utils.GetCtxWithTimeout(time.Second*5), pseudoStage, queryResults)
+		rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+		r.RecordRun(rCtx, pseudoStage, queryResults)
+		rCancel()
 	}
 
 	log.Info().Int("file_loaded", len(queryResults)).Send()
 	// This causes the signal handler to exit.
+	signal.Stop(timeToExit)
 	close(timeToExit)
 }
 
@@ -147,9 +151,11 @@ func processFile(ctx context.Context, path string) {
 	// Note that this step can succeed with any valid JSON file. But we need to do some additional validation to skip
 	// invalid query JSON files.
 	if unmarshalErr := json.Unmarshal(bytes, queryInfo); unmarshalErr != nil {
+		log.Error().Err(unmarshalErr).Str("path", path).Msg("failed to unmarshal JSON")
 		return
 	}
 	if queryInfo.QueryId == "" || queryInfo.QueryStats == nil || queryInfo.QueryStats.CreateTime == nil {
+		log.Error().Msg("QueryId, QueryStats or QueryStats.CreateTime is empty")
 		return
 	}
 	log.Info().Str("path", path).Msg("start to process file")
@@ -173,7 +179,7 @@ func processFile(ctx context.Context, path string) {
 	}
 	if queryInfo.ErrorCode != nil {
 		// Need to set this so the run recorders will mark this query as failed.
-		queryResult.QueryError = fmt.Errorf(*queryInfo.ErrorCode.Name)
+		queryResult.QueryError = fmt.Errorf("%s", *queryInfo.ErrorCode.Name)
 	}
 	// Unlike benchmarks run by pbench, we do not know when did the run start and finish when loading them from files.
 	// We infer that the whole run starts at min(queryStartTime) and ends at max(queryEndTime).
@@ -226,7 +232,9 @@ func processFile(ctx context.Context, path string) {
 		}
 	}
 	for _, r := range runRecorders {
-		r.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), pseudoStage, queryResult)
+		rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+		r.RecordQuery(rCtx, pseudoStage, queryResult)
+		rCancel()
 	}
 	log.Info().Str("path", path).Str("query_id", queryInfo.QueryId).Msg("success")
 	resultChan <- queryResult

@@ -1,13 +1,14 @@
 package cmp
 
 import (
-	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"pbench/log"
 	"pbench/utils"
 	"regexp"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -115,15 +116,6 @@ func buildFileIdMap(path string) (map[string]string, error) {
 		}
 	}
 	return fileIdMap, nil
-}
-
-func readFileIntoString(filePath string) string {
-	if bytes, err := os.ReadFile(filePath); err != nil {
-		log.Error().Err(err).Str("path", filePath).Msg("failed to read file")
-		return ""
-	} else {
-		return string(bytes)
-	}
 }
 
 func generateDiff(buildSideFilePath, probeSideFilePath string) (string, error) {

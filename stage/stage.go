@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -13,8 +14,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
+	"pbench/prestoapi"
 	"pbench/utils"
+
 	"reflect"
 	"regexp"
 	"strconv"
@@ -23,15 +25,19 @@ import (
 	"syscall"
 	"time"
 
+	presto "github.com/ethanyzhang/presto-go"
+
 	"github.com/rs/zerolog"
 )
 
 type Stage struct {
 	// Id is used to uniquely identify a stage. It is usually the file name without its directory path and extension.
-	Id string `json:"-"`
-	// The values in Catalog, Schema, and SessionParams are inherited by the descendant stages. Please note that if
-	// they have new values assigned in a stage, those values are NOT applied tn the Presto client until a stage
-	// creates its own client by setting StartOnNewClient = true.
+	Id string `json:"id,omitempty"`
+	// Description is an optional human-readable description of what this stage does.
+	Description *string `json:"description,omitempty"`
+	// The values in Catalog, Schema, and SessionParams are inherited by the descendant stages. Catalog, Schema,
+	// and TimeZone are auto-detected: if a child stage sets a different value than what the inherited session has,
+	// a new client session is automatically created. You can also force a new client session by setting StartOnNewClient = true.
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`
@@ -44,11 +50,13 @@ type Stage struct {
 	PreStageShellScripts []string `json:"pre_stage_scripts,omitempty"`
 	// Run shell scripts after executing all the queries in a stage.
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
+	// Run shell scripts before executing each query.
+	PreQueryShellScripts []string `json:"pre_query_scripts,omitempty"`
 	// Run shell scripts after executing each query.
 	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
-	// Run shell scripts before starting query cycle runs of each query.
+	// Run shell scripts before starting all runs (cold + warm) of each individual query.
 	PreQueryCycleShellScripts []string `json:"pre_query_cycle_scripts,omitempty"`
-	// Run shell scripts after finishing full query cycle runs each query.
+	// Run shell scripts after all runs (cold + warm) of each individual query have completed.
 	PostQueryCycleShellScripts []string `json:"post_query_cycle_scripts,omitempty"`
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
@@ -56,7 +64,7 @@ type Stage struct {
 	ExpectedRowCounts map[string][]int `json:"expected_row_counts,omitempty"`
 	// When RandomExecution is turned on, we randomly pick queries to run until a certain number of queries/a specific
 	// duration has passed. Expected row counts will not be checked in this mode because we cannot figure out the correct
-	// expected row count offset.
+	// expected row count offset (query files are treated as black boxes).
 	RandomExecution *bool `json:"random_execution,omitempty"`
 	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
 	// before exiting.
@@ -65,10 +73,10 @@ type Stage struct {
 	ColdRuns *int `json:"cold_runs,omitempty" validate:"omitempty,gte=0"`
 	// If not set, the default is 0.
 	WarmRuns *int `json:"warm_runs,omitempty" validate:"omitempty,gte=0"`
-	// If StartOnNewClient is set to true, this stage will create a new client to execute itself.
-	// This new client will be passed down to its descendant stages unless those stages also set StartOnNewClient to true.
-	// Each client can carry their own set of client information, tags, session properties, user credentials, etc.
-	// Descendant stages will **NOT** inherit this value from their parents so this is declared as a value not a pointer.
+	// If StartOnNewClient is set to true, this stage will create a new client session to execute itself.
+	// This new client session will be passed down to its children stages unless those stages also set StartOnNewClient to true.
+	// Each client session can carry its own set of client information, tags, session properties, etc.
+	// Children stages will **NOT** inherit this value from their parents so this is declared as a value not a pointer.
 	StartOnNewClient bool `json:"start_on_new_client,omitempty"`
 	// If AbortOnError is set to true, the context associated with this stage will be canceled if an error occurs.
 	// Depending on when the cancellable context was created, this may abort some or all other running stages and all future stages.
@@ -88,7 +96,7 @@ type Stage struct {
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
 
-	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
+	// BaseDir is set to the directory path of this stage's location. It is used to locate the children stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
 	// See ReadStageFromFile() - where BaseDir is set.
 	BaseDir string `json:"-"`
@@ -114,6 +122,9 @@ type Stage struct {
 	// to make sure this stage only starts once. When the stage is started by its first completed prerequisite, it waits
 	// until wgPrerequisites counts down to zero then starts execution.
 	started atomic.Bool
+	// propagateOnce ensures that when a child stage has multiple parents, only the first parent to finish
+	// propagates state into the child. This prevents a data race where multiple parents write concurrently.
+	propagateOnce sync.Once
 }
 
 // Run this stage and trigger its downstream stages.
@@ -156,6 +167,10 @@ func (s *Stage) Run(ctx context.Context) int {
 
 		// When SIGKILL and SIGINT are captured, we trigger this process by canceling the context, which will cause
 		// "context cancelled" errors in goroutines to let them exit.
+
+		// Deregister signal delivery before closing the channel to prevent a panic
+		// ("send on closed channel") if a signal arrives after close.
+		signal.Stop(timeToExit)
 		close(timeToExit)
 	}()
 
@@ -177,17 +192,46 @@ func (s *Stage) Run(ctx context.Context) int {
 		case result := <-s.States.resultChan:
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordQuery(utils.GetCtxWithTimeout(time.Second*5), s, result)
+				rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				recorder.RecordQuery(rCtx, s, result)
+				rCancel()
 			}
 		case sig := <-timeToExit:
 			if sig != nil {
 				// Cancel the context and wait for the goroutines to exit.
-				s.States.AbortAll(fmt.Errorf(sig.String()))
+				s.States.AbortAll(fmt.Errorf("%s", sig.String()))
 				continue
 			}
-			s.States.RunFinishTime = time.Now()
+			// All stage goroutines are done (WaitGroup hit 0). Drain any results
+			// still buffered in resultChan — the select may have picked timeToExit
+			// over resultChan when both were ready simultaneously.
+		drainLoop:
+			for {
+				select {
+				case result := <-s.States.resultChan:
+					results = append(results, result)
+					for _, recorder := range s.States.runRecorders {
+						rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+						recorder.RecordQuery(rCtx, s, result)
+						rCancel()
+					}
+				default:
+					break drainLoop
+				}
+			}
+			// Derive RunFinishTime from the latest query EndTime, which is set by
+			// ConcludeExecution() right after query data is drained — before I/O
+			// teardown (saveQueryJsonFile, output file flushes). This gives a clean
+			// "last query completion" time that excludes post-run I/O.
+			for _, result := range results {
+				if result.EndTime != nil && result.EndTime.After(s.States.RunFinishTime) {
+					s.States.RunFinishTime = *result.EndTime
+				}
+			}
 			for _, recorder := range s.States.runRecorders {
-				recorder.RecordRun(utils.GetCtxWithTimeout(time.Second*5), s, results)
+				rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				recorder.RecordRun(rCtx, s, results)
+				rCancel()
 			}
 			return int(s.States.exitCode.Load())
 		}
@@ -203,17 +247,19 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		return nil
 	}
 	defer func() {
-		// Remember to unblock the descendant stages no matter this stage threw an error or not.
-		for _, nextStage := range s.NextStages {
-			nextStage.wgPrerequisites.Done()
-		}
 		if returnErr != nil {
 			s.logErr(ctx, returnErr)
 			if *s.AbortOnError {
 				log.Debug().EmbedObject(s).Msg("canceling the context because abort_on_error is set to true")
+				// Cancel context BEFORE unblocking children so they see the cancellation immediately.
 				s.States.AbortAll(returnErr)
 			}
-		} else {
+		}
+		// Unblock children stages no matter this stage threw an error or not.
+		for _, nextStage := range s.NextStages {
+			nextStage.wgPrerequisites.Done()
+		}
+		if returnErr == nil {
 			// Trigger descendant stages.
 			s.States.wgExitMainStage.Add(len(s.NextStages))
 			for _, nextStage := range s.NextStages {
@@ -248,9 +294,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	}
 
 	postStageErr := s.runShellScripts(ctx, s.PostStageShellScripts)
-	if returnErr == nil {
-		returnErr = postStageErr
-	}
+	returnErr = errors.Join(returnErr, postStageErr)
 	return
 }
 
@@ -298,7 +342,8 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 	file, err := os.Open(queryFile)
 	var queries []string
 	if err == nil {
-		queries, err = presto.SplitQueries(file)
+		queries, err = prestoapi.SplitQueries(file)
+		file.Close()
 	}
 	if err != nil {
 		if !*s.AbortOnError {
@@ -323,6 +368,9 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 }
 
 func (s *Stage) runRandomly(ctx context.Context) error {
+	if s.RandomlyExecuteUntil == nil {
+		return fmt.Errorf("random_execution is true but randomly_execute_until is not set")
+	}
 	var continueExecution func(queryCount int) bool
 	if dur, parseErr := time.ParseDuration(*s.RandomlyExecuteUntil); parseErr == nil {
 		endTime := time.Now().Add(dur)
@@ -415,6 +463,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		if preQueryCycleErr != nil {
 			return fmt.Errorf("pre-query script execution failed: %w", preQueryCycleErr)
 		}
+		var abortErr error
 		for j := 0; j < *s.ColdRuns+*s.WarmRuns; j++ {
 			query := &Query{
 				Text:             queryText,
@@ -441,11 +490,11 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			s.States.resultChan <- result
 			if err != nil {
 				if *s.AbortOnError || ctx.Err() != nil {
-					// If AbortOnError is set, we skip the rest queries in the same batch.
-					// Logging etc. will be handled in the parent stack.
-					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
+					// Break instead of returning so post_query_cycle_scripts still runs as
+					// the teardown counterpart to pre_query_cycle_scripts.
 					s.States.exitCode.CompareAndSwap(0, 1)
-					return result
+					abortErr = result
+					break
 				}
 				// Log the error information and continue running
 				s.logErr(ctx, result)
@@ -455,6 +504,9 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		}
 		// run post query cycle shell scripts
 		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts)
+		if abortErr != nil {
+			return abortErr
+		}
 		if postQueryCycleErr != nil {
 			return fmt.Errorf("post-query script execution failed: %w", postQueryCycleErr)
 		}
@@ -468,7 +520,12 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 			log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
 			if e, ok := r.(error); ok {
 				retErr = e
+			} else {
+				retErr = fmt.Errorf("panic: %v", r)
 			}
+		}
+		if result == nil {
+			result = &QueryResult{StageId: s.Id, Query: query, StartTime: time.Now()}
 		}
 		result.QueryError = retErr
 		result.ConcludeExecution()
@@ -484,11 +541,16 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		return result, ctx.Err()
 	}
 
+	// run pre query shell scripts
+	preQueryErr := s.runShellScripts(ctx, s.PreQueryShellScripts)
+	if preQueryErr != nil {
+		return result, preQueryErr
+	}
+
 	querySourceStr := s.querySourceString(result)
 	clientResult, _, err := s.Client.Query(ctx, query.Text,
 		func(req *http.Request) {
-			req.Header.Set(presto.SourceHeader, querySourceStr)
-			req.Header.Set(presto.TrinoSourceHeader, querySourceStr)
+			req.Header.Set(s.Client.CanonicalHeader(presto.SourceHeader), querySourceStr)
 		})
 	if clientResult != nil {
 		result.QueryId = clientResult.Id
@@ -535,6 +597,8 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 
 		// Start a goroutine to write query output in the background.
 		// Make sure the main stage won't exit until this background goroutine finishes.
+		// Capture a snapshot for logging to avoid racing with the defer that writes result.QueryError.
+		resultSnapshot := result.SimpleLogging()
 		s.States.wgExitMainStage.Add(1)
 		go func() {
 			for data := range queryOutputChan {
@@ -544,7 +608,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 						ioErr = queryOutputWriter.WriteByte('\n')
 					}
 					if ioErr != nil {
-						log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+						log.Error().Err(ioErr).EmbedObject(resultSnapshot).
 							Msg("failed to write query result")
 						// Skip the current batch on error.
 						break
@@ -552,10 +616,10 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 				}
 			}
 			if ioErr := queryOutputWriter.Flush(); ioErr != nil {
-				log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+				log.Error().Err(ioErr).EmbedObject(resultSnapshot).
 					Msg("failed to write query result")
 			} else {
-				log.Info().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
+				log.Info().EmbedObject(resultSnapshot).Msg("query data saved successfully")
 			}
 			_ = queryOutputFile.Close()
 			s.States.wgExitMainStage.Done()
@@ -574,8 +638,6 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	})
 	// run post query shell scripts
 	postQueryErr := s.runShellScripts(ctx, s.PostQueryShellScripts)
-	if err == nil {
-		err = postQueryErr
-	}
+	err = errors.Join(err, postQueryErr)
 	return result, err
 }

@@ -19,8 +19,16 @@ var saveCmd = &cobra.Command{
 		utils.ExpandHomeDirectory(&save.OutputPath)
 		if save.InputFilePath != "" {
 			utils.ExpandHomeDirectory(&save.InputFilePath)
-		} else if len(args) < 1 {
-			return fmt.Errorf("requires at least 1 arg when -f is not used")
+		} else {
+			if save.Catalog == "" {
+				return fmt.Errorf("--catalog is required when -f is not used")
+			}
+			if save.Schema == "" {
+				return fmt.Errorf("--schema is required when -f is not used")
+			}
+			if len(args) < 1 {
+				return fmt.Errorf("requires at least 1 table name when -f is not used")
+			}
 		}
 		return nil
 	},

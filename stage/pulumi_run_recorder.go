@@ -12,6 +12,7 @@ import (
 	"os"
 	"pbench/log"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -21,7 +22,9 @@ const PulumiResourceTypeStack = "pulumi:pulumi:Stack"
 //go:embed pbench_clusters_ddl.sql
 var pbenchClustersDDL string
 
-// PulumiMySQLRunRecorder will record the cluster information from Pulumi to MySQL for correlative analysis in Grafana
+// PulumiMySQLRunRecorder will record the cluster information from Pulumi to MySQL for correlative analysis in Grafana.
+// This is an internal-only recorder with patterns specific to the IBM PrestoDB infrastructure
+// (e.g., cluster FQDN and stack name conventions). It is not intended for external use.
 type PulumiMySQLRunRecorder struct {
 	Token        string `json:"token"`
 	Organization string `json:"organization"`
@@ -88,6 +91,7 @@ func (p *PulumiMySQLRunRecorder) doRequest(ctx context.Context, req *http.Reques
 		}
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusOK {
 		switch v := v.(type) {
 		case nil:
@@ -102,7 +106,6 @@ func (p *PulumiMySQLRunRecorder) doRequest(ctx context.Context, req *http.Reques
 				err = decErr
 			}
 		}
-		_ = resp.Body.Close()
 	}
 	return resp, err
 }
@@ -163,8 +166,37 @@ func (p *PulumiMySQLRunRecorder) findPulumiStackFromClusterFQDN(ctx context.Cont
 	return nil
 }
 
+func (p *PulumiMySQLRunRecorder) findStackFromClusterFQDN(ctx context.Context, clusterFQDN string) *PulumiResource {
+	// Pulumi-managed clusters have FQDNs like <name>.ibm.prestodb.dev where <name> contains no dots.
+	// All other patterns (including Blueray/WXD clusters) are non-Pulumi managed.
+	if strings.HasSuffix(clusterFQDN, ".ibm.prestodb.dev") {
+		prefix := strings.TrimSuffix(clusterFQDN, ".ibm.prestodb.dev")
+		if !strings.Contains(prefix, ".") {
+			return p.findPulumiStackFromClusterFQDN(ctx, clusterFQDN)
+		}
+	}
+	return p.findNonPulumiStackFromClusterFQDN(clusterFQDN)
+}
+
+func (p *PulumiMySQLRunRecorder) findNonPulumiStackFromClusterFQDN(clusterFQDN string) *PulumiResource {
+	parts := strings.SplitN(clusterFQDN, ".", 2)
+	if len(parts) < 2 {
+		log.Error().Str("cluster_fqdn", clusterFQDN).Msg("failed to extract cluster name from FQDN")
+		return nil
+	}
+	resource := &PulumiResource{
+		Type:    PulumiResourceTypeStack,
+		Created: time.Now(),
+	}
+	resource.Outputs.ClusterFQDN = clusterFQDN
+	resource.Outputs.ClusterName = parts[0]
+	log.Info().Str("cluster_name", parts[0]).Str("cluster_fqdn", clusterFQDN).
+		Msg("extracted cluster information from non-Pulumi FQDN")
+	return resource
+}
+
 func (p *PulumiMySQLRunRecorder) Start(ctx context.Context, s *Stage) error {
-	stack := p.findPulumiStackFromClusterFQDN(ctx, s.States.ServerFQDN)
+	stack := p.findStackFromClusterFQDN(ctx, s.States.ServerFQDN)
 	if stack == nil {
 		log.Info().Msgf("did not find a matching Pulumi stack for %s", s.States.ServerFQDN)
 		return nil

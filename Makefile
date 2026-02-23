@@ -12,9 +12,19 @@ $(BINARY): pre clean
 
 .PHONY: all
 all: pre clean
-	$(foreach GOOS, $(PLATFORMS),\
-    	$(foreach GOARCH, $(ARCHITECTURES),\
-    		$(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); $(GO) -o $(BINARY)_$(GOOS)_$(GOARCH))))
+	@for goos in $(PLATFORMS); do \
+		for goarch in $(ARCHITECTURES); do \
+			echo "Building $$goos/$$goarch..."; \
+			GOOS=$$goos GOARCH=$$goarch $(GO) -o $(BINARY)_$${goos}_$${goarch} || exit 1; \
+		done; \
+	done
+
+.PHONY: test
+test:
+	gofmt -l . | (! grep .) || (echo "gofmt: above files are not formatted" && exit 1)
+	go vet ./...
+	staticcheck ./...
+	go test ./... -race -count=1 -timeout 120s
 
 pre:
 ifeq "$(shell which go)" ""
@@ -45,7 +55,7 @@ tar: clean all
 	rm -rf release
 
 upload:
-	$(shell export GOOS=linux; export GOARCH=amd64; $(GO) -tags=influx -o $(BINARY)_linux_amd64)
+	GOOS=linux GOARCH=amd64 go build -tags=influx -o $(BINARY)_linux_amd64
 	aws s3 cp $(BINARY)_linux_amd64 s3://presto-deploy-infra-and-cluster-a9d5d14
 
 sync:

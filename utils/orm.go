@@ -6,22 +6,35 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"pbench/presto/query_json"
 	"reflect"
 	"strings"
+
+	"github.com/ethanyzhang/presto-go/query_json"
 )
 
 type TableName string
 
-func MergeRowsMap(a, b map[TableName][]*Row) map[TableName][]*Row {
+// MergeRowsMap merges two table→rows maps by computing a cartesian product per table. For each table
+// in b, its rows are cross-joined with the existing rows in a for that table (via MultiplyRows). If a
+// has no rows yet for a table, a single empty row is used as the seed so that b's columns are preserved.
+//
+// This is the core mechanism for denormalizing nested structs: parent-level scalar fields produce 1 row
+// in a, and a nested slice of N structs produces N rows in b. The merge yields N rows, each carrying
+// both the parent's columns and one child's columns — equivalent to a SQL cross join.
+const MaxCartesianProductSize = 100_000
+
+func MergeRowsMap(a, b map[TableName][]*Row) (map[TableName][]*Row, error) {
 	for tableName, rows2 := range b {
 		rows1 := a[tableName]
 		if len(rows1) == 0 {
 			rows1 = []*Row{NewRowWithColumnCapacity(16)}
 		}
+		if product := len(rows1) * len(rows2); product > MaxCartesianProductSize {
+			return nil, fmt.Errorf("cartesian product for table %q exceeds limit: %d > %d", tableName, product, MaxCartesianProductSize)
+		}
 		a[tableName] = MultiplyRows(rows1, rows2)
 	}
-	return a
+	return a, nil
 }
 
 func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...TableName) (returnedErr error) {
@@ -43,19 +56,28 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 	if k := DerefValue(&v); k != reflect.Struct {
 		return fmt.Errorf("obj must be a struct, got %v", k)
 	}
-	rowsMap := collectRowsForEachTable(v, tableNames...)
+	rowsMap, err := collectRowsForEachTable(v, tableNames...)
+	if err != nil {
+		return err
+	}
 
 	for table, rows := range rowsMap {
 		if len(rows) == 0 {
 			continue
 		}
-		placeholders := strings.Repeat("?,", rows[0].ColumnCount())
-		// Get rid of the trailing comma.
-		placeholders = placeholders[:len(placeholders)-1]
-		sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
-			table, strings.Join(rows[0].ColumnNames, ","), placeholders)
+		if len(rows) == 1 && rows[0].ColumnCount() <= 1 {
+			continue
+		}
 
 		for _, row := range rows {
+			if row.ColumnCount() == 0 {
+				continue
+			}
+			placeholders := strings.Repeat("?,", row.ColumnCount())
+			// Get rid of the trailing comma.
+			placeholders = placeholders[:len(placeholders)-1]
+			sqlStmt := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)",
+				table, strings.Join(row.ColumnNames, ","), placeholders)
 			//log.Info().Str("sql", sqlStmt).Array("values", log.NewMarshaller(row.Values)).Msg("execute sql")
 			_, err := tx.Exec(sqlStmt, row.Values...)
 			if err != nil {
@@ -66,7 +88,16 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 	return nil
 }
 
-func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row) {
+// collectRowsForEachTable uses reflection to extract SQL rows from a struct, using struct field tags
+// as column mappings. Each tableNames entry corresponds to a tag key (e.g., "table_a"); a field tagged
+// `table_a:"col_name"` contributes its value as column "col_name" to the "table_a" row.
+//
+// Nested structs are traversed recursively and their columns are merged via cartesian product with the
+// parent's columns (so if a parent contributes 1 row and a child slice contributes 3, the result is 3
+// rows each containing both parent and child columns). Slice/array fields of structs produce one row
+// per element. json.RawMessage values are compacted, and query_json.Duration values are converted to
+// milliseconds.
+func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row, err error) {
 	rowsMap = make(map[TableName][]*Row)
 	if k := DerefValue(&v); k != reflect.Struct {
 		return
@@ -107,8 +138,13 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 			}
 		}
 		if fvk == reflect.Struct {
-			rowsMapFromStruct := collectRowsForEachTable(fv, tableNames...)
-			rowsMap = MergeRowsMap(rowsMap, rowsMapFromStruct)
+			rowsMapFromStruct, childErr := collectRowsForEachTable(fv, tableNames...)
+			if childErr != nil {
+				return nil, childErr
+			}
+			if rowsMap, err = MergeRowsMap(rowsMap, rowsMapFromStruct); err != nil {
+				return nil, err
+			}
 		} else if fvk == reflect.Array || fvk == reflect.Slice {
 			if fv.Len() == 0 {
 				continue
@@ -119,12 +155,17 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 			}
 			rowsMapFromArray := make(map[TableName][]*Row)
 			for j := 0; j < fv.Len(); j++ {
-				rowsMapFromElement := collectRowsForEachTable(fv.Index(j), tableNames...)
+				rowsMapFromElement, elemErr := collectRowsForEachTable(fv.Index(j), tableNames...)
+				if elemErr != nil {
+					return nil, elemErr
+				}
 				for table, rmap := range rowsMapFromElement {
 					rowsMapFromArray[table] = append(rowsMapFromArray[table], rmap...)
 				}
 			}
-			rowsMap = MergeRowsMap(rowsMap, rowsMapFromArray)
+			if rowsMap, err = MergeRowsMap(rowsMap, rowsMapFromArray); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return

@@ -7,9 +7,10 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
-	"pbench/presto/query_json"
 	"pbench/utils"
+
+	presto "github.com/ethanyzhang/presto-go"
+	"github.com/ethanyzhang/presto-go/query_json"
 	"regexp"
 	"sync"
 	"sync/atomic"
@@ -58,6 +59,7 @@ func waitForNextPoll(ctx context.Context) {
 	timer := time.NewTimer(PollInterval)
 	select {
 	case <-ctx.Done():
+		timer.Stop()
 	case <-timer.C:
 	}
 }
@@ -121,6 +123,10 @@ func Run(_ *cobra.Command, _ []string) {
 		}
 	}
 
+	if len(SchemaMappingStrings)%2 != 0 {
+		log.Warn().Int("count", len(SchemaMappingStrings)).
+			Msg("schema mapping requires pairs of values, last unpaired value will be ignored")
+	}
 	for i := 0; i+1 < len(SchemaMappingStrings); i += 2 {
 		schemaMappings[SchemaMappingStrings[i]] = SchemaMappingStrings[i+1]
 		log.Info().Msgf("added schema mapping from %s to %s", SchemaMappingStrings[i], SchemaMappingStrings[i+1])
@@ -140,7 +146,7 @@ func Run(_ *cobra.Command, _ []string) {
 	// Keep running until user interrupts or quits using Ctrl + C or Ctrl + D.
 	// When the cluster is unavailable to return the running queries, wait and retry for at most 10 times before quitting.
 	for attempt := 1; ctx.Err() == nil && attempt <= maxRetry; {
-		states, _, err := sourceClient.GetQueryState(ctx, &presto.GetQueryStatsOptions{
+		states, _, err := sourceClient.GetQueryState(ctx, &presto.GetQueryStateOptions{
 			IncludeAllQueries:  &trueValue,
 			QueryTextSizeLimit: &queryTextSizeLimit,
 		})
@@ -185,6 +191,7 @@ func Run(_ *cobra.Command, _ []string) {
 	}
 	runningTasks.Wait()
 	// This causes the signal handler to exit.
+	signal.Stop(timeToExit)
 	close(timeToExit)
 	log.Info().Uint32("forwarded", forwarded.Load()).Uint32("failed_to_forward", failedToForward.Load()).
 		Msgf("finished forwarding queries")
@@ -197,10 +204,11 @@ func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo)
 
 	if ok {
 		for _, q := range queryCacheEntries {
-			if q.NextUri != "" {
+			// Entries can be nil if the slice was pre-allocated but not yet populated by goroutines.
+			if q != nil && q.NextUri != "" {
 				_, _, cancelQueryErr := q.Client.CancelQuery(ctx, q.NextUri)
 				if cancelQueryErr != nil {
-					log.Error().Msgf("cancel query failed on target cluter: %s error: %s", q.NextUri, cancelQueryErr.Error())
+					log.Error().Msgf("cancel query failed on target cluster: %s error: %s", q.NextUri, cancelQueryErr.Error())
 				}
 			}
 		}
@@ -209,13 +217,12 @@ func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo)
 
 func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, clients []*presto.Client) {
 	defer runningTasks.Done()
-	var (
-		queryInfo    *query_json.QueryInfo
-		queryInfoErr error
-	)
+	var queryInfoErr error
+	queryInfo := new(query_json.QueryInfo)
 	for attempt := 1; attempt <= maxRetry; attempt++ {
-		queryInfo, _, queryInfoErr = clients[0].GetQueryInfo(ctx, queryState.QueryId, false, nil)
+		_, queryInfoErr = clients[0].GetQueryInfo(ctx, queryState.QueryId, queryInfo)
 		if queryInfoErr != nil {
+			queryInfo = new(query_json.QueryInfo)
 			log.Error().Str("source_query_id", queryState.QueryId).Err(queryInfoErr).
 				Msgf("failed to get query info for forwarding, attempt %d/%d", attempt, maxRetry)
 			waitForNextPoll(ctx)
@@ -223,7 +230,7 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			break
 		}
 	}
-	if queryInfo == nil {
+	if queryInfoErr != nil {
 		log.Error().Str("source_query_id", queryState.QueryId).
 			Msgf("cannot get query info for forwarding after %d retries, skipping", maxRetry)
 		failedToForward.Add(1)
@@ -263,9 +270,14 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 	successful, failed := atomic.Uint32{}, atomic.Uint32{}
 	forwardedQueries := sync.WaitGroup{}
 	cachedQueries := make([]*QueryCacheEntry, len(clients)-1)
+	// Register cache entry before starting goroutines so checkAndCancelQuery can find in-flight queries.
+	queryCacheMutex.Lock()
+	runningQueriesCacheMap[queryState.QueryId] = cachedQueries
+	queryCacheMutex.Unlock()
+	log.Debug().Str("query_id", queryState.QueryId).Msg("adding query to cache")
 	for i := 1; i < len(clients); i++ {
 		forwardedQueries.Add(1)
-		go func(client *presto.Client) {
+		go func(client *presto.Client, cacheIdx int) {
 			defer forwardedQueries.Done()
 			clientResult, _, queryErr := client.Query(ctx, queryInfo.Query, func(req *http.Request) {
 				if queryInfo.Session.Catalog != nil {
@@ -283,9 +295,11 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 				failed.Add(1)
 				return
 			}
-			//build cache for running query
+			// Store cache entry per-goroutine so cancellation can find this query while draining.
 			if clientResult.NextUri != nil {
-				cachedQueries[i-1] = &QueryCacheEntry{NextUri: *clientResult.NextUri, Client: client}
+				queryCacheMutex.Lock()
+				cachedQueries[cacheIdx] = &QueryCacheEntry{NextUri: *clientResult.NextUri, Client: client}
+				queryCacheMutex.Unlock()
 			}
 			rowCount := 0
 			drainErr := clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
@@ -301,20 +315,15 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			successful.Add(1)
 			log.Info().Str("source_query_id", queryInfo.QueryId).
 				Str("target_host", client.GetHost()).Int("row_count", rowCount).Msg("query executed successfully")
-		}(clients[i])
+		}(clients[i], i-1)
 	}
-	//Add running query into to cache
-	queryCacheMutex.Lock()
-	runningQueriesCacheMap[queryState.QueryId] = cachedQueries
-	queryCacheMutex.Unlock()
-	log.Debug().Msg("adding query to cache" + queryState.QueryId)
 	forwardedQueries.Wait()
 	log.Info().Str("source_query_id", queryInfo.QueryId).Uint32("successful", successful.Load()).
 		Uint32("failed", failed.Load()).Msg("query forwarding finished")
 	forwarded.Add(1)
-	//remove finished query from cache
+	// Remove finished query from cache.
 	queryCacheMutex.Lock()
 	delete(runningQueriesCacheMap, queryState.QueryId)
 	queryCacheMutex.Unlock()
-	log.Info().Msg("removing query from cache" + queryState.QueryId)
+	log.Info().Str("query_id", queryState.QueryId).Msg("removing query from cache")
 }

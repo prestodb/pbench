@@ -10,8 +10,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
 	"pbench/utils"
+
+	presto "github.com/ethanyzhang/presto-go"
 	"sync"
 	"syscall"
 	"time"
@@ -20,11 +21,13 @@ import (
 var (
 	RunName     string
 	OutputPath  string
+	Parallelism int
 	PrestoFlags utils.PrestoFlags
 
-	queryFrameChan = make(chan *QueryFrame, 128)
-	done           = make(chan any)
-	runningTasks   sync.WaitGroup
+	queryFrameChan   = make(chan *QueryFrame, 128)
+	done             = make(chan any)
+	parallelismGuard chan struct{}
+	runningTasks     sync.WaitGroup
 )
 
 func Run(_ *cobra.Command, args []string) {
@@ -53,6 +56,8 @@ func Run(_ *cobra.Command, args []string) {
 			cancel()
 		}
 	}()
+	log.Info().Int("parallelism", Parallelism).Send()
+	parallelismGuard = make(chan struct{}, Parallelism)
 	go QueryFrameScheduler(ctx)
 
 	reader := csv.NewReader(csvFile)
@@ -79,12 +84,14 @@ func Run(_ *cobra.Command, args []string) {
 	_ = csvFile.Close()
 	close(queryFrameChan)
 	<-done
+	signal.Stop(timeToExit)
 	close(timeToExit)
 }
 
 func QueryFrameScheduler(ctx context.Context) {
 	firstFrame := <-queryFrameChan
 	if firstFrame == nil { // No query in the CSV file at all, or context canceled before the first frame was sent.
+		close(done)
 		return
 	}
 	client := PrestoFlags.NewPrestoClient()
@@ -93,6 +100,7 @@ func QueryFrameScheduler(ctx context.Context) {
 		firstFrame.SessionProperties: sessionParamHeader,
 	}
 	lastFiredTime := firstFrame.CreateTime
+	parallelismGuard <- struct{}{}
 	runningTasks.Add(1)
 	go RunQueryFrame(ctx, client, firstFrame, sessionParamHeader)
 
@@ -105,6 +113,7 @@ func QueryFrameScheduler(ctx context.Context) {
 			timer := time.NewTimer(waitTime)
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 			case <-timer.C:
 			}
 		}
@@ -118,6 +127,7 @@ func QueryFrameScheduler(ctx context.Context) {
 			sessionParamHeader = client.GenerateSessionParamsHeaderValue(frame.ParseSessionParams())
 			sessionParamCache[frame.SessionProperties] = sessionParamHeader
 		}
+		parallelismGuard <- struct{}{}
 		runningTasks.Add(1)
 		go RunQueryFrame(ctx, client, frame, sessionParamHeader)
 	}
@@ -127,7 +137,10 @@ func QueryFrameScheduler(ctx context.Context) {
 }
 
 func RunQueryFrame(ctx context.Context, client *presto.Client, frame *QueryFrame, sessionParams string) {
-	defer runningTasks.Done()
+	defer func() {
+		<-parallelismGuard
+		runningTasks.Done()
+	}()
 	clientResult, _, err := client.Query(ctx, frame.Query, func(req *http.Request) {
 		req.Header.Set(presto.CatalogHeader, frame.Catalog)
 		req.Header.Set(presto.SchemaHeader, frame.Schema)

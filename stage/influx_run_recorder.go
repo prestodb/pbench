@@ -10,13 +10,15 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"os"
 	"pbench/log"
+	"sync/atomic"
+	"time"
 )
 
 type InfluxRunRecorder struct {
 	influxClient influxdb2.Client
 	influxWriter influxapi.WriteAPIBlocking
-	failed       int
-	mismatch     int
+	failed       atomic.Int64
+	mismatch     atomic.Int64
 }
 
 func NewInfluxRunRecorder(cfgPath string) RunRecorder {
@@ -67,22 +69,29 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 		"row_count":          result.RowCount,
 		"expected_row_count": result.Query.ExpectedRowCount,
 		"start_time":         result.StartTime.UnixNano(),
-		"duration_ms":        result.Duration.Milliseconds(),
+	}
+	// Duration and EndTime are nil when ConcludeExecution was not called (e.g., query error).
+	if result.Duration != nil {
+		fields["duration_ms"] = result.Duration.Milliseconds()
 	}
 	if result.Query.ExpectedRowCount < 0 {
 		delete(fields, "expected_row_count")
 	} else if result.Query.ExpectedRowCount != result.RowCount {
-		i.mismatch++
+		i.mismatch.Add(1)
 	}
 	if result.QueryError != nil {
-		i.failed++
+		i.failed.Add(1)
 	}
 	if result.Query.File != nil {
 		fields["query_file"] = *result.Query.File
 	} else {
 		fields["query_file"] = "inline"
 	}
-	point := write.NewPoint("queries", tags, fields, *result.EndTime)
+	var endTime time.Time
+	if result.EndTime != nil {
+		endTime = *result.EndTime
+	}
+	point := write.NewPoint("queries", tags, fields, endTime)
 	if err := i.influxWriter.WritePoint(ctx, point); err != nil {
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to influxdb")
 	}
@@ -95,8 +104,8 @@ func (i *InfluxRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*
 	fields := map[string]interface{}{
 		"start_time":  s.States.RunStartTime.UnixNano(),
 		"queries_ran": len(results),
-		"failed":      i.failed,
-		"mismatch":    i.mismatch,
+		"failed":      i.failed.Load(),
+		"mismatch":    i.mismatch.Load(),
 		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
 		"comment":     s.States.Comment,
 	}

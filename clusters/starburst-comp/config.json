@@ -1,0 +1,10 @@
+{
+    "cluster_size": "starburst-comp",
+    "coordinator_instance_type": "m6i.8xlarge",
+    "coordinator_instance_ebs_size": 50,
+    "worker_instance_type": "m6i.8xlarge",
+    "worker_instance_ebs_size": 50,
+    "number_of_workers": 1,
+    "memory_per_node_gb": 124,
+    "vcpu_per_worker": 32
+}

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	presto "github.com/ethanyzhang/presto-go"
 	"os"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
 	"pbench/utils"
 	"strconv"
 	"time"
@@ -28,7 +28,7 @@ var (
 type OnQueryCompletionFn func(result *QueryResult)
 
 var DefaultNewClientFn = func() *presto.Client {
-	client, _ := presto.NewClient(utils.DefaultServerUrl, false)
+	client, _ := presto.NewClient(utils.DefaultServerUrl)
 	return client
 }
 
@@ -94,6 +94,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.BaseDir = other.BaseDir
 
 	s.PreStageShellScripts = append(s.PreStageShellScripts, other.PreStageShellScripts...)
+	s.PreQueryShellScripts = append(s.PreQueryShellScripts, other.PreQueryShellScripts...)
 	s.PostQueryShellScripts = append(s.PostQueryShellScripts, other.PostQueryShellScripts...)
 	s.PostStageShellScripts = append(s.PostStageShellScripts, other.PostStageShellScripts...)
 	s.PreQueryCycleShellScripts = append(s.PreQueryCycleShellScripts, other.PreQueryCycleShellScripts...)
@@ -149,7 +150,23 @@ func (s *Stage) logErr(ctx context.Context, err error) {
 
 func (s *Stage) prepareClient() {
 	if s.Client != nil && !s.StartOnNewClient {
-		return
+		needsNewClient := false
+		if s.Catalog != nil && *s.Catalog != s.Client.GetCatalog() {
+			needsNewClient = true
+		}
+		if s.Schema != nil && *s.Schema != s.Client.GetSchema() {
+			needsNewClient = true
+		}
+		if s.TimeZone != nil && *s.TimeZone != s.Client.GetTimeZone() {
+			needsNewClient = true
+		}
+		if !needsNewClient {
+			s.currentCatalog = s.Client.GetCatalog()
+			s.currentSchema = s.Client.GetSchema()
+			s.currentTimeZone = s.Client.GetTimeZone()
+			return
+		}
+		log.Info().EmbedObject(s).Msg("auto-creating new client because catalog/schema/timezone changed")
 	}
 	if s.States.NewClient == nil {
 		s.States.NewClient = DefaultNewClientFn
@@ -220,58 +237,60 @@ func (s *Stage) setDefaults() {
 
 func (s *Stage) propagateStates() {
 	for _, nextStage := range s.NextStages {
-		if nextStage.Catalog == nil {
-			nextStage.Catalog = s.Catalog
-		}
-		if nextStage.Schema == nil {
-			nextStage.Schema = s.Schema
-		}
-		if nextStage.SessionParams == nil {
-			nextStage.SessionParams = make(map[string]any)
-		}
-		if nextStage.TimeZone == nil {
-			nextStage.TimeZone = s.TimeZone
-		}
-		if nextStage.RandomExecution == nil {
-			nextStage.RandomExecution = s.RandomExecution
-		}
-		if nextStage.RandomlyExecuteUntil == nil {
-			nextStage.RandomlyExecuteUntil = s.RandomlyExecuteUntil
-		}
-		for k, v := range s.SessionParams {
-			if v == nil {
-				continue
+		nextStage.propagateOnce.Do(func() {
+			if nextStage.Catalog == nil {
+				nextStage.Catalog = s.Catalog
 			}
-			if _, ok := nextStage.SessionParams[k]; !ok {
-				nextStage.SessionParams[k] = v
+			if nextStage.Schema == nil {
+				nextStage.Schema = s.Schema
 			}
-		}
-		if nextStage.ColdRuns == nil && nextStage.WarmRuns == nil {
-			nextStage.ColdRuns = s.ColdRuns
-			nextStage.WarmRuns = s.WarmRuns
-		} else if nextStage.ColdRuns == nil {
-			nextStage.ColdRuns = &RunsValueZero
-		} else if nextStage.WarmRuns == nil {
-			nextStage.WarmRuns = &RunsValueZero
-		}
-		if *nextStage.ColdRuns+*nextStage.WarmRuns <= 0 {
-			nextStage.ColdRuns = &RunsValueOne
-			nextStage.WarmRuns = &RunsValueZero
-		}
-		if nextStage.AbortOnError == nil {
-			nextStage.AbortOnError = s.AbortOnError
-		}
-		if nextStage.SaveOutput == nil {
-			nextStage.SaveOutput = s.SaveOutput
-		}
-		if nextStage.SaveColumnMetadata == nil {
-			nextStage.SaveColumnMetadata = s.SaveColumnMetadata
-		}
-		if nextStage.SaveJson == nil {
-			nextStage.SaveJson = s.SaveJson
-		}
-		nextStage.States = s.States
-		nextStage.Client = s.Client
+			if nextStage.SessionParams == nil {
+				nextStage.SessionParams = make(map[string]any)
+			}
+			if nextStage.TimeZone == nil {
+				nextStage.TimeZone = s.TimeZone
+			}
+			if nextStage.RandomExecution == nil {
+				nextStage.RandomExecution = s.RandomExecution
+			}
+			if nextStage.RandomlyExecuteUntil == nil {
+				nextStage.RandomlyExecuteUntil = s.RandomlyExecuteUntil
+			}
+			for k, v := range s.SessionParams {
+				if v == nil {
+					continue
+				}
+				if _, ok := nextStage.SessionParams[k]; !ok {
+					nextStage.SessionParams[k] = v
+				}
+			}
+			if nextStage.ColdRuns == nil && nextStage.WarmRuns == nil {
+				nextStage.ColdRuns = s.ColdRuns
+				nextStage.WarmRuns = s.WarmRuns
+			} else if nextStage.ColdRuns == nil {
+				nextStage.ColdRuns = &RunsValueZero
+			} else if nextStage.WarmRuns == nil {
+				nextStage.WarmRuns = &RunsValueZero
+			}
+			if *nextStage.ColdRuns+*nextStage.WarmRuns <= 0 {
+				nextStage.ColdRuns = &RunsValueOne
+				nextStage.WarmRuns = &RunsValueZero
+			}
+			if nextStage.AbortOnError == nil {
+				nextStage.AbortOnError = s.AbortOnError
+			}
+			if nextStage.SaveOutput == nil {
+				nextStage.SaveOutput = s.SaveOutput
+			}
+			if nextStage.SaveColumnMetadata == nil {
+				nextStage.SaveColumnMetadata = s.SaveColumnMetadata
+			}
+			if nextStage.SaveJson == nil {
+				nextStage.SaveJson = s.SaveJson
+			}
+			nextStage.States = s.States
+			nextStage.Client = s.Client
+		})
 	}
 }
 
@@ -295,7 +314,9 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 			checkErr(err)
 			if err == nil {
 				// We need to save the query json file even if the stage context is canceled.
-				_, _, err = s.Client.GetQueryInfo(utils.GetCtxWithTimeout(time.Second*5), result.QueryId, false, queryJsonFile)
+				qCtx, qCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				_, err = s.Client.GetQueryInfo(qCtx, result.QueryId, queryJsonFile)
+				qCancel()
 				checkErr(err)
 				checkErr(queryJsonFile.Close())
 			}
@@ -307,11 +328,14 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 			checkErr(err)
 			if err == nil {
 				bytes, e := json.MarshalIndent(result.QueryError, "", "  ")
+				// If marshaling produced "{}" or failed, fall back to the error message string.
+				if e != nil || string(bytes) == "{}" {
+					bytes, e = json.MarshalIndent(map[string]string{
+						"error": result.QueryError.Error(),
+					}, "", "  ")
+				}
 				if e == nil {
 					_, e = queryErrorFile.Write(bytes)
-				} else {
-					checkErr(e)
-					_, e = queryErrorFile.WriteString(e.Error())
 				}
 				checkErr(e)
 				checkErr(queryErrorFile.Close())

@@ -1,0 +1,11 @@
+{
+  "queries": [
+    "select 'query 1'",
+    "select 'query 2'",
+    "select 'query 3'"
+  ],
+  "random_execution": true,
+  "randomly_execute_until": "6",
+  "catalog": "tpch",
+  "schema": "sf1"
+}

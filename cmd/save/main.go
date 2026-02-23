@@ -11,8 +11,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
-	"pbench/presto"
 	"pbench/utils"
+
+	presto "github.com/ethanyzhang/presto-go"
 	"strings"
 	"sync"
 	"syscall"
@@ -109,10 +110,11 @@ func Run(_ *cobra.Command, args []string) {
 		close(done)
 	}()
 	<-done
+	signal.Stop(timeToExit)
 	close(timeToExit)
 }
 
-func saveTable(ctx context.Context, client *presto.Client, catalog, schema, table string) {
+func saveTable(ctx context.Context, client *presto.Session, catalog, schema, table string) {
 	parallelismGuard <- struct{}{}
 	runningTasks.Add(1)
 	go func() {

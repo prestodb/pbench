@@ -39,4 +39,5 @@ func init() {
 	_ = replayCmd.Flags().MarkHidden("trino")
 	replayCmd.Flags().StringVarP(&replay.OutputPath, "output-path", "o", wd, "Output directory path")
 	replayCmd.Flags().StringVarP(&replay.RunName, "name", "n", fmt.Sprintf("replay_%s", time.Now().Format(utils.DirectoryNameTimeFormat)), `Assign a name to this run. (default: "replay_<current time>")`)
+	replayCmd.Flags().IntVarP(&replay.Parallelism, "parallel", "P", 150, "Maximum number of concurrent queries to replay. Adjust this if the recorded workload has a higher server concurrency level.")
 }

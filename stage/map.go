@@ -138,13 +138,22 @@ func fileNameWithoutPathAndExt(filePath string) string {
 }
 
 func checkStageLinks(stage *Stage) error {
+	return checkStageLinksImpl(stage, make(map[string]bool))
+}
+
+func checkStageLinksImpl(stage *Stage, visiting map[string]bool) error {
+	if visiting[stage.Id] {
+		return fmt.Errorf("cycle detected: stage %s references itself in the DAG", stage.Id)
+	}
+	visiting[stage.Id] = true
+	defer delete(visiting, stage.Id)
 	nextStageMap := make(map[string]bool)
 	for _, nextStage := range stage.NextStages {
 		if nextStageMap[nextStage.Id] {
 			return fmt.Errorf("stage %s got duplicated next stages %s", stage.Id, nextStage.Id)
 		}
 		nextStageMap[nextStage.Id] = true
-		if err := checkStageLinks(nextStage); err != nil {
+		if err := checkStageLinksImpl(nextStage, visiting); err != nil {
 			return err
 		}
 	}

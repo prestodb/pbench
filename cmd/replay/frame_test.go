@@ -2,13 +2,30 @@ package replay
 
 import (
 	"encoding/csv"
+	presto "github.com/ethanyzhang/presto-go"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"pbench/presto"
 	"sort"
 	"strings"
 	"testing"
 )
+
+func TestNewQueryFrame_TooFewFields(t *testing.T) {
+	_, err := NewQueryFrame([]string{"a", "b", "c"})
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "expected at least 9 fields")
+}
+
+func TestNewQueryFrame_ExactlyNineFields(t *testing.T) {
+	fields := []string{
+		"qid1", "2024-04-15 11:20:42.755 UTC", "100", "5", "0", "cat", "sch", "{}", "SELECT 1",
+	}
+	frame, err := NewQueryFrame(fields)
+	assert.Nil(t, err)
+	assert.Equal(t, "qid1", frame.QueryId)
+	assert.Equal(t, 100, frame.WallTimeMillis)
+	assert.Equal(t, "cat", frame.Catalog)
+}
 
 func TestFrame(t *testing.T) {
 	testFile := `"query_id","create_time","wallTimeMillis","output_rows","written_output_rows","catalog","schema","session_properties","query"
@@ -28,7 +45,7 @@ func TestFrame(t *testing.T) {
 		assert.Equal(t, "20240415_112042_61088_qa5fd", frame.QueryId)
 		assert.Equal(t, "2024-04-15 11:20:42.755 UTC", frame.CreateTime.Format(CreateTimeFormat))
 		assert.Equal(t, 99993, frame.WallTimeMillis)
-		client, _ := presto.NewClient("http://127.0.0.1", false)
+		client, _ := presto.NewClient("http://127.0.0.1")
 		sessionParams := strings.Split(client.GenerateSessionParamsHeaderValue(frame.ParseSessionParams()), ",")
 		sort.Strings(sessionParams)
 		assert.Equal(t, []string{

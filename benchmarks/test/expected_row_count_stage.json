@@ -1,0 +1,11 @@
+{
+  "queries": [
+    "select 'query 1'",
+    "select 'query 2'"
+  ],
+  "catalog": "tpch",
+  "schema": "sf1",
+  "expected_row_counts": {
+    "tpch.sf1": [1, 1]
+  }
+}

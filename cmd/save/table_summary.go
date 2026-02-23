@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"os"
 	"pbench/log"
-	"pbench/presto"
+	"pbench/prestoapi"
 	"pbench/utils"
+	"sync"
+
+	presto "github.com/ethanyzhang/presto-go"
 	"strings"
 	"syscall"
 )
@@ -25,7 +28,7 @@ const (
 	DateType      = "date"
 	TimestampType = "timestamp"
 	VarcharType   = "varchar"
-	VarbinrayType = "varbinray"
+	VarbinaryType = "varbinary"
 	CharType      = "char"
 	ArrayType     = "array"
 	MapType       = "map"
@@ -45,7 +48,7 @@ var (
 	IsSizable = map[string]bool{
 		CharType:      true,
 		VarcharType:   true,
-		VarbinrayType: true,
+		VarbinaryType: true,
 		ArrayType:     true,
 		MapType:       true,
 		RowType:       true,
@@ -57,53 +60,68 @@ var (
 		We don't know which name to use until the first query that uses those functions are run.
 		We keep a flag for this as soon as we know, so we do not generate more failing queries.
 	*/
-	internalFunctionPrefix = ""
+	internalFunctionPrefix   string
+	internalFunctionPrefixMu sync.RWMutex
 )
 
 type TableSummary struct {
-	Name        string               `json:"name"`
-	Catalog     string               `json:"catalog"`
-	Schema      string               `json:"schema"`
-	Ddl         string               `json:"ddl"`
-	ColumnStats []presto.ColumnStats `json:"columnStats"`
-	RowCount    *int                 `json:"rowCount,omitempty"`
+	Name        string                  `json:"name"`
+	Catalog     string                  `json:"catalog"`
+	Schema      string                  `json:"schema"`
+	Ddl         string                  `json:"ddl"`
+	ColumnStats []prestoapi.ColumnStats `json:"columnStats"`
+	RowCount    *int                    `json:"rowCount,omitempty"`
 }
 
-func handleQueryError(err error, abortOnError bool) (retry bool) {
+// handleQueryError inspects a query error and returns whether the caller should retry,
+// plus a non-nil fatal error when the query sequence should be aborted entirely.
+func handleQueryError(err error, abortOnError bool) (retry bool, fatal error) {
 	if err == nil {
-		return
+		return false, nil
 	}
 	if abortOnError || errors.Is(err, syscall.ECONNREFUSED) {
-		panic(err)
+		return false, err
 	}
 	var queryError *presto.QueryError
 	if errors.As(err, &queryError) {
 		if strings.HasSuffix(queryError.Message, "does not exist") {
 			// table/schema/catalog does not exist, then no need to run more queries that will fail.
-			panic(err)
+			return false, err
 		}
-		if internalFunctionPrefix == "" && strings.HasSuffix(queryError.Message, "data_size_for_stats not registered") {
+		internalFunctionPrefixMu.RLock()
+		prefix := internalFunctionPrefix
+		internalFunctionPrefixMu.RUnlock()
+		if prefix == "" && strings.HasSuffix(queryError.Message, "data_size_for_stats not registered") {
+			internalFunctionPrefixMu.Lock()
 			internalFunctionPrefix = "$internal$"
+			internalFunctionPrefixMu.Unlock()
 			log.Info().Msg(`using "$internal$max_data_size_for_stats" and "$internal$sum_data_size_for_stats" for later queries`)
 			retry = true
 		}
 	}
 	log.Error().Err(err).Msg("failed to query stats")
-	return
+	return retry, nil
 }
 
-func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Client, analyze bool) {
+func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Session, analyze bool) {
 	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
 
-	defer func() {
-		if err := recover(); err != nil {
-			log.Error().Msgf("querying table summary for %s aborted due to %v", fullyQualifiedTableName, err)
-		}
-	}()
+	abortLog := func(err error) {
+		log.Error().Err(err).Msgf("querying table summary for %s aborted", fullyQualifiedTableName)
+	}
 
-	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl), true)
-	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats), true)
-	handleQueryError(presto.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats), true)
+	if _, fatal := handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl), true); fatal != nil {
+		abortLog(fatal)
+		return
+	}
+	if _, fatal := handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats), true); fatal != nil {
+		abortLog(fatal)
+		return
+	}
+	if _, fatal := handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats), true); fatal != nil {
+		abortLog(fatal)
+		return
+	}
 	// Find the row count from the table summary row (usually the last row)
 	for i := len(s.ColumnStats) - 1; i >= 0; i-- {
 		if stats := s.ColumnStats[i]; stats.ColumnName == "" && stats.RowCount != nil {
@@ -114,11 +132,11 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 	}
 	// Unlikely but if the row count is still NULL, then do SELECT COUNT(*)
 	if s.RowCount == nil {
-		handleQueryError(presto.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount), true)
+		handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount), true)
 	}
 
 	// Zero rows, no need to do anything more.
-	if *s.RowCount == 0 || !analyze {
+	if s.RowCount == nil || *s.RowCount == 0 || !analyze {
 		return
 	}
 
@@ -140,12 +158,15 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 		if stat.NullsFraction == nil {
 			statistics = append(statistics, fmt.Sprintf("count(%s) AS non_null_values_count", stat.ColumnName))
 		}
+		internalFunctionPrefixMu.RLock()
+		prefix := internalFunctionPrefix
+		internalFunctionPrefixMu.RUnlock()
 		if rawDataType == BooleanType {
 			statistics = append(statistics, fmt.Sprintf("count_if(%s) AS true_values_count", stat.ColumnName))
 		} else if IsSizable[rawDataType] {
-			statistics = append(statistics, fmt.Sprintf("\"%smax_data_size_for_stats\"(%s) AS max_data_size", internalFunctionPrefix, stat.ColumnName))
+			statistics = append(statistics, fmt.Sprintf("\"%smax_data_size_for_stats\"(%s) AS max_data_size", prefix, stat.ColumnName))
 			if stat.DataSize == nil {
-				statistics = append(statistics, fmt.Sprintf("\"%ssum_data_size_for_stats\"(%s) AS data_size", internalFunctionPrefix, stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("\"%ssum_data_size_for_stats\"(%s) AS data_size", prefix, stat.ColumnName))
 			}
 			if stat.DistinctValuesCount == nil && (rawDataType == VarcharType || rawDataType == CharType) {
 				statistics = append(statistics, fmt.Sprintf("approx_distinct(%s) AS distinct_values_count", stat.ColumnName))
@@ -167,11 +188,16 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Cli
 		}
 
 		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(statistics, ", "), fullyQualifiedTableName)
-		err := presto.QueryAndUnmarshal(ctx, client, query, stat)
-		if retry := handleQueryError(err, false); retry {
+		err := prestoapi.QueryAndUnmarshal(ctx, client, query, stat)
+		retry, fatal := handleQueryError(err, false)
+		if fatal != nil {
+			abortLog(fatal)
+			return
+		}
+		if retry {
 			i--
 		}
-		if err == nil && stat.NullsFraction == nil {
+		if err == nil && stat.NullsFraction == nil && stat.NonNullValuesCount != nil {
 			nullsFraction := 1 - *stat.NonNullValuesCount/float64(*s.RowCount)
 			stat.NullsFraction = &nullsFraction
 		}

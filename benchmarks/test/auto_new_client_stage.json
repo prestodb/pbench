@@ -1,0 +1,7 @@
+{
+  "description": "Parent stage - verifies auto client creation on catalog change",
+  "catalog": "parent_catalog",
+  "schema": "parent_schema",
+  "queries": ["select 'parent'"],
+  "next": ["auto_new_client_child.json"]
+}

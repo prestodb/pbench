@@ -1,0 +1,6 @@
+{
+  "description": "Child stage with different catalog - should auto-create new client",
+  "catalog": "child_catalog",
+  "schema": "child_schema",
+  "queries": ["select 'child'"]
+}
