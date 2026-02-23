@@ -48,6 +48,9 @@ func buildColumnMap(t reflect.Type) map[string]int {
 }
 
 func unmarshalScalar(data any, v reflect.Value) {
+	if data == nil {
+		return
+	}
 	vt := v.Type()
 	for v.Kind() == reflect.Pointer {
 		if v.IsNil() {
@@ -164,6 +167,8 @@ func UnmarshalQueryData(data []json.RawMessage, columns []presto.Column, v any) 
 				if i >= vArrayOrStruct.Len() {
 					vArrayOrStruct.SetLen(i + 1)
 				}
+			} else if i >= vArrayOrStruct.Len() {
+				break // array target is full
 			}
 
 			vElem := vArrayOrStruct.Index(i)

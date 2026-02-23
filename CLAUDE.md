@@ -55,7 +55,7 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 
 ### Key Concepts
 
-**Stages**: Benchmarks are defined as JSON files that specify queries (inline or via files), session parameters, catalog/schema, and execution settings. Stages form a DAG via `next` field, enabling sequential/parallel execution patterns.
+**Stages**: Benchmarks are defined as JSON files that specify queries (inline or via files), session parameters, catalog/schema, and execution settings. Stages form a DAG via `next` field, enabling sequential/parallel execution patterns. Each stage gets its own `*Stage` struct instance; mutable fields are per-instance. `SharedStageStates` is shared across all stages via thread-safe types.
 
 **Stage Settings** (inherited by child stages unless overridden):
 - `catalog`, `schema`, `timezone` - Presto session settings
@@ -64,7 +64,9 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 - `abort_on_error` - Stop on first failure
 - `random_execution`, `randomly_execute_until` - Random query selection mode
 
-**Run Recorders**: Results can be recorded to file (default), InfluxDB (requires `TAGS=influx` build), or MySQL.
+**Run Recorders**: Results can be recorded to file (default), InfluxDB (requires `TAGS=influx` build), or MySQL. The Pulumi recorder (`pulumi_run_recorder.go`) is internal-only with IBM PrestoDB infrastructure patterns.
+
+**Error Handling in Stages**: `run()` return value is discarded; errors propagate via `result.QueryError`, logging, context cancellation, and exit code. `runShellScripts` only returns errors when `abort_on_error=true` or `ctx.Err()!=nil`; otherwise errors are logged but swallowed. Post-query and post-stage script errors are combined with `errors.Join`.
 
 ### Build Tags
 
@@ -95,3 +97,4 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 - After completing a task, check if the [pbench.wiki](https://github.com/ethanyzhang/pbench/wiki) repo needs corresponding updates (e.g., new commands, changed behavior, updated usage).
 - Before finishing, run `gofmt -w .`, `go vet ./...`, `staticcheck ./...`, and `go mod tidy` to ensure no formatting or lint issues remain.
 - If cluster configs or templates change, run `make clusters` and commit the regenerated output.
+- When integrating stale PRs from contributors, cherry-pick the logic manually (don't merge the branch), fix any issues, and commit with `--author="Name <email>"` to preserve original authorship. Add `Closes #N` in the commit body so the PR closes automatically on push.

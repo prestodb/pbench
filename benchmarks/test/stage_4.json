@@ -18,6 +18,10 @@
     "echo \"execute this script before starting all runs of the same query in this stage\"",
     "python3 my_pre_query_cycle_script.py count.txt"
   ],
+  "pre_query_scripts": [
+    "echo \"run this script before each query in this stage is started\"",
+    "python3 my_pre_query_script.py count.txt"
+  ],
   "post_query_scripts": [
     "echo \"run this script after each query in this stage is complete\"",
     "python3 my_post_query_script.py count.txt"

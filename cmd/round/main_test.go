@@ -70,6 +70,18 @@ func TestProcessRoundDecimalFile(t *testing.T) {
 	assert.Contains(t, string(result), "42")
 }
 
+func TestColumnSplitterEscapedBackslash(t *testing.T) {
+	// Escaped backslash before closing quote: '\\' should close the string
+	out, err := split(`'\\',next`)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{`'\\'`, "next"}, out)
+
+	// Single escaped quote stays in string: 'it\'s' is one token
+	out, err = split(`'it\'s',next`)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{`'it\'s'`, "next"}, out)
+}
+
 func TestColumnSplitter(t *testing.T) {
 	inputs := []string{
 		`"abc,d",1.22332,true,"'def'"def   `,

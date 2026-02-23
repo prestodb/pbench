@@ -200,6 +200,27 @@ func TestMergeRowsMap_CartesianProductLimit(t *testing.T) {
 	assert.Contains(t, err.Error(), "exceeds limit")
 }
 
+func TestMergeColumns_NoAliasing(t *testing.T) {
+	// When one row is empty, MergeColumns must return a new copy, not a shared reference.
+	// Otherwise AddColumn on the result would mutate the original row.
+	empty := NewRowWithColumnCapacity(0)
+	b := NewRowWithColumnCapacity(1)
+	b.AddColumn("col", "val")
+
+	merged := MergeColumns(empty, b)
+	// Mutating merged must not affect b
+	merged.AddColumn("extra", "extra_val")
+	assert.Equal(t, 1, b.ColumnCount(), "original row should not be mutated")
+	assert.Equal(t, 2, merged.ColumnCount())
+}
+
+func TestMergeColumns_BothEmpty(t *testing.T) {
+	a := NewRowWithColumnCapacity(0)
+	b := NewRowWithColumnCapacity(0)
+	merged := MergeColumns(a, b)
+	assert.Equal(t, 0, merged.ColumnCount())
+}
+
 func TestMergeRowsMap_NewTable(t *testing.T) {
 	a := map[TableName][]*Row{}
 	b := map[TableName][]*Row{

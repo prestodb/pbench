@@ -50,6 +50,8 @@ type Stage struct {
 	PreStageShellScripts []string `json:"pre_stage_scripts,omitempty"`
 	// Run shell scripts after executing all the queries in a stage.
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
+	// Run shell scripts before executing each query.
+	PreQueryShellScripts []string `json:"pre_query_scripts,omitempty"`
 	// Run shell scripts after executing each query.
 	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
 	// Run shell scripts before starting all runs (cold + warm) of each individual query.
@@ -366,6 +368,9 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 }
 
 func (s *Stage) runRandomly(ctx context.Context) error {
+	if s.RandomlyExecuteUntil == nil {
+		return fmt.Errorf("random_execution is true but randomly_execute_until is not set")
+	}
 	var continueExecution func(queryCount int) bool
 	if dur, parseErr := time.ParseDuration(*s.RandomlyExecuteUntil); parseErr == nil {
 		endTime := time.Now().Add(dur)
@@ -458,6 +463,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		if preQueryCycleErr != nil {
 			return fmt.Errorf("pre-query script execution failed: %w", preQueryCycleErr)
 		}
+		var abortErr error
 		for j := 0; j < *s.ColdRuns+*s.WarmRuns; j++ {
 			query := &Query{
 				Text:             queryText,
@@ -484,11 +490,11 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			s.States.resultChan <- result
 			if err != nil {
 				if *s.AbortOnError || ctx.Err() != nil {
-					// If AbortOnError is set, we skip the rest queries in the same batch.
-					// Logging etc. will be handled in the parent stack.
-					// If the context is cancelled or timed out, we cannot continue whatsoever and must return.
+					// Break instead of returning so post_query_cycle_scripts still runs as
+					// the teardown counterpart to pre_query_cycle_scripts.
 					s.States.exitCode.CompareAndSwap(0, 1)
-					return result
+					abortErr = result
+					break
 				}
 				// Log the error information and continue running
 				s.logErr(ctx, result)
@@ -498,6 +504,9 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 		}
 		// run post query cycle shell scripts
 		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts)
+		if abortErr != nil {
+			return abortErr
+		}
 		if postQueryCycleErr != nil {
 			return fmt.Errorf("post-query script execution failed: %w", postQueryCycleErr)
 		}
@@ -530,6 +539,12 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 
 	if ctx.Err() != nil {
 		return result, ctx.Err()
+	}
+
+	// run pre query shell scripts
+	preQueryErr := s.runShellScripts(ctx, s.PreQueryShellScripts)
+	if preQueryErr != nil {
+		return result, preQueryErr
 	}
 
 	querySourceStr := s.querySourceString(result)

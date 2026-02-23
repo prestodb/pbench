@@ -114,7 +114,11 @@ type LogicalExpression struct {
 func (*LogicalExpression) exp() {}
 
 func (j *LogicalExpression) GetJoinPredicates() []JoinPredicate {
-	return slices.Concat(j.Left.GetJoinPredicates(), j.Right.GetJoinPredicates())
+	preds := j.Left.GetJoinPredicates()
+	if j.Right != nil {
+		preds = slices.Concat(preds, j.Right.GetJoinPredicates())
+	}
+	return preds
 }
 
 type JoinPredicate struct {

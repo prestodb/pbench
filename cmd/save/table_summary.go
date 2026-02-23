@@ -9,6 +9,7 @@ import (
 	"pbench/log"
 	"pbench/prestoapi"
 	"pbench/utils"
+	"sync"
 
 	presto "github.com/ethanyzhang/presto-go"
 	"strings"
@@ -59,7 +60,8 @@ var (
 		We don't know which name to use until the first query that uses those functions are run.
 		We keep a flag for this as soon as we know, so we do not generate more failing queries.
 	*/
-	internalFunctionPrefix = ""
+	internalFunctionPrefix   string
+	internalFunctionPrefixMu sync.RWMutex
 )
 
 type TableSummary struct {
@@ -86,8 +88,13 @@ func handleQueryError(err error, abortOnError bool) (retry bool, fatal error) {
 			// table/schema/catalog does not exist, then no need to run more queries that will fail.
 			return false, err
 		}
-		if internalFunctionPrefix == "" && strings.HasSuffix(queryError.Message, "data_size_for_stats not registered") {
+		internalFunctionPrefixMu.RLock()
+		prefix := internalFunctionPrefix
+		internalFunctionPrefixMu.RUnlock()
+		if prefix == "" && strings.HasSuffix(queryError.Message, "data_size_for_stats not registered") {
+			internalFunctionPrefixMu.Lock()
 			internalFunctionPrefix = "$internal$"
+			internalFunctionPrefixMu.Unlock()
 			log.Info().Msg(`using "$internal$max_data_size_for_stats" and "$internal$sum_data_size_for_stats" for later queries`)
 			retry = true
 		}
@@ -151,12 +158,15 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Ses
 		if stat.NullsFraction == nil {
 			statistics = append(statistics, fmt.Sprintf("count(%s) AS non_null_values_count", stat.ColumnName))
 		}
+		internalFunctionPrefixMu.RLock()
+		prefix := internalFunctionPrefix
+		internalFunctionPrefixMu.RUnlock()
 		if rawDataType == BooleanType {
 			statistics = append(statistics, fmt.Sprintf("count_if(%s) AS true_values_count", stat.ColumnName))
 		} else if IsSizable[rawDataType] {
-			statistics = append(statistics, fmt.Sprintf("\"%smax_data_size_for_stats\"(%s) AS max_data_size", internalFunctionPrefix, stat.ColumnName))
+			statistics = append(statistics, fmt.Sprintf("\"%smax_data_size_for_stats\"(%s) AS max_data_size", prefix, stat.ColumnName))
 			if stat.DataSize == nil {
-				statistics = append(statistics, fmt.Sprintf("\"%ssum_data_size_for_stats\"(%s) AS data_size", internalFunctionPrefix, stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("\"%ssum_data_size_for_stats\"(%s) AS data_size", prefix, stat.ColumnName))
 			}
 			if stat.DistinctValuesCount == nil && (rawDataType == VarcharType || rawDataType == CharType) {
 				statistics = append(statistics, fmt.Sprintf("approx_distinct(%s) AS distinct_values_count", stat.ColumnName))
@@ -187,7 +197,7 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Ses
 		if retry {
 			i--
 		}
-		if err == nil && stat.NullsFraction == nil {
+		if err == nil && stat.NullsFraction == nil && stat.NonNullValuesCount != nil {
 			nullsFraction := 1 - *stat.NonNullValuesCount/float64(*s.RowCount)
 			stat.NullsFraction = &nullsFraction
 		}

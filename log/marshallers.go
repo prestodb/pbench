@@ -152,7 +152,7 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 		if k == reflect.Invalid {
 			continue
 		}
-		if v.Type().Implements(errorInterface) {
+		if v.CanInterface() && v.Type().Implements(errorInterface) {
 			a.Err(v.Interface().(error))
 			continue
 		}
@@ -168,7 +168,7 @@ func (ms *Marshaller) MarshalZerologArray(a *zerolog.Array) {
 		case reflect.Int32:
 			a.Int32(int32(v.Int()))
 		case reflect.Int64:
-			if v.Type() == durationType {
+			if v.CanInterface() && v.Type() == durationType {
 				a.Dur(v.Interface().(time.Duration))
 			} else {
 				a.Int64(v.Int())
@@ -233,7 +233,7 @@ func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect
 	if k == reflect.Invalid {
 		return
 	}
-	if field.Type().Implements(errorInterface) {
+	if field.CanInterface() && field.Type().Implements(errorInterface) {
 		e.AnErr(fieldName, field.Interface().(error))
 		return
 	}
@@ -249,7 +249,7 @@ func (ms *Marshaller) logField(e *zerolog.Event, fieldName string, field reflect
 	case reflect.Int32:
 		e.Int32(fieldName, int32(field.Int()))
 	case reflect.Int64:
-		if field.Type() == durationType {
+		if field.CanInterface() && field.Type() == durationType {
 			e.Dur(fieldName, field.Interface().(time.Duration))
 		} else {
 			e.Int64(fieldName, field.Int())
