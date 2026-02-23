@@ -120,7 +120,7 @@ func (m *MySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*Q
 	completeRunInfo := `UPDATE pbench_runs SET start_time = ?, duration_ms = ?, rand_seed = ? WHERE run_id = ?`
 	randSeed := sql.NullInt64{
 		Int64: s.States.RandSeed,
-		Valid: s.States.RandSeedUsed,
+		Valid: s.States.RandSeedUsed.Load(),
 	}
 	res, err := m.db.Exec(completeRunInfo, s.States.RunStartTime,
 		s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(), randSeed, m.runId)

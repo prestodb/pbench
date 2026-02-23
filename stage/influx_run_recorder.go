@@ -109,7 +109,7 @@ func (i *InfluxRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*
 		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
 		"comment":     s.States.Comment,
 	}
-	if s.States.RandSeedUsed {
+	if s.States.RandSeedUsed.Load() {
 		fields["rand_seed"] = s.States.RandSeed
 	}
 	point := write.NewPoint("runs", tags, fields, s.States.RunFinishTime)

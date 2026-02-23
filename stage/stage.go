@@ -475,7 +475,7 @@ func (s *Stage) runRandomly(ctx context.Context, seed int64) error {
 		}
 	}
 	r := rand.New(rand.NewSource(seed))
-	s.States.RandSeedUsed = true
+	s.States.RandSeedUsed.Store(true)
 	log.Info().EmbedObject(s).Int64("seed", seed).Msg("random source seeded")
 	totalQueries := len(s.Queries) + len(s.QueryFiles)
 

@@ -276,7 +276,7 @@ func TestRandomExecution(t *testing.T) {
 
 	// randomly_execute_until=6, so we should get exactly 6 queries
 	assert.Equal(t, 6, queryCount)
-	assert.True(t, stage.States.RandSeedUsed)
+	assert.True(t, stage.States.RandSeedUsed.Load())
 }
 
 func TestNoRandomDuplicates(t *testing.T) {
