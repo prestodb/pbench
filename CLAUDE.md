@@ -62,7 +62,16 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 - `cold_runs`, `warm_runs` - Number of runs per query
 - `save_output`, `save_json`, `save_column_metadata` - Output capture options
 - `abort_on_error` - Stop on first failure
-- `random_execution`, `randomly_execute_until` - Random query selection mode
+- `random_execution`, `randomly_execute_until`, `no_random_duplicates` - Random query selection mode
+
+**Adding a new Stage field** — when adding a new parameter to the `Stage` struct, check each of these locations:
+1. `stage/stage.go` — add the field to the `Stage` struct with a JSON tag
+2. `stage/stage_utils.go` `MergeWith()` — merge the field from `other` into `s`
+3. `stage/stage_utils.go` `setDefaults()` — set a default value if needed
+4. `stage/stage_utils.go` `propagateStates()` — propagate to child stages if the field should be inherited
+5. `stage/stage.go` `newStreamInstance()` — copy the field if it's relevant to stream execution
+6. Wiki: [Parameters](https://github.com/prestodb/pbench/wiki/Parameters) — document the parameter
+7. Wiki: [Configuring PBench - Inherited Parameters](https://github.com/prestodb/pbench/wiki/Configuring-PBench#inherited-parameters-in-stage-files) — add to the inherited list if propagated
 
 **Run Recorders**: Results can be recorded to file (default), InfluxDB (requires `TAGS=influx` build), or MySQL. The Pulumi recorder (`pulumi_run_recorder.go`) is internal-only with IBM PrestoDB infrastructure patterns.
 
