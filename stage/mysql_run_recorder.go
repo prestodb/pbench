@@ -57,7 +57,12 @@ VALUES (?, ?, ?, 0, 0, 0, ?)`
 			Msg("failed to add a new run to the MySQL database")
 		return err
 	} else {
-		m.runId, _ = res.LastInsertId()
+		var lastIdErr error
+		m.runId, lastIdErr = res.LastInsertId()
+		if lastIdErr != nil {
+			log.Error().Err(lastIdErr).Msg("failed to get last insert ID for the new run")
+			return lastIdErr
+		}
 		log.Info().Int64("run_id", m.runId).Str("run_name", s.States.RunName).
 			Msg("added a new run to the MySQL database")
 	}

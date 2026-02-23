@@ -203,7 +203,7 @@ func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo)
 			if q != nil && q.NextUri != "" {
 				_, _, cancelQueryErr := q.Client.CancelQuery(ctx, q.NextUri)
 				if cancelQueryErr != nil {
-					log.Error().Msgf("cancel query failed on target cluter: %s error: %s", q.NextUri, cancelQueryErr.Error())
+					log.Error().Msgf("cancel query failed on target cluster: %s error: %s", q.NextUri, cancelQueryErr.Error())
 				}
 			}
 		}
@@ -305,12 +305,12 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 				Str("target_host", client.GetHost()).Int("row_count", rowCount).Msg("query executed successfully")
 		}(clients[i])
 	}
+	forwardedQueries.Wait()
 	//Add running query into to cache
 	queryCacheMutex.Lock()
 	runningQueriesCacheMap[queryState.QueryId] = cachedQueries
 	queryCacheMutex.Unlock()
-	log.Debug().Msg("adding query to cache" + queryState.QueryId)
-	forwardedQueries.Wait()
+	log.Debug().Str("query_id", queryState.QueryId).Msg("adding query to cache")
 	log.Info().Str("source_query_id", queryInfo.QueryId).Uint32("successful", successful.Load()).
 		Uint32("failed", failed.Load()).Msg("query forwarding finished")
 	forwarded.Add(1)
@@ -318,5 +318,5 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 	queryCacheMutex.Lock()
 	delete(runningQueriesCacheMap, queryState.QueryId)
 	queryCacheMutex.Unlock()
-	log.Info().Msg("removing query from cache" + queryState.QueryId)
+	log.Info().Str("query_id", queryState.QueryId).Msg("removing query from cache")
 }

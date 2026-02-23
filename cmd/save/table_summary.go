@@ -27,7 +27,7 @@ const (
 	DateType      = "date"
 	TimestampType = "timestamp"
 	VarcharType   = "varchar"
-	VarbinrayType = "varbinray"
+	VarbinaryType = "varbinary"
 	CharType      = "char"
 	ArrayType     = "array"
 	MapType       = "map"
@@ -47,7 +47,7 @@ var (
 	IsSizable = map[string]bool{
 		CharType:      true,
 		VarcharType:   true,
-		VarbinrayType: true,
+		VarbinaryType: true,
 		ArrayType:     true,
 		MapType:       true,
 		RowType:       true,

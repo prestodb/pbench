@@ -345,6 +345,10 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 
 func (t *Table) initIsVarchar() {
 	for _, c := range t.Columns {
+		if c.Type == nil {
+			c.IsVarchar = false
+			continue
+		}
 		firstParen := strings.Index(*c.Type, "(")
 		if firstParen == -1 {
 			c.IsVarchar = false

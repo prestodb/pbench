@@ -80,12 +80,14 @@ func Run(_ *cobra.Command, args []string) {
 	_ = csvFile.Close()
 	close(queryFrameChan)
 	<-done
+	signal.Stop(timeToExit)
 	close(timeToExit)
 }
 
 func QueryFrameScheduler(ctx context.Context) {
 	firstFrame := <-queryFrameChan
 	if firstFrame == nil { // No query in the CSV file at all, or context canceled before the first frame was sent.
+		close(done)
 		return
 	}
 	client := PrestoFlags.NewPrestoClient()

@@ -102,6 +102,11 @@ func processFile(csvFile string) error {
 			return err
 		}
 
+		if queryPlanColumn >= len(record) {
+			log.Error().Int("column_index", queryPlanColumn).Int("record_length", len(record)).
+				Msgf("row %d has fewer columns than expected", rowNum)
+			continue
+		}
 		if record[queryPlanColumn] == "" {
 			log.Info().Msgf("empty query plan at row:%d", rowNum)
 			continue

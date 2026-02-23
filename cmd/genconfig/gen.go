@@ -63,8 +63,10 @@ func GenerateFiles(configs []*ClusterConfig) {
 				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to create file")
 				continue
 			}
-			err = tmpl.Execute(f, cfg)
-			f.Close()
+			err = func() error {
+				defer f.Close()
+				return tmpl.Execute(f, cfg)
+			}()
 			if err != nil {
 				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to evaluate template")
 				continue
