@@ -290,6 +290,9 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	if preStageErr != nil {
 		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
 	}
+	if err := s.expandQueryFileDirs(); err != nil {
+		return fmt.Errorf("failed to expand query file directories: %w", err)
+	}
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
 		if s.StreamCount != nil && *s.StreamCount > 1 {
 			returnErr = s.runAsMultipleStreams(ctx)

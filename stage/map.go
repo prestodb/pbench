@@ -69,8 +69,12 @@ func ReadStageFromFile(filePath string) (*Stage, error) {
 			queryFile = filepath.Join(stage.BaseDir, queryFile)
 			stage.QueryFiles[i] = queryFile
 		}
-		if _, err = os.Stat(queryFile); err != nil {
-			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stage.Id, queryFile, err)
+		if info, statErr := os.Stat(queryFile); statErr != nil {
+			return nil, fmt.Errorf("%s links to an invalid query file %s: %w", stage.Id, queryFile, statErr)
+		} else if info.IsDir() {
+			// Directories are allowed; they will be expanded at execution time
+			// (after pre-stage scripts) by expandQueryFileDirs.
+			continue
 		}
 	}
 	log.Debug().Str("id", stage.Id).Str("path", filePath).Msg("read stage file")

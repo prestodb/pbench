@@ -435,3 +435,42 @@ func (s *Stage) queryEnv(query *Query, result *QueryResult, queryErr error) []st
 	}
 	return env
 }
+
+// expandQueryFileDirs expands any directory entries in QueryFiles to their contained files.
+// Directory expansion is non-recursive and entries are sorted by filename.
+// This is called after pre-stage scripts so that scripts can generate query files into directories.
+func (s *Stage) expandQueryFileDirs() error {
+	var expanded []string
+	for i, qf := range s.QueryFiles {
+		info, err := os.Stat(qf)
+		if err != nil {
+			return fmt.Errorf("query file %s: %w", qf, err)
+		}
+		if !info.IsDir() {
+			if expanded != nil {
+				expanded = append(expanded, qf)
+			}
+			continue
+		}
+		if expanded == nil {
+			expanded = make([]string, i, len(s.QueryFiles))
+			copy(expanded, s.QueryFiles[:i])
+		}
+		entries, err := os.ReadDir(qf)
+		if err != nil {
+			return fmt.Errorf("query file directory %s: %w", qf, err)
+		}
+		count := 0
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				expanded = append(expanded, filepath.Join(qf, entry.Name()))
+				count++
+			}
+		}
+		log.Info().Str("directory", qf).Int("files", count).Msg("expanded query file directory")
+	}
+	if expanded != nil {
+		s.QueryFiles = expanded
+	}
+	return nil
+}

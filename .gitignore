@@ -41,3 +41,4 @@ cmd/genddl/out/
 
 # Python
 __pycache__/
+mysql_wxd.json

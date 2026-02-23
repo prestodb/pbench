@@ -30,7 +30,7 @@ func setupMockServer() *prestotest.MockPrestoServer {
 	// Simple inline queries - each returns 1 row
 	for _, q := range []string{
 		"select 'query 1'", "select 'query 2'", "select 'query 3'",
-		"select 'query 4'", "select 'query 5'", "select 'query 7'",
+		"select 'query 4'", "select 'query 5'", "select 'query 6'", "select 'query 7'",
 		"select 'query 8'", "select 'query 9'",
 	} {
 		mock.AddQuery(&prestotest.MockQueryTemplate{
@@ -814,4 +814,198 @@ func TestHttpError(t *testing.T) {
 	assert.Nil(t, os.RemoveAll(stage.States.OutputPath))
 	assert.Equal(t, 1, queryCount)
 	assert.Equal(t, "presto server error: 400: Schema is set but catalog is not", err.Error())
+}
+
+func TestQueryFileDirectory(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	tmpDir := t.TempDir()
+	queryDir := filepath.Join(tmpDir, "queries")
+	os.Mkdir(queryDir, 0755)
+
+	// queries/
+	//   query_01.sql        -> "select 'query 1'"
+	//   query_02.sql        -> "select 'query 2'"
+	//   query_03.sql        -> "select 'query 3'"
+	//   subdir/
+	//     nested.sql         -> should NOT run (non-recursive)
+	os.WriteFile(filepath.Join(queryDir, "query_02.sql"), []byte("select 'query 2'"), 0644)
+	os.WriteFile(filepath.Join(queryDir, "query_01.sql"), []byte("select 'query 1'"), 0644)
+	os.WriteFile(filepath.Join(queryDir, "query_03.sql"), []byte("select 'query 3'"), 0644)
+	os.Mkdir(filepath.Join(queryDir, "subdir"), 0755)
+	os.WriteFile(filepath.Join(queryDir, "subdir", "nested.sql"), []byte("select 'should not run'"), 0644)
+
+	stageJson := fmt.Sprintf(`{
+		"query_files": ["%s"],
+		"catalog": "tpch",
+		"schema": "sf1",
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`, queryDir)
+	stagePath := filepath.Join(tmpDir, "test_dir.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	var queryTexts []string
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		assert.Nil(t, result.QueryError)
+		queryTexts = append(queryTexts, result.Query.Text)
+	}
+
+	s.Run(context.Background())
+
+	// Should execute 3 queries in sorted filename order
+	assert.Equal(t, 3, len(queryTexts))
+	assert.Equal(t, "select 'query 1'", queryTexts[0])
+	assert.Equal(t, "select 'query 2'", queryTexts[1])
+	assert.Equal(t, "select 'query 3'", queryTexts[2])
+}
+
+func TestQueryFileDirectoryEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	queryDir := filepath.Join(tmpDir, "empty_queries")
+	os.Mkdir(queryDir, 0755)
+
+	stageJson := fmt.Sprintf(`{
+		"query_files": ["%s"],
+		"catalog": "tpch",
+		"schema": "sf1",
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`, queryDir)
+	stagePath := filepath.Join(tmpDir, "test_empty_dir.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+
+	// After expansion, QueryFiles should be empty
+	err := s.expandQueryFileDirs()
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(s.QueryFiles))
+}
+
+func TestQueryFileDirectoryMixedWithFiles(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	tmpDir := t.TempDir()
+
+	// query_files: [f1.sql, dir_a, f2.sql, dir_b, f3.sql]
+	//
+	// f1.sql               -> "select 'query 1'"
+	// dir_a/
+	//   a.sql              -> "select 'query 2'"
+	//   b.sql              -> "select 'query 3'"
+	// f2.sql               -> "select 'query 4'"
+	// dir_b/
+	//   only.sql           -> "select 'query 5'"
+	// f3.sql               -> "select 'query 6'"
+	file1 := filepath.Join(tmpDir, "f1.sql")
+	os.WriteFile(file1, []byte("select 'query 1'"), 0644)
+
+	dir1 := filepath.Join(tmpDir, "dir_a")
+	os.Mkdir(dir1, 0755)
+	os.WriteFile(filepath.Join(dir1, "b.sql"), []byte("select 'query 3'"), 0644)
+	os.WriteFile(filepath.Join(dir1, "a.sql"), []byte("select 'query 2'"), 0644)
+
+	file2 := filepath.Join(tmpDir, "f2.sql")
+	os.WriteFile(file2, []byte("select 'query 4'"), 0644)
+
+	dir2 := filepath.Join(tmpDir, "dir_b")
+	os.Mkdir(dir2, 0755)
+	os.WriteFile(filepath.Join(dir2, "only.sql"), []byte("select 'query 5'"), 0644)
+
+	file3 := filepath.Join(tmpDir, "f3.sql")
+	os.WriteFile(file3, []byte("select 'query 6'"), 0644)
+
+	stageJson := fmt.Sprintf(`{
+		"query_files": ["%s", "%s", "%s", "%s", "%s"],
+		"catalog": "tpch",
+		"schema": "sf1",
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`, file1, dir1, file2, dir2, file3)
+	stagePath := filepath.Join(tmpDir, "test_mixed.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	var queryTexts []string
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		assert.Nil(t, result.QueryError)
+		queryTexts = append(queryTexts, result.Query.Text)
+	}
+
+	s.Run(context.Background())
+
+	// file1, dir1(a.sql, b.sql), file2, dir2(only.sql), file3
+	assert.Equal(t, 6, len(queryTexts))
+	assert.Equal(t, "select 'query 1'", queryTexts[0])
+	assert.Equal(t, "select 'query 2'", queryTexts[1]) // dir_a/a.sql
+	assert.Equal(t, "select 'query 3'", queryTexts[2]) // dir_a/b.sql
+	assert.Equal(t, "select 'query 4'", queryTexts[3])
+	assert.Equal(t, "select 'query 5'", queryTexts[4]) // dir_b/only.sql
+	assert.Equal(t, "select 'query 6'", queryTexts[5])
+}
+
+func TestQueryFileDirectoryWithPreStageScript(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	tmpDir := t.TempDir()
+	queryDir := filepath.Join(tmpDir, "generated")
+	os.Mkdir(queryDir, 0755)
+
+	// pre_stage_scripts will populate the directory
+	stageJson := fmt.Sprintf(`{
+		"pre_stage_scripts": [
+			"echo \"select 'query 1'\" > %s/q1.sql",
+			"echo \"select 'query 2'\" > %s/q2.sql"
+		],
+		"query_files": ["%s"],
+		"catalog": "tpch",
+		"schema": "sf1",
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`, queryDir, queryDir, queryDir)
+	stagePath := filepath.Join(tmpDir, "test_pre_stage.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	var queryTexts []string
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		assert.Nil(t, result.QueryError)
+		queryTexts = append(queryTexts, result.Query.Text)
+	}
+
+	s.Run(context.Background())
+
+	assert.Equal(t, 2, len(queryTexts))
+	assert.Equal(t, "select 'query 1'", queryTexts[0])
+	assert.Equal(t, "select 'query 2'", queryTexts[1])
 }
