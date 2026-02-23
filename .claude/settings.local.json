@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(ls -la /Users/ezhang/GitHub/pbench/cmd/*/main.go)",
+      "Bash(xargs -I {} dirname {})",
+      "Bash(xargs basename -a)",
+      "Bash(ls:*)",
+      "Bash(xxd:*)",
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(gofmt -w . && go vet ./... && go mod tidy 2>&1)",
+      "Bash(staticcheck:*)",
+      "Bash(go run:*)",
+      "Bash(gofmt -l . 2>&1 && go vet ./... 2>&1 && staticcheck ./... 2>&1)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(gh pr:*)",
+      "Bash(gofmt -w . && go vet ./... 2>&1 && staticcheck ./... 2>&1)",
+      "Bash(gh issue:*)",
+      "Bash(gofmt -w . && go vet ./... && staticcheck ./... 2>&1)",
+      "Bash(gofmt:*)",
+      "Bash(cd:*)",
+      "Bash(git push:*)",
+      "Bash(go vet ./... 2>&1 && staticcheck ./... 2>&1)",
+      "Bash(git reset:*)",
+      "Bash(git rm:*)",
+      "Bash(gh release:*)",
+      "Bash(make:*)"
+    ]
+  }
+}
