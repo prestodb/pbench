@@ -54,6 +54,15 @@ tar: clean all
 				$(BINARY)/params.json))
 	rm -rf release
 
+.PHONY: release
+release: check-version tar
+	gh release create v$(VERSION) --title "$(VERSION)" \
+		$(foreach GOOS, $(PLATFORMS),$(foreach GOARCH, $(ARCHITECTURES),$(BINARY)_$(GOOS)_$(GOARCH).tar.gz ))
+
+.PHONY: check-version
+check-version:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required. Usage: make release VERSION=1.2"; exit 1; fi
+
 upload:
 	GOOS=linux GOARCH=amd64 go build -tags=influx -o $(BINARY)_linux_amd64
 	aws s3 cp $(BINARY)_linux_amd64 s3://presto-deploy-infra-and-cluster-a9d5d14
