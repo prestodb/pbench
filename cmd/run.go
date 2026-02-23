@@ -20,7 +20,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(runCmd)
-	runCmd.Flags().StringVarP(&run.Name, "name", "n", "", `Assign a name to this run. (default: "<main stage name>-<current time>")`)
+	runCmd.Flags().StringVarP(&run.Name, "name", "n", "", `Assign a name to this run. (default: "<main stage name>_<current time>")`)
 	runCmd.Flags().StringVarP(&run.Comment, "comment", "c", "", `Add a comment to this run (optional)`)
 	run.PrestoFlags.Install(runCmd)
 	wd, _ := os.Getwd()

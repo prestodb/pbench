@@ -110,6 +110,7 @@ func Run(_ *cobra.Command, args []string) {
 		close(done)
 	}()
 	<-done
+	signal.Stop(timeToExit)
 	close(timeToExit)
 }
 

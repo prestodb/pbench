@@ -187,6 +187,7 @@ func Run(_ *cobra.Command, _ []string) {
 	}
 	runningTasks.Wait()
 	// This causes the signal handler to exit.
+	signal.Stop(timeToExit)
 	close(timeToExit)
 	log.Info().Uint32("forwarded", forwarded.Load()).Uint32("failed_to_forward", failedToForward.Load()).
 		Msgf("finished forwarding queries")
@@ -265,9 +266,14 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 	successful, failed := atomic.Uint32{}, atomic.Uint32{}
 	forwardedQueries := sync.WaitGroup{}
 	cachedQueries := make([]*QueryCacheEntry, len(clients)-1)
+	// Register cache entry before starting goroutines so checkAndCancelQuery can find in-flight queries.
+	queryCacheMutex.Lock()
+	runningQueriesCacheMap[queryState.QueryId] = cachedQueries
+	queryCacheMutex.Unlock()
+	log.Debug().Str("query_id", queryState.QueryId).Msg("adding query to cache")
 	for i := 1; i < len(clients); i++ {
 		forwardedQueries.Add(1)
-		go func(client *presto.Client) {
+		go func(client *presto.Client, cacheIdx int) {
 			defer forwardedQueries.Done()
 			clientResult, _, queryErr := client.Query(ctx, queryInfo.Query, func(req *http.Request) {
 				if queryInfo.Session.Catalog != nil {
@@ -285,9 +291,11 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 				failed.Add(1)
 				return
 			}
-			//build cache for running query
+			// Store cache entry per-goroutine so cancellation can find this query while draining.
 			if clientResult.NextUri != nil {
-				cachedQueries[i-1] = &QueryCacheEntry{NextUri: *clientResult.NextUri, Client: client}
+				queryCacheMutex.Lock()
+				cachedQueries[cacheIdx] = &QueryCacheEntry{NextUri: *clientResult.NextUri, Client: client}
+				queryCacheMutex.Unlock()
 			}
 			rowCount := 0
 			drainErr := clientResult.Drain(ctx, func(qr *presto.QueryResults) error {
@@ -303,18 +311,13 @@ func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, client
 			successful.Add(1)
 			log.Info().Str("source_query_id", queryInfo.QueryId).
 				Str("target_host", client.GetHost()).Int("row_count", rowCount).Msg("query executed successfully")
-		}(clients[i])
+		}(clients[i], i-1)
 	}
 	forwardedQueries.Wait()
-	//Add running query into to cache
-	queryCacheMutex.Lock()
-	runningQueriesCacheMap[queryState.QueryId] = cachedQueries
-	queryCacheMutex.Unlock()
-	log.Debug().Str("query_id", queryState.QueryId).Msg("adding query to cache")
 	log.Info().Str("source_query_id", queryInfo.QueryId).Uint32("successful", successful.Load()).
 		Uint32("failed", failed.Load()).Msg("query forwarding finished")
 	forwarded.Add(1)
-	//remove finished query from cache
+	// Remove finished query from cache.
 	queryCacheMutex.Lock()
 	delete(runningQueriesCacheMap, queryState.QueryId)
 	queryCacheMutex.Unlock()

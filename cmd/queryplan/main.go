@@ -47,7 +47,7 @@ func init() {
 	}
 	Cmd.Flags().IntVarP(&queryPlanColumn, "column", "c", 0, `The column index for the Query Plans in the CSV file(index starts with 0)`)
 	Cmd.Flags().StringVarP(&output, "output", "o", "queryplan.json", "Output JSON file")
-	Cmd.Flags().BoolVarP(&hasHeader, "has-header", "s", true, "contain the header line or not")
+	Cmd.Flags().BoolVarP(&hasHeader, "has-header", "H", true, "contain the header line or not")
 }
 
 func run(c *cobra.Command, args []string) {

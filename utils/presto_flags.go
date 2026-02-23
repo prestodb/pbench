@@ -2,6 +2,7 @@ package utils
 
 import (
 	presto "github.com/ethanyzhang/presto-go"
+	"pbench/log"
 
 	"github.com/spf13/cobra"
 )
@@ -27,7 +28,10 @@ func (pf *PrestoFlags) Install(cmd *cobra.Command) {
 }
 
 func (pf *PrestoFlags) NewPrestoClient() *presto.Client {
-	client, _ := presto.NewClient(pf.ServerUrl)
+	client, err := presto.NewClient(pf.ServerUrl)
+	if err != nil {
+		log.Fatal().Err(err).Str("server_url", pf.ServerUrl).Msg("failed to create Presto client")
+	}
 	client.IsTrino(pf.IsTrino)
 	if pf.UserName != "" {
 		if pf.Password != "" {

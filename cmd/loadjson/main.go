@@ -125,6 +125,7 @@ func Run(_ *cobra.Command, args []string) {
 
 	log.Info().Int("file_loaded", len(queryResults)).Send()
 	// This causes the signal handler to exit.
+	signal.Stop(timeToExit)
 	close(timeToExit)
 }
 

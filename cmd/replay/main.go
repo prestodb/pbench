@@ -21,11 +21,13 @@ import (
 var (
 	RunName     string
 	OutputPath  string
+	Parallelism int
 	PrestoFlags utils.PrestoFlags
 
-	queryFrameChan = make(chan *QueryFrame, 128)
-	done           = make(chan any)
-	runningTasks   sync.WaitGroup
+	queryFrameChan   = make(chan *QueryFrame, 128)
+	done             = make(chan any)
+	parallelismGuard chan struct{}
+	runningTasks     sync.WaitGroup
 )
 
 func Run(_ *cobra.Command, args []string) {
@@ -54,6 +56,8 @@ func Run(_ *cobra.Command, args []string) {
 			cancel()
 		}
 	}()
+	log.Info().Int("parallelism", Parallelism).Send()
+	parallelismGuard = make(chan struct{}, Parallelism)
 	go QueryFrameScheduler(ctx)
 
 	reader := csv.NewReader(csvFile)
@@ -96,6 +100,7 @@ func QueryFrameScheduler(ctx context.Context) {
 		firstFrame.SessionProperties: sessionParamHeader,
 	}
 	lastFiredTime := firstFrame.CreateTime
+	parallelismGuard <- struct{}{}
 	runningTasks.Add(1)
 	go RunQueryFrame(ctx, client, firstFrame, sessionParamHeader)
 
@@ -122,6 +127,7 @@ func QueryFrameScheduler(ctx context.Context) {
 			sessionParamHeader = client.GenerateSessionParamsHeaderValue(frame.ParseSessionParams())
 			sessionParamCache[frame.SessionProperties] = sessionParamHeader
 		}
+		parallelismGuard <- struct{}{}
 		runningTasks.Add(1)
 		go RunQueryFrame(ctx, client, frame, sessionParamHeader)
 	}
@@ -131,7 +137,10 @@ func QueryFrameScheduler(ctx context.Context) {
 }
 
 func RunQueryFrame(ctx context.Context, client *presto.Client, frame *QueryFrame, sessionParams string) {
-	defer runningTasks.Done()
+	defer func() {
+		<-parallelismGuard
+		runningTasks.Done()
+	}()
 	clientResult, _, err := client.Query(ctx, frame.Query, func(req *http.Request) {
 		req.Header.Set(presto.CatalogHeader, frame.Catalog)
 		req.Header.Set(presto.SchemaHeader, frame.Schema)

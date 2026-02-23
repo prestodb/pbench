@@ -13,7 +13,7 @@ var cmpCmd = &cobra.Command{
 	Short:                 "Compare two query result directories",
 }
 
-const defaultRegex = `.*(query_\d{2})(?:_c0)?(?:_ordered)?\.output`
+const defaultRegex = `.*(query_\d+)(?:_c0)?(?:_ordered)?\.output`
 
 func init() {
 	RootCmd.AddCommand(cmpCmd)
