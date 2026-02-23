@@ -28,9 +28,10 @@ func GetCtxWithTimeout(timeout time.Duration) (context.Context, context.CancelFu
 }
 
 func ExpandHomeDirectory(path *string) {
-	if path != nil && strings.HasPrefix(*path, "~") {
-		home, _ := os.UserHomeDir()
-		*path = filepath.Join(home, strings.TrimPrefix(*path, "~"))
+	if path != nil && (*path == "~" || strings.HasPrefix(*path, "~/")) {
+		if home, err := os.UserHomeDir(); err == nil {
+			*path = filepath.Join(home, strings.TrimPrefix(*path, "~"))
+		}
 	}
 }
 
@@ -90,6 +91,10 @@ func InitMySQLConnFromCfg(cfgPath string) *sql.DB {
 		if db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true",
 			mySQLCfg.Username, mySQLCfg.Password, mySQLCfg.Server, mySQLCfg.Database)); err != nil {
 			log.Error().Err(err).Msg("failed to initialize MySQL connection for the run recorder")
+			return nil
+		} else if err = db.Ping(); err != nil {
+			_ = db.Close()
+			log.Error().Err(err).Msg("failed to connect to MySQL for the run recorder")
 			return nil
 		} else {
 			return db

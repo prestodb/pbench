@@ -366,6 +366,9 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 }
 
 func (s *Stage) runRandomly(ctx context.Context) error {
+	if s.RandomlyExecuteUntil == nil {
+		return fmt.Errorf("random_execution is true but randomly_execute_until is not set")
+	}
 	var continueExecution func(queryCount int) bool
 	if dur, parseErr := time.ParseDuration(*s.RandomlyExecuteUntil); parseErr == nil {
 		endTime := time.Now().Add(dur)

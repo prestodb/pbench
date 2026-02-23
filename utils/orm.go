@@ -70,6 +70,9 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 		}
 
 		for _, row := range rows {
+			if row.ColumnCount() == 0 {
+				continue
+			}
 			placeholders := strings.Repeat("?,", row.ColumnCount())
 			// Get rid of the trailing comma.
 			placeholders = placeholders[:len(placeholders)-1]

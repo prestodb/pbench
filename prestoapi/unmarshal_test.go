@@ -24,6 +24,15 @@ func TestPrestoUnmarshalScalar(t *testing.T) {
 	assert.Equal(t, expectedDdl, ddl)
 }
 
+func TestPrestoUnmarshalScalarNull(t *testing.T) {
+	// SQL NULL should not panic - cols[0] is nil
+	columnHeaders := []presto.Column{{Name: "result"}}
+	rows := []json.RawMessage{json.RawMessage(`[null]`)}
+	var result string
+	assert.Nil(t, UnmarshalQueryData(rows, columnHeaders, &result))
+	assert.Equal(t, "", result, "nil scalar should leave target unchanged")
+}
+
 func TestPrestoUnmarshal(t *testing.T) {
 	rows, columnHeaders := getBuiltinRows(t)
 	var nilPtr *[]string

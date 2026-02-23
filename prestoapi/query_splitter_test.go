@@ -27,7 +27,8 @@ another query;;missing semicolon, should be discarded
 			"--comment\nselect * from table3",
 			"-",
 			"/*\nselect * from **/\nanother query",
-		}, {fileWithTrailingComment[:663]},
+			"missing semicolon, should be discarded",
+		}, {fileWithTrailingComment[:663], strings.TrimSpace(fileWithTrailingComment[666:])},
 	}
 	for i, file := range files {
 		if queries, err := prestoapi.SplitQueries(strings.NewReader(file)); err != nil {
@@ -35,6 +36,37 @@ another query;;missing semicolon, should be discarded
 		} else {
 			assert.Equal(t, expectedQueries[i], queries)
 		}
+	}
+}
+
+func TestQuerySplitterNoTrailingSemicolon(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "single statement no semicolon",
+			input:    `SELECT 1`,
+			expected: []string{`SELECT 1`},
+		},
+		{
+			name:     "two statements, last without semicolon",
+			input:    "SELECT 1;\nSELECT 2",
+			expected: []string{"SELECT 1", "SELECT 2"},
+		},
+		{
+			name:     "only whitespace after last semicolon",
+			input:    "SELECT 1;  \n  ",
+			expected: []string{"SELECT 1"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			queries, err := prestoapi.SplitQueries(strings.NewReader(tt.input))
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, queries)
+		})
 	}
 }
 

@@ -343,7 +343,11 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 		s.RegisterTables = nil
 		s.Tables = make(map[string]*Table)
 		s.InsertTables = make(map[string]*Table)
+		// Preserve any user-defined session variables from the config file.
 		s.SessionVariables = make(map[string]string)
+		for k, v := range base.SessionVariables {
+			s.SessionVariables[k] = v
+		}
 
 		if s.SchemaName == "" || s.LocationName == "" {
 			s.setNames()
@@ -373,28 +377,22 @@ func (t *Table) initIsVarchar() {
 }
 
 func (t *Table) reorderColumns(s *Schema) {
-	if len(t.Columns) == 0 {
+	if len(t.Columns) == 0 || !s.Partitioned || !t.Partitioned {
 		return
 	}
 
-	var partitionIndex = -1
-
-	// Find the index of the first Column with PartitionKey=true
-	for i, col := range t.Columns {
-		if col.PartitionKey != nil && *col.PartitionKey && s.Partitioned && t.Partitioned {
-			partitionIndex = i
-			break
+	// Collect all partition key columns and move them to the end, preserving their relative order.
+	var nonPartition, partition []*Column
+	for _, col := range t.Columns {
+		if col.PartitionKey != nil && *col.PartitionKey {
+			partition = append(partition, col)
+		} else {
+			nonPartition = append(nonPartition, col)
 		}
 	}
-
-	if partitionIndex == -1 {
-		return
+	if len(partition) > 0 {
+		t.Columns = append(nonPartition, partition...)
 	}
-
-	// Move the partition key column to the end of the slice
-	partitionColumn := t.Columns[partitionIndex]
-	t.Columns = append(t.Columns[:partitionIndex], t.Columns[partitionIndex+1:]...) // Exclude partitionColumn
-	t.Columns = append(t.Columns, partitionColumn)                                  // Add partitionColumn to end
 }
 
 func (s *Schema) setSessionVars() {

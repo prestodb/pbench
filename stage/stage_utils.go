@@ -327,11 +327,14 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 			checkErr(err)
 			if err == nil {
 				bytes, e := json.MarshalIndent(result.QueryError, "", "  ")
+				// If marshaling produced "{}" or failed, fall back to the error message string.
+				if e != nil || string(bytes) == "{}" {
+					bytes, e = json.MarshalIndent(map[string]string{
+						"error": result.QueryError.Error(),
+					}, "", "  ")
+				}
 				if e == nil {
 					_, e = queryErrorFile.Write(bytes)
-				} else {
-					checkErr(e)
-					_, e = queryErrorFile.WriteString(e.Error())
 				}
 				checkErr(e)
 				checkErr(queryErrorFile.Close())

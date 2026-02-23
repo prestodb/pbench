@@ -90,6 +90,7 @@ func (p *PulumiMySQLRunRecorder) doRequest(ctx context.Context, req *http.Reques
 		}
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusOK {
 		switch v := v.(type) {
 		case nil:
@@ -104,7 +105,6 @@ func (p *PulumiMySQLRunRecorder) doRequest(ctx context.Context, req *http.Reques
 				err = decErr
 			}
 		}
-		_ = resp.Body.Close()
 	}
 	return resp, err
 }

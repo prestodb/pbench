@@ -24,17 +24,15 @@ func NewRowWithColumnCapacity(numColumns int) *Row {
 	}
 }
 
-// MergeColumns concatenates the columns of two rows into a single row.
+// MergeColumns concatenates the columns of two rows into a single new row.
 // Used by MultiplyRows to build each row of a cartesian product.
+// Always returns a new Row to avoid aliasing mutations between callers.
 func MergeColumns(a, b *Row) (ret *Row) {
 	la, lb := a.ColumnCount(), b.ColumnCount()
-	if la == 0 {
-		return b
+	l := la + lb
+	if l == 0 {
+		return NewRowWithColumnCapacity(0)
 	}
-	if lb == 0 {
-		return a
-	}
-	l := la + b.ColumnCount()
 	ret = &Row{
 		ColumnNames: make([]string, l),
 		Values:      make([]any, l),
