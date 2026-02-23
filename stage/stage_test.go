@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -546,6 +547,82 @@ func TestPostStageScriptErrorJoined(t *testing.T) {
 	// The query error should contain the Presto error
 	assert.NotNil(t, queryErr)
 	assert.Contains(t, queryErr.Error(), "Table tpch.sf1.foo does not exist")
+}
+
+func TestScriptEnvVars(t *testing.T) {
+	// Verify that PBENCH_* environment variables are injected into shell script hooks.
+	mock := setupMockServer()
+	defer mock.Close()
+
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, "env.txt")
+	// Use post_query_scripts to capture env vars. The script writes all PBENCH_ vars to a file.
+	stageJson := fmt.Sprintf(`{
+		"queries": ["select 1"],
+		"post_query_scripts": ["env | grep ^PBENCH_ | sort >> %s"],
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`, envFile)
+	stagePath := filepath.Join(tmpDir, "test_env.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	s.Run(context.Background())
+
+	envBytes, err := os.ReadFile(envFile)
+	assert.Nil(t, err)
+	envStr := string(envBytes)
+	assert.Contains(t, envStr, "PBENCH_STAGE_ID=")
+	assert.Contains(t, envStr, "PBENCH_OUTPUT_DIR="+tmpDir)
+	assert.Contains(t, envStr, "PBENCH_QUERY_INDEX=0")
+	assert.Contains(t, envStr, "PBENCH_QUERY_SEQ=0")
+	assert.Contains(t, envStr, "PBENCH_QUERY_COLD_RUN=true")
+	assert.Contains(t, envStr, "PBENCH_QUERY_ID=")
+	// Successful query should NOT have PBENCH_QUERY_ERROR
+	assert.NotContains(t, envStr, "PBENCH_QUERY_ERROR")
+}
+
+func TestScriptEnvVarsOnError(t *testing.T) {
+	// Verify PBENCH_QUERY_ERROR is set when a query fails.
+	mock := setupMockServer()
+	defer mock.Close()
+
+	tmpDir := t.TempDir()
+	envFile := filepath.Join(tmpDir, "env_err.txt")
+	stageJson := fmt.Sprintf(`{
+		"queries": ["select 'query 6'\nfrom foo"],
+		"post_query_scripts": ["env | grep ^PBENCH_ | sort >> %s"],
+		"abort_on_error": false,
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`, envFile)
+	stagePath := filepath.Join(tmpDir, "test_env_err.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	s.Run(context.Background())
+
+	envBytes, err := os.ReadFile(envFile)
+	assert.Nil(t, err)
+	envStr := string(envBytes)
+	assert.Contains(t, envStr, "PBENCH_QUERY_ERROR=")
+	assert.Contains(t, envStr, "foo does not exist")
 }
 
 func TestHttpError(t *testing.T) {

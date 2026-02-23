@@ -425,10 +425,15 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	return nil
 }
 
-func (s *Stage) runShellScripts(ctx context.Context, shellScripts []string) error {
+func (s *Stage) runShellScripts(ctx context.Context, shellScripts []string, extraEnv ...string) error {
 	for i, script := range shellScripts {
 		cmd := exec.CommandContext(ctx, "/bin/sh", "-c", script)
 		cmd.Dir = s.BaseDir
+		cmd.Env = append(os.Environ(),
+			"PBENCH_STAGE_ID="+s.Id,
+			"PBENCH_OUTPUT_DIR="+s.States.OutputPath,
+		)
+		cmd.Env = append(cmd.Env, extraEnv...)
 		outBuf, errBuf := new(bytes.Buffer), new(bytes.Buffer)
 		cmd.Stdout, cmd.Stderr = outBuf, errBuf
 		var logEntry *zerolog.Event
@@ -458,8 +463,9 @@ func (s *Stage) runShellScripts(ctx context.Context, shellScripts []string) erro
 func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *string, expectedRowCountStartIndex int) (retErr error) {
 	batchSize := len(queries)
 	for i, queryText := range queries {
+		queryCycleEnv := s.queryCycleEnv(queryFile, i)
 		// run pre query cycle shell scripts
-		preQueryCycleErr := s.runShellScripts(ctx, s.PreQueryCycleShellScripts)
+		preQueryCycleErr := s.runShellScripts(ctx, s.PreQueryCycleShellScripts, queryCycleEnv...)
 		if preQueryCycleErr != nil {
 			return fmt.Errorf("pre-query script execution failed: %w", preQueryCycleErr)
 		}
@@ -503,7 +509,7 @@ func (s *Stage) runQueries(ctx context.Context, queries []string, queryFile *str
 			log.Info().EmbedObject(result).Msgf("query finished")
 		}
 		// run post query cycle shell scripts
-		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts)
+		postQueryCycleErr := s.runShellScripts(ctx, s.PostQueryCycleShellScripts, queryCycleEnv...)
 		if abortErr != nil {
 			return abortErr
 		}
@@ -542,7 +548,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	}
 
 	// run pre query shell scripts
-	preQueryErr := s.runShellScripts(ctx, s.PreQueryShellScripts)
+	preQueryErr := s.runShellScripts(ctx, s.PreQueryShellScripts, s.queryEnv(query, nil, nil)...)
 	if preQueryErr != nil {
 		return result, preQueryErr
 	}
@@ -637,7 +643,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 		return nil
 	})
 	// run post query shell scripts
-	postQueryErr := s.runShellScripts(ctx, s.PostQueryShellScripts)
+	postQueryErr := s.runShellScripts(ctx, s.PostQueryShellScripts, s.queryEnv(query, result, err)...)
 	err = errors.Join(err, postQueryErr)
 	return result, err
 }

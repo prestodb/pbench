@@ -396,3 +396,30 @@ func (s *Stage) querySourceString(result *QueryResult) (sourceStr string) {
 	}
 	return
 }
+
+// queryCycleEnv returns environment variables for query-cycle-level script hooks.
+func (s *Stage) queryCycleEnv(queryFile *string, index int) []string {
+	env := []string{"PBENCH_QUERY_INDEX=" + strconv.Itoa(index)}
+	if queryFile != nil {
+		env = append(env, "PBENCH_QUERY_FILE="+*queryFile)
+	}
+	return env
+}
+
+// queryEnv returns environment variables for per-query script hooks.
+// When result is non-nil (post_query), query ID is included.
+// queryErr, if non-nil, is exposed as PBENCH_QUERY_ERROR.
+func (s *Stage) queryEnv(query *Query, result *QueryResult, queryErr error) []string {
+	env := s.queryCycleEnv(query.File, query.Index)
+	env = append(env,
+		"PBENCH_QUERY_SEQ="+strconv.Itoa(query.SequenceNo),
+		"PBENCH_QUERY_COLD_RUN="+strconv.FormatBool(query.ColdRun),
+	)
+	if result != nil {
+		env = append(env, "PBENCH_QUERY_ID="+result.QueryId)
+	}
+	if queryErr != nil {
+		env = append(env, "PBENCH_QUERY_ERROR="+queryErr.Error())
+	}
+	return env
+}
