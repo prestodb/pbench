@@ -103,7 +103,10 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 ## Workflow
 
 - After completing any code change, check whether CLAUDE.md or code comments need to be updated to reflect the change.
-- After completing a task, check if the [pbench.wiki](https://github.com/ethanyzhang/pbench/wiki) repo needs corresponding updates (e.g., new commands, changed behavior, updated usage).
+- After completing a task, check if the [pbench.wiki](https://github.com/ethanyzhang/pbench/wiki) repo needs corresponding updates (e.g., new commands, changed behavior, updated usage). When updating the wiki, also check:
+  - [Configuring PBench - Inherited Parameters](https://github.com/prestodb/pbench/wiki/Configuring-PBench#inherited-parameters-in-stage-files) — if new inherited stage fields were added
+  - [Development - Notable Design Choices](https://github.com/prestodb/pbench/wiki/Development#notable-design-choices) — if command behavior or error handling changed
+  - `README.md` — keep in sync with the wiki homepage (`Home.md`)
 - Before finishing, run `gofmt -w .`, `go vet ./...`, `staticcheck ./...`, and `go mod tidy` to ensure no formatting or lint issues remain.
 - If cluster configs or templates change, run `make clusters` and commit the regenerated output.
 - When integrating stale PRs from contributors, cherry-pick the logic manually (don't merge the branch), fix any issues, and commit with `--author="Name <email>"` to preserve original authorship. Add `Closes #N` in the commit body so the PR closes automatically on push.
