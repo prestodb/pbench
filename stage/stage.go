@@ -35,8 +35,8 @@ type Stage struct {
 	// Description is an optional human-readable description of what this stage does.
 	Description *string `json:"description,omitempty"`
 	// The values in Catalog, Schema, and SessionParams are inherited by the descendant stages. Catalog, Schema,
-	// and TimeZone are auto-detected: if a child stage sets a different value than what the inherited client has,
-	// a new client is automatically created. You can also force a new client by setting StartOnNewClient = true.
+	// and TimeZone are auto-detected: if a child stage sets a different value than what the inherited session has,
+	// a new client session is automatically created. You can also force a new client session by setting StartOnNewClient = true.
 	Catalog       *string        `json:"catalog,omitempty"`
 	Schema        *string        `json:"schema,omitempty"`
 	SessionParams map[string]any `json:"session_params,omitempty"`
@@ -51,9 +51,9 @@ type Stage struct {
 	PostStageShellScripts []string `json:"post_stage_scripts,omitempty"`
 	// Run shell scripts after executing each query.
 	PostQueryShellScripts []string `json:"post_query_scripts,omitempty"`
-	// Run shell scripts before starting query cycle runs of each query.
+	// Run shell scripts before starting all runs (cold + warm) of each individual query.
 	PreQueryCycleShellScripts []string `json:"pre_query_cycle_scripts,omitempty"`
-	// Run shell scripts after finishing full query cycle runs each query.
+	// Run shell scripts after all runs (cold + warm) of each individual query have completed.
 	PostQueryCycleShellScripts []string `json:"post_query_cycle_scripts,omitempty"`
 	// A map from [catalog.schema] to arrays of integers as expected row counts for all the queries we run
 	// under different schemas. This includes the queries from both Queries and QueryFiles. Queries first and QueryFiles follows.
@@ -61,7 +61,7 @@ type Stage struct {
 	ExpectedRowCounts map[string][]int `json:"expected_row_counts,omitempty"`
 	// When RandomExecution is turned on, we randomly pick queries to run until a certain number of queries/a specific
 	// duration has passed. Expected row counts will not be checked in this mode because we cannot figure out the correct
-	// expected row count offset.
+	// expected row count offset (query files are treated as black boxes).
 	RandomExecution *bool `json:"random_execution,omitempty"`
 	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
 	// before exiting.
@@ -70,10 +70,10 @@ type Stage struct {
 	ColdRuns *int `json:"cold_runs,omitempty" validate:"omitempty,gte=0"`
 	// If not set, the default is 0.
 	WarmRuns *int `json:"warm_runs,omitempty" validate:"omitempty,gte=0"`
-	// If StartOnNewClient is set to true, this stage will create a new client to execute itself.
-	// This new client will be passed down to its descendant stages unless those stages also set StartOnNewClient to true.
-	// Each client can carry their own set of client information, tags, session properties, user credentials, etc.
-	// Descendant stages will **NOT** inherit this value from their parents so this is declared as a value not a pointer.
+	// If StartOnNewClient is set to true, this stage will create a new client session to execute itself.
+	// This new client session will be passed down to its children stages unless those stages also set StartOnNewClient to true.
+	// Each client session can carry its own set of client information, tags, session properties, etc.
+	// Children stages will **NOT** inherit this value from their parents so this is declared as a value not a pointer.
 	StartOnNewClient bool `json:"start_on_new_client,omitempty"`
 	// If AbortOnError is set to true, the context associated with this stage will be canceled if an error occurs.
 	// Depending on when the cancellable context was created, this may abort some or all other running stages and all future stages.
@@ -93,7 +93,7 @@ type Stage struct {
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
 
-	// BaseDir is set to the directory path of this stage's location. It is used to locate the descendant stages when
+	// BaseDir is set to the directory path of this stage's location. It is used to locate the children stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
 	// See ReadStageFromFile() - where BaseDir is set.
 	BaseDir string `json:"-"`
@@ -161,6 +161,10 @@ func (s *Stage) Run(ctx context.Context) int {
 
 		// When SIGKILL and SIGINT are captured, we trigger this process by canceling the context, which will cause
 		// "context cancelled" errors in goroutines to let them exit.
+
+		// Deregister signal delivery before closing the channel to prevent a panic
+		// ("send on closed channel") if a signal arrives after close.
+		signal.Stop(timeToExit)
 		close(timeToExit)
 	}()
 

@@ -6,13 +6,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ethanyzhang/presto-go/query_json"
 	"reflect"
 	"strings"
+
+	"github.com/ethanyzhang/presto-go/query_json"
 )
 
 type TableName string
 
+// MergeRowsMap merges two table→rows maps by computing a cartesian product per table. For each table
+// in b, its rows are cross-joined with the existing rows in a for that table (via MultiplyRows). If a
+// has no rows yet for a table, a single empty row is used as the seed so that b's columns are preserved.
+//
+// This is the core mechanism for denormalizing nested structs: parent-level scalar fields produce 1 row
+// in a, and a nested slice of N structs produces N rows in b. The merge yields N rows, each carrying
+// both the parent's columns and one child's columns — equivalent to a SQL cross join.
 func MergeRowsMap(a, b map[TableName][]*Row) map[TableName][]*Row {
 	for tableName, rows2 := range b {
 		rows1 := a[tableName]
@@ -69,6 +77,15 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 	return nil
 }
 
+// collectRowsForEachTable uses reflection to extract SQL rows from a struct, using struct field tags
+// as column mappings. Each tableNames entry corresponds to a tag key (e.g., "table_a"); a field tagged
+// `table_a:"col_name"` contributes its value as column "col_name" to the "table_a" row.
+//
+// Nested structs are traversed recursively and their columns are merged via cartesian product with the
+// parent's columns (so if a parent contributes 1 row and a child slice contributes 3, the result is 3
+// rows each containing both parent and child columns). Slice/array fields of structs produce one row
+// per element. json.RawMessage values are compacted, and query_json.Duration values are converted to
+// milliseconds.
 func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row) {
 	rowsMap = make(map[TableName][]*Row)
 	if k := DerefValue(&v); k != reflect.Struct {
