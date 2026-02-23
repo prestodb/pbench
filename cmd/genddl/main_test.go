@@ -68,3 +68,155 @@ func snapshotDir(t *testing.T, dir string) map[string][]byte {
 	require.NoError(t, err)
 	return files
 }
+
+func TestIntScaleFactor(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int
+	}{
+		{"1", 1},
+		{"10", 10},
+		{"1000", 1000},
+		{"1k", 1000},
+		{"10k", 10000},
+		{"abc", 0},
+		{"k", 0},
+	}
+	for _, tc := range tests {
+		s := &Schema{ScaleFactor: tc.input}
+		assert.Equal(t, tc.expected, s.intScaleFactor(), "intScaleFactor(%q)", tc.input)
+	}
+}
+
+func TestLoadSchemas(t *testing.T) {
+	data := []byte(`{"scale_factor":"10","file_format":"parquet","compression_method":"uncompressed"}`)
+	schemas, err := loadSchemas(data)
+	require.NoError(t, err)
+	require.Len(t, schemas, 4, "should produce 4 schema variants")
+
+	// Verify the 4 combinations.
+	assert.True(t, schemas[0].Iceberg && !schemas[0].Partitioned)
+	assert.True(t, schemas[1].Iceberg && schemas[1].Partitioned)
+	assert.True(t, !schemas[2].Iceberg && !schemas[2].Partitioned)
+	assert.True(t, !schemas[3].Iceberg && schemas[3].Partitioned)
+
+	// Each schema should have independent maps.
+	schemas[0].Tables["foo"] = &Table{Name: "foo"}
+	assert.Empty(t, schemas[1].Tables, "schema variants should not share Tables map")
+}
+
+func TestLoadSchemasDefaults(t *testing.T) {
+	data := []byte(`{"scale_factor":"1","file_format":"orc","compression_method":"zstd"}`)
+	schemas, err := loadSchemas(data)
+	require.NoError(t, err)
+
+	// Verify defaults are applied.
+	assert.Equal(t, "tpcds", schemas[0].Workload)
+	assert.Equal(t, "tpc-ds", schemas[0].WorkloadDefinition)
+
+	// Verify zstd compression session vars.
+	assert.Equal(t, "ZSTD", schemas[0].SessionVariables["iceberg.compression_codec"])
+	assert.Equal(t, "ZSTD", schemas[3].SessionVariables["hive.compression_codec"])
+}
+
+func TestGetNamedOutput(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     string
+		workload string
+		expected string
+	}{
+		{
+			"uncompressed",
+			`{"scale_factor":"10","file_format":"parquet","compression_method":"uncompressed"}`,
+			"tpcds",
+			"tpcds-sf10-parquet",
+		},
+		{
+			"zstd",
+			`{"scale_factor":"100","file_format":"orc","compression_method":"zstd"}`,
+			"tpch",
+			"tpch-sf100-orc-zstd",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := getNamedOutput([]byte(tc.data), tc.workload)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestCleanOutputDir(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create some files.
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.sql"), []byte("test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.sh"), []byte("test"), 0644))
+
+	// Create a subdirectory (should not be deleted).
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "subdir"), 0755))
+
+	err := cleanOutputDir(dir)
+	require.NoError(t, err)
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	assert.Len(t, entries, 1, "only subdirectory should remain")
+	assert.Equal(t, "subdir", entries[0].Name())
+}
+
+func TestCleanOutputDirNonExistent(t *testing.T) {
+	err := cleanOutputDir("/nonexistent/path")
+	assert.NoError(t, err, "should return nil for non-existent directory")
+}
+
+func TestIsPartitioned(t *testing.T) {
+	// Table with explicit PartitionedMinScale.
+	tbl := &Table{PartitionedMinScale: 100}
+	assert.False(t, tbl.isPartitioned(10))
+	assert.True(t, tbl.isPartitioned(100))
+	assert.True(t, tbl.isPartitioned(1000))
+
+	// Table without PartitionedMinScale uses Partitioned field.
+	tbl2 := &Table{Partitioned: true}
+	assert.True(t, tbl2.isPartitioned(1))
+
+	tbl3 := &Table{Partitioned: false}
+	assert.False(t, tbl3.isPartitioned(1))
+}
+
+func TestInitIsVarchar(t *testing.T) {
+	varcharType := "VARCHAR(100)"
+	intType := "INT"
+
+	tbl := &Table{
+		Columns: []*Column{
+			{Name: "a", Type: &varcharType},
+			{Name: "b", Type: &intType},
+			{Name: "c", Type: nil},
+		},
+	}
+	tbl.initIsVarchar()
+
+	assert.True(t, tbl.Columns[0].IsVarchar)
+	assert.False(t, tbl.Columns[1].IsVarchar)
+	assert.False(t, tbl.Columns[2].IsVarchar)
+}
+
+func TestSetNames(t *testing.T) {
+	s := &Schema{
+		ScaleFactor:       "100",
+		FileFormat:        "parquet",
+		CompressionMethod: "zstd",
+		Workload:          "tpcds",
+		Iceberg:           true,
+		Partitioned:       true,
+	}
+	s.setNames()
+
+	assert.Equal(t, "tpcds_sf100_parquet_partitioned_iceberg_zstd", s.SchemaName)
+	assert.Equal(t, "tpcds-sf100-parquet-partitioned-iceberg-zstd", s.LocationName)
+	assert.Equal(t, "tpcds_sf100_parquet_partitioned_iceberg", s.UncompressedName)
+}

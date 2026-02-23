@@ -3,9 +3,14 @@ package round
 import (
 	"bufio"
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func split(in string) ([]string, error) {
@@ -20,6 +25,49 @@ func split(in string) ([]string, error) {
 	} else {
 		return out, nil
 	}
+}
+
+func TestIsFileExtAccepted(t *testing.T) {
+	// No extensions filter — accept everything.
+	FileExtensions = nil
+	assert.True(t, isFileExtAccepted("file.csv"))
+	assert.True(t, isFileExtAccepted("file.txt"))
+
+	// With extensions filter.
+	FileExtensions = []string{".csv", ".tsv"}
+	assert.True(t, isFileExtAccepted("data.csv"))
+	assert.True(t, isFileExtAccepted("data.tsv"))
+	assert.False(t, isFileExtAccepted("data.json"))
+	assert.False(t, isFileExtAccepted("data.txt"))
+
+	// Reset.
+	FileExtensions = nil
+}
+
+func TestProcessRoundDecimalFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	inPath := filepath.Join(tmpDir, "input.csv")
+
+	content := "1.123456789,hello,2.987654321\n42,world,3.14159265\n"
+	require.NoError(t, os.WriteFile(inPath, []byte(content), 0644))
+
+	// Initialize package state.
+	DecimalPrecision = 2
+	FileFormat = "csv"
+	InPlaceRewrite = false
+	decimalRegExp = regexp.MustCompile(fmt.Sprintf(`"?(\d+\.\d{%d})\d+"?`, DecimalPrecision))
+
+	err := processRoundDecimalFile(inPath)
+	require.NoError(t, err)
+
+	outPath := filepath.Join(tmpDir, "input.rewrite.csv")
+	result, err := os.ReadFile(outPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(result), "1.12")
+	assert.Contains(t, string(result), "2.98")
+	assert.Contains(t, string(result), "3.14")
+	assert.Contains(t, string(result), "hello")
+	assert.Contains(t, string(result), "42")
 }
 
 func TestColumnSplitter(t *testing.T) {

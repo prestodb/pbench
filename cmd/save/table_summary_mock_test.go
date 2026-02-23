@@ -2,6 +2,9 @@ package save
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	presto "github.com/ethanyzhang/presto-go"
@@ -285,4 +288,29 @@ func TestQueryTableSummary_Analyze(t *testing.T) {
 	assert.NotNil(t, comment.DistinctValuesCount)
 	assert.NotNil(t, comment.NonNullValuesCount)
 	assert.NotNil(t, comment.NullsFraction)
+}
+
+func TestSaveToFile(t *testing.T) {
+	ts := &TableSummary{
+		Name:    "test_table",
+		Catalog: "cat",
+		Schema:  "sch",
+		Ddl:     "CREATE TABLE cat.sch.test_table (id bigint)",
+	}
+	rowCount := 100
+	ts.RowCount = &rowCount
+
+	outPath := filepath.Join(t.TempDir(), "summary.json")
+	err := ts.SaveToFile(outPath)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile(outPath)
+	require.NoError(t, err)
+
+	var loaded TableSummary
+	require.NoError(t, json.Unmarshal(data, &loaded))
+	assert.Equal(t, "test_table", loaded.Name)
+	assert.Equal(t, "cat", loaded.Catalog)
+	assert.NotNil(t, loaded.RowCount)
+	assert.Equal(t, 100, *loaded.RowCount)
 }
