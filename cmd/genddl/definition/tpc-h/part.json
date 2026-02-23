@@ -1,0 +1,41 @@
+{
+  "name": "part",
+  "columns": [
+    {
+      "name": "p_partkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "p_name",
+      "type": "VARCHAR(55)"
+    },
+    {
+      "name": "p_mfgr",
+      "type": "VARCHAR(25)"
+    },
+    {
+      "name": "p_brand",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "p_type",
+      "type": "VARCHAR(25)"
+    },
+    {
+      "name": "p_size",
+      "type": "INTEGER"
+    },
+    {
+      "name": "p_container",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "p_retailprice",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "p_comment",
+      "type": "VARCHAR(23)"
+    }
+  ]
+}
