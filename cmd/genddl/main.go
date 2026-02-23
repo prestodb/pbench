@@ -20,6 +20,8 @@ type Schema struct {
 	Iceberg             bool              `json:"iceberg"`
 	CompressionMethod   string            `json:"compression_method"`
 	Partitioned         bool              `json:"partitioned"`
+	Workload            string            `json:"workload"`
+	WorkloadDefinition  string            `json:"workload_definition"`
 	SchemaName          string            `json:"schema_name"`
 	LocationName        string            `json:"location_name"`
 	UncompressedName    string            `json:"uncompressed_name"`
@@ -52,9 +54,6 @@ type RegisterTable struct {
 	ExternalLocation *string
 }
 
-var fixedWorkload = "tpcds"
-var fixedDefinition = "tpc-ds"
-
 func Run(_ *cobra.Command, args []string) {
 	pathArg := args[0]
 	absPath, absErr := filepath.Abs(pathArg)
@@ -73,21 +72,18 @@ func Run(_ *cobra.Command, args []string) {
 		return
 	}
 
-	wd, wdErr := os.Getwd()
-	if wdErr != nil {
-		log.Fatal().Err(wdErr).Msg("Failed to get working directory")
-	}
-	genDdlDir := wd + "/cmd/genddl"
-	defDir := genDdlDir + "/definition/" + fixedDefinition
+	// Resolve all paths relative to the config file's directory.
+	configDir := filepath.Dir(absPath)
+	defDir := filepath.Join(configDir, "definition", schemas[0].WorkloadDefinition)
 
 	// Get the specific named output directory (used in version control)
-	namedOutput, namedErr := getNamedOutput(content)
+	namedOutput, namedErr := getNamedOutput(content, schemas[0].Workload)
 	if namedErr != nil {
 		log.Fatal().Err(namedErr).Msg("Failed to get named output dir")
 	}
-	namedOutputDir := filepath.Join(genDdlDir, "generated-examples", namedOutput)
+	namedOutputDir := filepath.Join(configDir, "generated-examples", namedOutput)
 
-	outputDir := filepath.Join(genDdlDir, "out")
+	outputDir := filepath.Join(configDir, "out")
 	cleanErr := cleanOutputDir(outputDir)
 	if cleanErr != nil {
 		log.Warn().Err(cleanErr).Msg("Error cleaning output dir")
@@ -107,11 +103,11 @@ func Run(_ *cobra.Command, args []string) {
 	for _, schema := range schemas {
 		externalLoc := schema.getNonPartLocationName()
 
-		generateSchemaFromDef(schema, defDir, genDdlDir, []string{outputDir, namedOutputDir}, &externalLoc, &step)
+		generateSchemaFromDef(schema, defDir, configDir, []string{outputDir, namedOutputDir}, &externalLoc, &step)
 	}
 }
 
-func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outputDirs []string, externalLoc *string, step *int) {
+func generateSchemaFromDef(schema *Schema, defDir string, configDir string, outputDirs []string, externalLoc *string, step *int) {
 	_ = filepath.Walk(defDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			log.Fatal().Err(err).Send()
@@ -154,11 +150,11 @@ func generateSchemaFromDef(schema *Schema, defDir string, genDdlDir string, outp
 		return nil
 	})
 
-	generateCreateTable(schema, genDdlDir, outputDirs, *step)
+	generateCreateTable(schema, configDir, outputDirs, *step)
 	*step++
 
 	if schema.shouldGenInsert() {
-		generateInsertTable(schema, genDdlDir, outputDirs, *step)
+		generateInsertTable(schema, configDir, outputDirs, *step)
 		*step++
 	}
 }
@@ -274,7 +270,7 @@ func isInsertTable(table *Table, schema *Schema) bool {
 	return true
 }
 
-func getNamedOutput(configData []byte) (string, error) {
+func getNamedOutput(configData []byte, workload string) (string, error) {
 	var config map[string]string
 	if err := json.Unmarshal(configData, &config); err != nil {
 		return "", err
@@ -290,7 +286,7 @@ func getNamedOutput(configData []byte) (string, error) {
 		compressionSuffix = "-" + compressionMethod
 	}
 
-	return fixedWorkload + "-sf" + scaleFactor + "-" + fileFormat + compressionSuffix, nil
+	return workload + "-sf" + scaleFactor + "-" + fileFormat + compressionSuffix, nil
 }
 
 func loadSchemas(data []byte) ([]*Schema, error) {
@@ -306,6 +302,14 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return schemas, err
+	}
+
+	// Default workload names for backward compatibility.
+	if base.Workload == "" {
+		base.Workload = "tpcds"
+	}
+	if base.WorkloadDefinition == "" {
+		base.WorkloadDefinition = "tpc-ds"
 	}
 
 	combinations := []struct {
@@ -417,11 +421,11 @@ func (s *Schema) setNames() {
 	} else {
 		compression = ""
 	}
-	s.UncompressedName = fixedWorkload + "_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
+	s.UncompressedName = s.Workload + "_sf" + s.ScaleFactor + "_" + s.FileFormat + partitioned + iceberg
 	s.SchemaName = s.UncompressedName + compression
-	s.LocationName = fixedWorkload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg) + toHyphen(compression)
-	s.IcebergLocationName = fixedWorkload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + "-iceberg"
-	s.PartIcebergName = fixedWorkload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + "-iceberg"
+	s.LocationName = s.Workload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + toHyphen(iceberg) + toHyphen(compression)
+	s.IcebergLocationName = s.Workload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + "-iceberg"
+	s.PartIcebergName = s.Workload + "-sf" + s.ScaleFactor + "-" + s.FileFormat + toHyphen(partitioned) + "-iceberg"
 }
 
 func (s *Schema) getNonPartLocationName() string {
