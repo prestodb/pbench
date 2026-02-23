@@ -236,58 +236,60 @@ func (s *Stage) setDefaults() {
 
 func (s *Stage) propagateStates() {
 	for _, nextStage := range s.NextStages {
-		if nextStage.Catalog == nil {
-			nextStage.Catalog = s.Catalog
-		}
-		if nextStage.Schema == nil {
-			nextStage.Schema = s.Schema
-		}
-		if nextStage.SessionParams == nil {
-			nextStage.SessionParams = make(map[string]any)
-		}
-		if nextStage.TimeZone == nil {
-			nextStage.TimeZone = s.TimeZone
-		}
-		if nextStage.RandomExecution == nil {
-			nextStage.RandomExecution = s.RandomExecution
-		}
-		if nextStage.RandomlyExecuteUntil == nil {
-			nextStage.RandomlyExecuteUntil = s.RandomlyExecuteUntil
-		}
-		for k, v := range s.SessionParams {
-			if v == nil {
-				continue
+		nextStage.propagateOnce.Do(func() {
+			if nextStage.Catalog == nil {
+				nextStage.Catalog = s.Catalog
 			}
-			if _, ok := nextStage.SessionParams[k]; !ok {
-				nextStage.SessionParams[k] = v
+			if nextStage.Schema == nil {
+				nextStage.Schema = s.Schema
 			}
-		}
-		if nextStage.ColdRuns == nil && nextStage.WarmRuns == nil {
-			nextStage.ColdRuns = s.ColdRuns
-			nextStage.WarmRuns = s.WarmRuns
-		} else if nextStage.ColdRuns == nil {
-			nextStage.ColdRuns = &RunsValueZero
-		} else if nextStage.WarmRuns == nil {
-			nextStage.WarmRuns = &RunsValueZero
-		}
-		if *nextStage.ColdRuns+*nextStage.WarmRuns <= 0 {
-			nextStage.ColdRuns = &RunsValueOne
-			nextStage.WarmRuns = &RunsValueZero
-		}
-		if nextStage.AbortOnError == nil {
-			nextStage.AbortOnError = s.AbortOnError
-		}
-		if nextStage.SaveOutput == nil {
-			nextStage.SaveOutput = s.SaveOutput
-		}
-		if nextStage.SaveColumnMetadata == nil {
-			nextStage.SaveColumnMetadata = s.SaveColumnMetadata
-		}
-		if nextStage.SaveJson == nil {
-			nextStage.SaveJson = s.SaveJson
-		}
-		nextStage.States = s.States
-		nextStage.Client = s.Client
+			if nextStage.SessionParams == nil {
+				nextStage.SessionParams = make(map[string]any)
+			}
+			if nextStage.TimeZone == nil {
+				nextStage.TimeZone = s.TimeZone
+			}
+			if nextStage.RandomExecution == nil {
+				nextStage.RandomExecution = s.RandomExecution
+			}
+			if nextStage.RandomlyExecuteUntil == nil {
+				nextStage.RandomlyExecuteUntil = s.RandomlyExecuteUntil
+			}
+			for k, v := range s.SessionParams {
+				if v == nil {
+					continue
+				}
+				if _, ok := nextStage.SessionParams[k]; !ok {
+					nextStage.SessionParams[k] = v
+				}
+			}
+			if nextStage.ColdRuns == nil && nextStage.WarmRuns == nil {
+				nextStage.ColdRuns = s.ColdRuns
+				nextStage.WarmRuns = s.WarmRuns
+			} else if nextStage.ColdRuns == nil {
+				nextStage.ColdRuns = &RunsValueZero
+			} else if nextStage.WarmRuns == nil {
+				nextStage.WarmRuns = &RunsValueZero
+			}
+			if *nextStage.ColdRuns+*nextStage.WarmRuns <= 0 {
+				nextStage.ColdRuns = &RunsValueOne
+				nextStage.WarmRuns = &RunsValueZero
+			}
+			if nextStage.AbortOnError == nil {
+				nextStage.AbortOnError = s.AbortOnError
+			}
+			if nextStage.SaveOutput == nil {
+				nextStage.SaveOutput = s.SaveOutput
+			}
+			if nextStage.SaveColumnMetadata == nil {
+				nextStage.SaveColumnMetadata = s.SaveColumnMetadata
+			}
+			if nextStage.SaveJson == nil {
+				nextStage.SaveJson = s.SaveJson
+			}
+			nextStage.States = s.States
+			nextStage.Client = s.Client
+		})
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -173,8 +174,11 @@ func testParseAndExecute(t *testing.T, abortOnError bool, minQueryCount, maxQuer
 	assertStage(t, stage6, []*Stage{stage5}, []*Stage(nil), 0, 1)
 
 	stage4.AbortOnError = &abortOnError
+	var mu sync.Mutex
 	queryCount, rowCount, errs := 0, 0, make([]error, 0, len(expectedErrors))
 	stage1.States.OnQueryCompletion = func(result *QueryResult) {
+		mu.Lock()
+		defer mu.Unlock()
 		rowCount += result.RowCount
 		queryCount++
 		if result.QueryError != nil && !errors.Is(result.QueryError, context.Canceled) {
@@ -185,6 +189,8 @@ func testParseAndExecute(t *testing.T, abortOnError bool, minQueryCount, maxQuer
 	stage1.Run(context.Background())
 	defer assert.Nil(t, os.RemoveAll(stage1.States.OutputPath))
 
+	mu.Lock()
+	defer mu.Unlock()
 	assert.GreaterOrEqual(t, queryCount, minQueryCount)
 	assert.LessOrEqual(t, queryCount, maxQueryCount)
 	assert.Equal(t, len(expectedErrors), len(errs))
@@ -362,8 +368,11 @@ func TestContextCancellation(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	var mu sync.Mutex
 	queryCount := 0
 	stage1.States.OnQueryCompletion = func(result *QueryResult) {
+		mu.Lock()
+		defer mu.Unlock()
 		queryCount++
 		// Cancel after the first query finishes
 		if queryCount == 1 {
@@ -378,6 +387,8 @@ func TestContextCancellation(t *testing.T) {
 	defer assert.Nil(t, os.RemoveAll(stage1.States.OutputPath))
 
 	// We should have at least 1 query completed but not all 15
+	mu.Lock()
+	defer mu.Unlock()
 	assert.GreaterOrEqual(t, queryCount, 1)
 	assert.Less(t, queryCount, 15)
 }

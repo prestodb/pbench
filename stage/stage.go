@@ -119,6 +119,9 @@ type Stage struct {
 	// to make sure this stage only starts once. When the stage is started by its first completed prerequisite, it waits
 	// until wgPrerequisites counts down to zero then starts execution.
 	started atomic.Bool
+	// propagateOnce ensures that when a child stage has multiple parents, only the first parent to finish
+	// propagates state into the child. This prevents a data race where multiple parents write concurrently.
+	propagateOnce sync.Once
 }
 
 // Run this stage and trigger its downstream stages.
@@ -213,7 +216,15 @@ func (s *Stage) Run(ctx context.Context) int {
 					break drainLoop
 				}
 			}
-			s.States.RunFinishTime = time.Now()
+			// Derive RunFinishTime from the latest query EndTime, which is set by
+			// ConcludeExecution() right after query data is drained — before I/O
+			// teardown (saveQueryJsonFile, output file flushes). This gives a clean
+			// "last query completion" time that excludes post-run I/O.
+			for _, result := range results {
+				if result.EndTime != nil && result.EndTime.After(s.States.RunFinishTime) {
+					s.States.RunFinishTime = *result.EndTime
+				}
+			}
 			for _, recorder := range s.States.runRecorders {
 				rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
 				recorder.RecordRun(rCtx, s, results)
@@ -233,7 +244,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		return nil
 	}
 	defer func() {
-		// Remember to unblock the descendant stages no matter this stage threw an error or not.
+		// Remember to unblock children stages no matter this stage threw an error or not.
 		for _, nextStage := range s.NextStages {
 			nextStage.wgPrerequisites.Done()
 		}
@@ -498,7 +509,12 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 			log.Error().EmbedObject(s).Msgf("recovered from panic: %v", r)
 			if e, ok := r.(error); ok {
 				retErr = e
+			} else {
+				retErr = fmt.Errorf("panic: %v", r)
 			}
+		}
+		if result == nil {
+			result = &QueryResult{StageId: s.Id, Query: query, StartTime: time.Now()}
 		}
 		result.QueryError = retErr
 		result.ConcludeExecution()
