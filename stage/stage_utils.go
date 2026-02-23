@@ -93,6 +93,9 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	if other.SaveJson != nil {
 		s.SaveJson = other.SaveJson
 	}
+	if other.StreamCount != nil {
+		s.StreamCount = other.StreamCount
+	}
 	s.NextStagePaths = append(s.NextStagePaths, other.NextStagePaths...)
 	s.BaseDir = other.BaseDir
 

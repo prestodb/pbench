@@ -98,6 +98,10 @@ type Stage struct {
 	// knob was not set to true.
 	SaveJson       *bool    `json:"save_json,omitempty"`
 	NextStagePaths []string `json:"next,omitempty"`
+	// StreamCount specifies how many parallel instances of this stage should run.
+	// Each stream gets a deterministically derived seed for reproducible randomization.
+	// Not inherited by child stages.
+	StreamCount *int `json:"stream_count,omitempty" validate:"omitempty,gte=1"`
 
 	// BaseDir is set to the directory path of this stage's location. It is used to locate the children stages when
 	// their locations are specified using relative paths. It is not possible to set this in a stage definition json file.
@@ -287,8 +291,10 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		return fmt.Errorf("pre-stage script execution failed: %w", preStageErr)
 	}
 	if len(s.Queries)+len(s.QueryFiles) > 0 {
-		if *s.RandomExecution {
-			returnErr = s.runRandomly(ctx)
+		if s.StreamCount != nil && *s.StreamCount > 1 {
+			returnErr = s.runAsMultipleStreams(ctx)
+		} else if *s.RandomExecution {
+			returnErr = s.runRandomly(ctx, s.States.RandSeed)
 		} else {
 			returnErr = s.runSequentially(ctx)
 		}
@@ -299,6 +305,80 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	postStageErr := s.runShellScripts(ctx, s.PostStageShellScripts)
 	returnErr = errors.Join(returnErr, postStageErr)
 	return
+}
+
+// runAsMultipleStreams executes this stage as multiple parallel stream instances.
+// Each stream is a new Stage that copies the relevant fields from this stage.
+func (s *Stage) runAsMultipleStreams(ctx context.Context) error {
+	streamCount := *s.StreamCount
+	log.Info().EmbedObject(s).Int("stream_count", streamCount).Msg("starting parallel stream execution")
+
+	errChan := make(chan error, streamCount)
+	var wg sync.WaitGroup
+	for i := range streamCount {
+		wg.Add(1)
+		stream := s.newStreamInstance(i)
+		seed := s.States.RandSeed + int64(i)*1000
+
+		go func() {
+			defer wg.Done()
+			var err error
+			if *stream.RandomExecution {
+				err = stream.runRandomly(ctx, seed)
+			} else {
+				err = stream.runSequentially(ctx)
+			}
+			if err != nil {
+				log.Error().Err(err).Str("stream", stream.Id).Msg("stream failed")
+				errChan <- err
+			} else {
+				log.Info().Str("stream", stream.Id).Msg("stream completed")
+			}
+		}()
+	}
+	wg.Wait()
+	close(errChan)
+
+	var errs []error
+	for err := range errChan {
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
+}
+
+// newStreamInstance creates a new Stage for a stream, copying the fields needed for query execution.
+// Sync primitives (wgPrerequisites, started, propagateOnce) are left at zero values since
+// streams don't participate in DAG coordination.
+func (s *Stage) newStreamInstance(index int) *Stage {
+	return &Stage{
+		Id:                         fmt.Sprintf("%s_stream_%d", s.Id, index+1),
+		Catalog:                    s.Catalog,
+		Schema:                     s.Schema,
+		SessionParams:              s.SessionParams,
+		TimeZone:                   s.TimeZone,
+		Queries:                    s.Queries,
+		QueryFiles:                 s.QueryFiles,
+		ExpectedRowCounts:          s.ExpectedRowCounts,
+		RandomExecution:            s.RandomExecution,
+		RandomlyExecuteUntil:       s.RandomlyExecuteUntil,
+		NoRandomDuplicates:         s.NoRandomDuplicates,
+		ColdRuns:                   s.ColdRuns,
+		WarmRuns:                   s.WarmRuns,
+		AbortOnError:               s.AbortOnError,
+		SaveOutput:                 s.SaveOutput,
+		SaveColumnMetadata:         s.SaveColumnMetadata,
+		SaveJson:                   s.SaveJson,
+		PreQueryShellScripts:       s.PreQueryShellScripts,
+		PostQueryShellScripts:      s.PostQueryShellScripts,
+		PreQueryCycleShellScripts:  s.PreQueryCycleShellScripts,
+		PostQueryCycleShellScripts: s.PostQueryCycleShellScripts,
+		BaseDir:                    s.BaseDir,
+		States:                     s.States,
+		Client:                     s.Client,
+		currentCatalog:             s.currentCatalog,
+		currentSchema:              s.currentSchema,
+		currentTimeZone:            s.currentTimeZone,
+	}
 }
 
 func (s *Stage) runSequentially(ctx context.Context) (returnErr error) {
@@ -370,7 +450,7 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 	return err
 }
 
-func (s *Stage) runRandomly(ctx context.Context) error {
+func (s *Stage) runRandomly(ctx context.Context, seed int64) error {
 	if s.RandomlyExecuteUntil == nil {
 		return fmt.Errorf("random_execution is true but randomly_execute_until is not set")
 	}
@@ -394,9 +474,9 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 			return nil
 		}
 	}
-	r := rand.New(rand.NewSource(s.States.RandSeed))
+	r := rand.New(rand.NewSource(seed))
 	s.States.RandSeedUsed = true
-	log.Info().Int64("seed", s.States.RandSeed).Msg("random source seeded")
+	log.Info().EmbedObject(s).Int64("seed", seed).Msg("random source seeded")
 	totalQueries := len(s.Queries) + len(s.QueryFiles)
 
 	// nextIndex returns the next query index to execute.

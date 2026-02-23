@@ -331,6 +331,109 @@ func TestNoRandomDuplicates(t *testing.T) {
 	assert.Contains(t, []string{"select 1", "select 2", "select 3"}, queryTexts[9])
 }
 
+func TestStreamCount(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	tmpDir := t.TempDir()
+	stageJson := `{
+		"queries": ["select 1", "select 2"],
+		"stream_count": 3,
+		"random_execution": true,
+		"randomly_execute_until": "4",
+		"no_random_duplicates": true,
+		"catalog": "tpch",
+		"schema": "sf1",
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`
+	stagePath := filepath.Join(tmpDir, "test_streams.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.RandSeed = 42
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	var mu sync.Mutex
+	stageIds := map[string]int{}
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		mu.Lock()
+		stageIds[result.StageId]++
+		mu.Unlock()
+	}
+
+	s.Run(context.Background())
+
+	// 3 streams, each running 4 queries = 12 total
+	totalQueries := 0
+	for _, count := range stageIds {
+		totalQueries += count
+	}
+	assert.Equal(t, 12, totalQueries)
+
+	// Each stream should have a distinct ID and run 4 queries
+	assert.Equal(t, 3, len(stageIds))
+	for id, count := range stageIds {
+		assert.Equal(t, 4, count, "stream %s should run 4 queries", id)
+		assert.Contains(t, id, "_stream_")
+	}
+}
+
+func TestStreamSeedDeterminism(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	runWithSeed := func(seed int64) []string {
+		tmpDir := t.TempDir()
+		stageJson := `{
+			"queries": ["select 1", "select 2", "select 3"],
+			"random_execution": true,
+			"randomly_execute_until": "6",
+			"catalog": "tpch",
+			"schema": "sf1",
+			"cold_runs": 1,
+			"warm_runs": 0
+		}`
+		stagePath := filepath.Join(tmpDir, "test_seed.json")
+		os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+		s, _, _ := ParseStageGraphFromFile(stagePath)
+		s.InitStates()
+		s.States.RandSeed = seed
+		s.States.OutputPath = tmpDir
+		s.States.NewClient = func() *presto.Client {
+			client, _ := presto.NewClient(mock.URL())
+			return client
+		}
+
+		var mu sync.Mutex
+		var texts []string
+		s.States.OnQueryCompletion = func(result *QueryResult) {
+			mu.Lock()
+			texts = append(texts, result.Query.Text)
+			mu.Unlock()
+		}
+
+		s.Run(context.Background())
+		return texts
+	}
+
+	// Same seed should produce same query order
+	run1 := runWithSeed(42)
+	run2 := runWithSeed(42)
+	assert.Equal(t, run1, run2, "same seed should produce identical query sequences")
+
+	// Different seed should produce different query order (with high probability)
+	run3 := runWithSeed(99)
+	assert.NotEqual(t, run1, run3, "different seeds should produce different query sequences")
+}
+
 func TestWarmRuns(t *testing.T) {
 	mock := setupMockServer()
 	defer mock.Close()
