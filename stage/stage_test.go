@@ -223,13 +223,31 @@ func TestParseStageGraph(t *testing.T) {
 	t.Run("abortOnError = true", func(t *testing.T) {
 		// With abort, stage_4 stops at the error query. Stage_5 may start 0-1 queries
 		// before context cancellation depending on goroutine scheduling.
+		//
+		// expectedScriptCount = 13: Only stage_4 has scripts. Each hook has one python
+		// script that increments count.txt. stage_4 has 4 queries (2 inline + 2 from SQL
+		// file), but the 3rd query ("select 'query 6' from foo") fails and triggers abort.
+		//   pre_stage:                                              +1 (=1)
+		//   query 4: pre_query_cycle + pre_query + post_query + post_query_cycle = +4 (=5)
+		//   query 5: pre_query_cycle + pre_query + post_query + post_query_cycle = +4 (=9)
+		//   query 6: pre_query_cycle + pre_query + post_query (joined w/ error)  = +3 (=12)
+		//            abort fires here — no post_query_cycle, no query 7
+		//   post_stage:                                             +1 (=13)
 		testParseAndExecute(t, true, 9, 10, 16, []string{
-			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist"}, 10)
+			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist"}, 13)
 	})
 	t.Run("abortOnError = false", func(t *testing.T) {
+		// expectedScriptCount = 18: Same as above but no abort, so all 4 queries run
+		// and every hook fires.
+		//   pre_stage:                                              +1 (=1)
+		//   query 4: pre_query_cycle + pre_query + post_query + post_query_cycle = +4 (=5)
+		//   query 5: pre_query_cycle + pre_query + post_query + post_query_cycle = +4 (=9)
+		//   query 6: pre_query_cycle + pre_query + post_query + post_query_cycle = +4 (=13)
+		//   query 7: pre_query_cycle + pre_query + post_query + post_query_cycle = +4 (=17)
+		//   post_stage:                                             +1 (=18)
 		testParseAndExecute(t, false, 15, 15, 24, []string{
 			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist",
-			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 14)
+			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 18)
 	})
 }
 

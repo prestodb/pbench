@@ -94,6 +94,7 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	s.BaseDir = other.BaseDir
 
 	s.PreStageShellScripts = append(s.PreStageShellScripts, other.PreStageShellScripts...)
+	s.PreQueryShellScripts = append(s.PreQueryShellScripts, other.PreQueryShellScripts...)
 	s.PostQueryShellScripts = append(s.PostQueryShellScripts, other.PostQueryShellScripts...)
 	s.PostStageShellScripts = append(s.PostStageShellScripts, other.PostStageShellScripts...)
 	s.PreQueryCycleShellScripts = append(s.PreQueryCycleShellScripts, other.PreQueryCycleShellScripts...)
