@@ -2,6 +2,7 @@ package replay
 
 import (
 	"errors"
+	"fmt"
 	"pbench/log"
 	"strconv"
 	"strings"
@@ -26,6 +27,9 @@ type QueryFrame struct {
 
 func NewQueryFrame(fields []string) (qf *QueryFrame, err error) {
 	// "query_id","create_time","wall_time_millis","output_rows","written_output_rows","catalog","schema","session_properties","query"
+	if len(fields) < 9 {
+		return nil, fmt.Errorf("expected at least 9 fields, got %d", len(fields))
+	}
 	qf = &QueryFrame{
 		QueryId:           fields[0],
 		Catalog:           fields[5],

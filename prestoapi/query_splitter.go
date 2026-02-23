@@ -47,7 +47,13 @@ func ScanSqlStmt(data []byte, atEOF bool) (int, []byte, error) {
 		} else if inQuote > 0 {
 			if i := bytes.IndexByte(data[pos:], inQuote); i >= 0 {
 				pos += i
-				if i == 0 || data[pos-1] != '\\' {
+				// Count consecutive backslashes before the quote.
+				// An even count (including zero) means the quote is not escaped.
+				nBackslashes := 0
+				for j := pos - 1; j >= 0 && data[j] == '\\'; j-- {
+					nBackslashes++
+				}
+				if nBackslashes%2 == 0 {
 					inQuote = 0
 				}
 			} else {

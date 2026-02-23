@@ -10,6 +10,23 @@ import (
 	"testing"
 )
 
+func TestNewQueryFrame_TooFewFields(t *testing.T) {
+	_, err := NewQueryFrame([]string{"a", "b", "c"})
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "expected at least 9 fields")
+}
+
+func TestNewQueryFrame_ExactlyNineFields(t *testing.T) {
+	fields := []string{
+		"qid1", "2024-04-15 11:20:42.755 UTC", "100", "5", "0", "cat", "sch", "{}", "SELECT 1",
+	}
+	frame, err := NewQueryFrame(fields)
+	assert.Nil(t, err)
+	assert.Equal(t, "qid1", frame.QueryId)
+	assert.Equal(t, 100, frame.WallTimeMillis)
+	assert.Equal(t, "cat", frame.Catalog)
+}
+
 func TestFrame(t *testing.T) {
 	testFile := `"query_id","create_time","wallTimeMillis","output_rows","written_output_rows","catalog","schema","session_properties","query"
 "20240415_112042_61088_qa5fd","2024-04-15 11:20:42.755 UTC","99993","14","0","glue","ng_public","{query_max_scan_raw_input_bytes=500GB, iceberg.hive_statistics_merge_strategy=NUMBER_OF_DISTINCT_VALUES,TOTAL_SIZE_IN_BYTES, pushdown_subfields_enabled=true}","-- Looker Query Context '{""user_id"":2337,""history_slug"":""1d0df5dc263357e96a96310626454f6e"",""instance_slug"":""c59fc17fc46e0aeaf86d35ed33635ddc""}'  SELECT       (DATE_FORMAT(partner_data.created_date_local , '%Y-%m-%d'))             AS ""partner_data.dynamic_period"",         (MOD((DAY_OF_WEEK(partner_data.created_date_local ) % 7) - 1 + 7, 7)) AS ""partner_data.period_day_of_week_index"",         (DATE_FORMAT(partner_data.created_date_local ,'%W')) AS ""partner_data.period_day_of_week"",     COALESCE(SUM(partner_data.finished_rides ), 0) AS ""partner_data.finished_orders"" FROM ng_public.etl_partner_data  AS partner_data INNER JOIN admin_system_city  AS admin_system_city ON admin_system_city.id = partner_data.city_id INNER JOIN lks.LR_SHOSW1713178850318_admin_system_country AS admin_system_country ON admin_system_country.code = admin_system_city.country_code  WHERE ((( partner_data.created_date_local  ) >= ((DATE_ADD('day', -14, CAST(CAST(DATE_TRUNC('DAY', NOW()) AS DATE) AS TIMESTAMP)))) AND ( partner_data.created_date_local  ) < ((DATE_ADD('day', 14, DATE_ADD('day', -14, CAST(CAST(DATE_TRUNC('DAY', NOW()) AS DATE) AS TIMESTAMP))))))) AND (admin_system_city.name ) = 'Budapest' AND (admin_system_country.name ) = 'Hungary' GROUP BY     1,     2,     3 ORDER BY     1 DESC LIMIT 500"`

@@ -21,15 +21,20 @@ type TableName string
 // This is the core mechanism for denormalizing nested structs: parent-level scalar fields produce 1 row
 // in a, and a nested slice of N structs produces N rows in b. The merge yields N rows, each carrying
 // both the parent's columns and one child's columns — equivalent to a SQL cross join.
-func MergeRowsMap(a, b map[TableName][]*Row) map[TableName][]*Row {
+const MaxCartesianProductSize = 100_000
+
+func MergeRowsMap(a, b map[TableName][]*Row) (map[TableName][]*Row, error) {
 	for tableName, rows2 := range b {
 		rows1 := a[tableName]
 		if len(rows1) == 0 {
 			rows1 = []*Row{NewRowWithColumnCapacity(16)}
 		}
+		if product := len(rows1) * len(rows2); product > MaxCartesianProductSize {
+			return nil, fmt.Errorf("cartesian product for table %q exceeds limit: %d > %d", tableName, product, MaxCartesianProductSize)
+		}
 		a[tableName] = MultiplyRows(rows1, rows2)
 	}
-	return a
+	return a, nil
 }
 
 func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...TableName) (returnedErr error) {
@@ -51,7 +56,10 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 	if k := DerefValue(&v); k != reflect.Struct {
 		return fmt.Errorf("obj must be a struct, got %v", k)
 	}
-	rowsMap := collectRowsForEachTable(v, tableNames...)
+	rowsMap, err := collectRowsForEachTable(v, tableNames...)
+	if err != nil {
+		return err
+	}
 
 	for table, rows := range rowsMap {
 		if len(rows) == 0 {
@@ -86,7 +94,7 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 // rows each containing both parent and child columns). Slice/array fields of structs produce one row
 // per element. json.RawMessage values are compacted, and query_json.Duration values are converted to
 // milliseconds.
-func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row) {
+func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row, err error) {
 	rowsMap = make(map[TableName][]*Row)
 	if k := DerefValue(&v); k != reflect.Struct {
 		return
@@ -127,8 +135,13 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 			}
 		}
 		if fvk == reflect.Struct {
-			rowsMapFromStruct := collectRowsForEachTable(fv, tableNames...)
-			rowsMap = MergeRowsMap(rowsMap, rowsMapFromStruct)
+			rowsMapFromStruct, childErr := collectRowsForEachTable(fv, tableNames...)
+			if childErr != nil {
+				return nil, childErr
+			}
+			if rowsMap, err = MergeRowsMap(rowsMap, rowsMapFromStruct); err != nil {
+				return nil, err
+			}
 		} else if fvk == reflect.Array || fvk == reflect.Slice {
 			if fv.Len() == 0 {
 				continue
@@ -139,12 +152,17 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 			}
 			rowsMapFromArray := make(map[TableName][]*Row)
 			for j := 0; j < fv.Len(); j++ {
-				rowsMapFromElement := collectRowsForEachTable(fv.Index(j), tableNames...)
+				rowsMapFromElement, elemErr := collectRowsForEachTable(fv.Index(j), tableNames...)
+				if elemErr != nil {
+					return nil, elemErr
+				}
 				for table, rmap := range rowsMapFromElement {
 					rowsMapFromArray[table] = append(rowsMapFromArray[table], rmap...)
 				}
 			}
-			rowsMap = MergeRowsMap(rowsMap, rowsMapFromArray)
+			if rowsMap, err = MergeRowsMap(rowsMap, rowsMapFromArray); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return
