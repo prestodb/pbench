@@ -3,15 +3,15 @@ package genddl
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"pbench/log"
-	"pbench/utils"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/spf13/cobra"
+	"pbench/log"
+	"pbench/utils"
 )
 
 type Schema struct {
@@ -55,6 +55,9 @@ type RegisterTable struct {
 }
 
 func Run(_ *cobra.Command, args []string) {
+	// Reset template cache for each invocation.
+	templateCache = make(map[string]*template.Template)
+
 	pathArg := args[0]
 	absPath, absErr := filepath.Abs(pathArg)
 	if absErr != nil {
@@ -84,19 +87,13 @@ func Run(_ *cobra.Command, args []string) {
 	namedOutputDir := filepath.Join(configDir, "generated-examples", namedOutput)
 
 	outputDir := filepath.Join(configDir, "out")
-	cleanErr := cleanOutputDir(outputDir)
-	if cleanErr != nil {
-		log.Warn().Err(cleanErr).Msg("Error cleaning output dir")
-	}
-	// Generate the out directory
-	mkErr := os.MkdirAll(outputDir, os.ModePerm)
-	if mkErr != nil {
-		log.Fatal().Err(mkErr).Str("path", outputDir).Msg("Failed to make output directory")
-	}
-	// Generate the specific named output directory
-	mkNamedErr := os.MkdirAll(namedOutputDir, os.ModePerm)
-	if mkNamedErr != nil {
-		log.Fatal().Err(mkNamedErr).Str("path", namedOutputDir).Msg("Failed to make output directory")
+	for _, dir := range []string{outputDir, namedOutputDir} {
+		if cleanErr := cleanOutputDir(dir); cleanErr != nil {
+			log.Warn().Err(cleanErr).Str("dir", dir).Msg("Error cleaning output dir")
+		}
+		if mkErr := os.MkdirAll(dir, os.ModePerm); mkErr != nil {
+			log.Fatal().Err(mkErr).Str("path", dir).Msg("Failed to make output directory")
+		}
 	}
 
 	step := 0
@@ -108,47 +105,49 @@ func Run(_ *cobra.Command, args []string) {
 }
 
 func generateSchemaFromDef(schema *Schema, defDir string, configDir string, outputDirs []string, externalLoc *string, step *int) {
-	_ = filepath.Walk(defDir, func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			log.Fatal().Err(err).Send()
-			return err
+	// os.ReadDir returns entries sorted by name, giving deterministic output order.
+	entries, readErr := os.ReadDir(defDir)
+	if readErr != nil {
+		log.Fatal().Err(readErr).Str("dir", defDir).Msg("Failed to read definition directory")
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
 		}
 
-		if info.IsDir() || !strings.HasSuffix(info.Name(), ".json") {
-			return nil
+		filePath := filepath.Join(defDir, entry.Name())
+		f, fileErr := os.ReadFile(filePath)
+		if fileErr != nil {
+			log.Fatal().Err(fileErr).Str("file", entry.Name()).Msg("Failed to read file")
+			continue
 		}
 
-		if f, readErr := os.ReadFile(defDir + "/" + info.Name()); readErr != nil {
-			log.Fatal().Err(readErr).Str("file", info.Name()).Msg("Failed to read file")
+		tbl := new(Table)
+		umErr := json.Unmarshal(f, tbl)
+		if umErr != nil {
+			log.Fatal().Err(umErr).Str("file", entry.Name()).Msg("Failed to unmarshal file to type Table")
+		}
+		tbl.initIsVarchar() // Populates the IsVarchar var for all columns
+		// Set partitioned if above scale factor min
+		if tbl.isPartitioned(schema.intScaleFactor()) {
+			tbl.Partitioned = true
+		}
+
+		if isRegisterTable(tbl, schema) {
+			var registerTable RegisterTable
+			registerTable.TableName = tbl.Name
+			registerTable.ExternalLocation = externalLoc
+			schema.RegisterTables = append(schema.RegisterTables, &registerTable)
 		} else {
-			tbl := new(Table)
-			umErr := json.Unmarshal(f, tbl)
-			if umErr != nil {
-				log.Fatal().Err(umErr).Str("file", info.Name()).Msg("Failed to unmarshal file to type Table")
-			}
-			tbl.initIsVarchar() // Populates the IsVarchar var for all columns
-			// Set partitioned if above scale factor min
-			if tbl.isPartitioned(schema.intScaleFactor()) {
-				tbl.Partitioned = true
-			}
-
-			if isRegisterTable(tbl, schema) {
-				var registerTable RegisterTable
-				registerTable.TableName = tbl.Name
-				registerTable.ExternalLocation = externalLoc
-				schema.RegisterTables = append(schema.RegisterTables, &registerTable)
-			} else {
-				tbl.reorderColumns(schema) // Move PartitionKey columns to the bottom
-				tbl.LastColumn = tbl.Columns[len(tbl.Columns)-1]
-				schema.Tables[tbl.Name] = tbl
-			}
-			if isInsertTable(tbl, schema) {
-				schema.InsertTables[tbl.Name] = tbl
-			}
+			tbl.reorderColumns(schema) // Move PartitionKey columns to the bottom
+			tbl.LastColumn = tbl.Columns[len(tbl.Columns)-1]
+			schema.Tables[tbl.Name] = tbl
 		}
-
-		return nil
-	})
+		if isInsertTable(tbl, schema) {
+			schema.InsertTables[tbl.Name] = tbl
+		}
+	}
 
 	generateCreateTable(schema, configDir, outputDirs, *step)
 	*step++
@@ -170,7 +169,7 @@ func generateCreateTable(schema *Schema, currDir string, outputDirs []string, st
 	} else {
 		fName = strconv.Itoa(step+1) + "-create-" + schema.LocationName + ".sql"
 	}
-	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
+	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 
 	if genSubSteps {
 		generateAwsS3Mv(schema, currDir, outputDirs, step)     // Generate step b
@@ -183,32 +182,41 @@ func generateInsertTable(schema *Schema, currDir string, outputDirs []string, st
 	tName := "insert_table.sql.tmpl"
 	fName := strconv.Itoa(step+1) + "-insert-" + schema.LocationName + ".sql"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
+	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 }
 
 func generateAwsS3Mv(schema *Schema, currDir string, outputDirs []string, step int) {
 	tName := "aws_s3_mv.sh.tmpl"
 	fName := strconv.Itoa(step+1) + "b-s3-mv-" + schema.LocationName + ".sh"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
+	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 }
 
 func generateCallAnalyze(schema *Schema, currDir string, outputDirs []string, step int) {
 	tName := "call_analyze.sql.tmpl"
 	fName := strconv.Itoa(step+1) + "c-call-analyze-" + schema.LocationName + ".sql"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
+	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 }
 
 func generateAwsS3Cp(schema *Schema, currDir string, outputDirs []string, step int) {
 	tName := "aws_s3_cp.sh.tmpl"
 	fName := strconv.Itoa(step+1) + "d-s3-cp-" + schema.LocationName + ".sh"
 
-	parseExecTemplate(schema, tName, fName, currDir, outputDirs)
+	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 }
 
-func parseExecTemplate(schema *Schema, tName string, fName string, currDir string, outputDirs []string) {
-	templateBytes, readErr := os.ReadFile(filepath.Join(currDir, tName))
+// templateCache holds parsed templates keyed by file path, so each template
+// file is read and parsed only once across all schema variants.
+var templateCache = make(map[string]*template.Template)
+
+func getTemplate(tName string, currDir string) *template.Template {
+	tPath := filepath.Join(currDir, tName)
+	if tmpl, ok := templateCache[tPath]; ok {
+		return tmpl
+	}
+
+	templateBytes, readErr := os.ReadFile(tPath)
 	if readErr != nil {
 		log.Fatal().Err(readErr).Str("file", tName).Msg("Failed to read file")
 	}
@@ -218,7 +226,11 @@ func parseExecTemplate(schema *Schema, tName string, fName string, currDir strin
 		log.Fatal().Err(parseErr).Str("file", tName).Msg("Failed to parse text template")
 	}
 
-	// Generate for each output dir
+	templateCache[tPath] = tmpl
+	return tmpl
+}
+
+func execTemplate(schema *Schema, tmpl *template.Template, fName string, outputDirs []string) {
 	for _, singleOutDir := range outputDirs {
 		f, openErr := os.OpenFile(filepath.Join(singleOutDir, fName), utils.OpenNewFileFlags, 0644)
 		if openErr != nil {
@@ -323,21 +335,18 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 	}
 
 	for _, c := range combinations {
-		s := base // Copy base
+		s := base // Copy base (scalar fields only; re-init slices/maps below)
 		s.Iceberg = c.Iceberg
 		s.Partitioned = c.Partitioned
 
+		// Always allocate fresh collections so schema variants don't share state.
+		s.RegisterTables = nil
+		s.Tables = make(map[string]*Table)
+		s.InsertTables = make(map[string]*Table)
+		s.SessionVariables = make(map[string]string)
+
 		if s.SchemaName == "" || s.LocationName == "" {
 			s.setNames()
-		}
-		if s.Tables == nil {
-			s.Tables = make(map[string]*Table)
-		}
-		if s.InsertTables == nil {
-			s.InsertTables = make(map[string]*Table)
-		}
-		if s.SessionVariables == nil {
-			s.SessionVariables = make(map[string]string)
 		}
 		s.setSessionVars()
 
