@@ -19,13 +19,17 @@ var fm = template.FuncMap{
 	"add": func(a uint, b uint) uint { return a + b },
 	"sub": func(a uint, b uint) uint { return a - b },
 	"seq": func(start, end uint) (stream chan uint) {
-		stream = make(chan uint)
-		go func() {
-			for i := start; i <= end; i++ {
-				stream <- i
-			}
+		if end < start {
+			stream = make(chan uint)
 			close(stream)
-		}()
+			return
+		}
+		n := end - start + 1
+		stream = make(chan uint, n)
+		for i := start; i <= end; i++ {
+			stream <- i
+		}
+		close(stream)
 		return
 	},
 }

@@ -7,6 +7,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"pbench/log"
 	"pbench/utils"
+	"sync/atomic"
 	"time"
 )
 
@@ -20,8 +21,8 @@ var (
 type MySQLRunRecorder struct {
 	db       *sql.DB
 	runId    int64
-	failed   int
-	mismatch int
+	failed   atomic.Int64
+	mismatch atomic.Int64
 }
 
 func NewMySQLRunRecorder(cfgPath string) *MySQLRunRecorder {
@@ -79,10 +80,10 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 		queryFile = "inline"
 	}
 	if result.QueryError != nil {
-		m.failed++
+		m.failed.Add(1)
 	}
 	if result.Query.ExpectedRowCount >= 0 && result.Query.ExpectedRowCount != result.RowCount {
-		m.mismatch++
+		m.mismatch.Add(1)
 	}
 	// EndTime and Duration are nil when ConcludeExecution was not called (e.g., query error).
 	var endTime time.Time
@@ -103,7 +104,7 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 		log.Error().EmbedObject(result).Err(err).Msg("failed to send query summary to MySQL")
 	}
 	updateRunInfo := `UPDATE pbench_runs SET start_time = ?, queries_ran = queries_ran + 1, failed = ?, mismatch = ? WHERE run_id = ?`
-	res, err := m.db.Exec(updateRunInfo, s.States.RunStartTime, m.failed, m.mismatch, m.runId)
+	res, err := m.db.Exec(updateRunInfo, s.States.RunStartTime, m.failed.Load(), m.mismatch.Load(), m.runId)
 	if err != nil {
 		log.Error().Err(err).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
 			Msg("failed to update the run information in the MySQL database")

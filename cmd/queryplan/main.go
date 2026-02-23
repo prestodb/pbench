@@ -121,13 +121,19 @@ func processFile(csvFile string) error {
 				log.Err(err).Msgf("failed to serialize the joins at row:%d", rowNum)
 				failureCounter++
 			} else {
-				outputFile.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum))
-				fmt.Fprint(outputFile, string(out))
+				if _, err := outputFile.WriteString(fmt.Sprintf(`%s  "%d":`, newline, rowNum)); err != nil {
+					return err
+				}
+				if _, err := fmt.Fprint(outputFile, string(out)); err != nil {
+					return err
+				}
 				newline = ",\n"
 			}
 		}
 	}
-	outputFile.WriteString("\n}")
+	if _, err := outputFile.WriteString("\n}"); err != nil {
+		return err
+	}
 	return nil
 }
 

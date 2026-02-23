@@ -71,18 +71,20 @@ type TableSummary struct {
 	RowCount    *int                    `json:"rowCount,omitempty"`
 }
 
-func handleQueryError(err error, abortOnError bool) (retry bool) {
+// handleQueryError inspects a query error and returns whether the caller should retry,
+// plus a non-nil fatal error when the query sequence should be aborted entirely.
+func handleQueryError(err error, abortOnError bool) (retry bool, fatal error) {
 	if err == nil {
-		return
+		return false, nil
 	}
 	if abortOnError || errors.Is(err, syscall.ECONNREFUSED) {
-		panic(err)
+		return false, err
 	}
 	var queryError *presto.QueryError
 	if errors.As(err, &queryError) {
 		if strings.HasSuffix(queryError.Message, "does not exist") {
 			// table/schema/catalog does not exist, then no need to run more queries that will fail.
-			panic(err)
+			return false, err
 		}
 		if internalFunctionPrefix == "" && strings.HasSuffix(queryError.Message, "data_size_for_stats not registered") {
 			internalFunctionPrefix = "$internal$"
@@ -91,21 +93,28 @@ func handleQueryError(err error, abortOnError bool) (retry bool) {
 		}
 	}
 	log.Error().Err(err).Msg("failed to query stats")
-	return
+	return retry, nil
 }
 
 func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Session, analyze bool) {
 	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
 
-	defer func() {
-		if err := recover(); err != nil {
-			log.Error().Msgf("querying table summary for %s aborted due to %v", fullyQualifiedTableName, err)
-		}
-	}()
+	abortLog := func(err error) {
+		log.Error().Err(err).Msgf("querying table summary for %s aborted", fullyQualifiedTableName)
+	}
 
-	handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl), true)
-	handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats), true)
-	handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats), true)
+	if _, fatal := handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW CREATE TABLE "+fullyQualifiedTableName, &s.Ddl), true); fatal != nil {
+		abortLog(fatal)
+		return
+	}
+	if _, fatal := handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SHOW STATS FOR "+fullyQualifiedTableName, &s.ColumnStats), true); fatal != nil {
+		abortLog(fatal)
+		return
+	}
+	if _, fatal := handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "DESCRIBE "+fullyQualifiedTableName, &s.ColumnStats), true); fatal != nil {
+		abortLog(fatal)
+		return
+	}
 	// Find the row count from the table summary row (usually the last row)
 	for i := len(s.ColumnStats) - 1; i >= 0; i-- {
 		if stats := s.ColumnStats[i]; stats.ColumnName == "" && stats.RowCount != nil {
@@ -170,7 +179,12 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Ses
 
 		query := fmt.Sprintf("SELECT %s FROM %s", strings.Join(statistics, ", "), fullyQualifiedTableName)
 		err := prestoapi.QueryAndUnmarshal(ctx, client, query, stat)
-		if retry := handleQueryError(err, false); retry {
+		retry, fatal := handleQueryError(err, false)
+		if fatal != nil {
+			abortLog(fatal)
+			return
+		}
+		if retry {
 			i--
 		}
 		if err == nil && stat.NullsFraction == nil {

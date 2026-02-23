@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 
 	presto "github.com/ethanyzhang/presto-go"
 )
@@ -14,6 +15,7 @@ var (
 	RawJsonMessageType   = reflect.TypeOf((*json.RawMessage)(nil)).Elem()
 	ErrUnmarshal         = errors.New("unmarshall: receiving value")
 	structColumnMapCache = make(map[reflect.Type]map[string]int)
+	structColumnMapMu    sync.RWMutex
 )
 
 // Get fields with presto field tag (column name) from v, map the column name to field index.
@@ -26,16 +28,22 @@ func buildColumnMap(t reflect.Type) map[string]int {
 	if k != reflect.Struct {
 		return nil
 	}
+	structColumnMapMu.RLock()
 	if columnMap, cached := structColumnMapCache[t]; cached {
+		structColumnMapMu.RUnlock()
 		return columnMap
 	}
+	structColumnMapMu.RUnlock()
+
 	columnMap := make(map[string]int)
 	for i := 0; i < t.NumField(); i++ {
 		if columnName := t.Field(i).Tag.Get("presto"); columnName != "" {
 			columnMap[columnName] = i
 		}
 	}
+	structColumnMapMu.Lock()
 	structColumnMapCache[t] = columnMap
+	structColumnMapMu.Unlock()
 	return columnMap
 }
 

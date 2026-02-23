@@ -10,14 +10,15 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"os"
 	"pbench/log"
+	"sync/atomic"
 	"time"
 )
 
 type InfluxRunRecorder struct {
 	influxClient influxdb2.Client
 	influxWriter influxapi.WriteAPIBlocking
-	failed       int
-	mismatch     int
+	failed       atomic.Int64
+	mismatch     atomic.Int64
 }
 
 func NewInfluxRunRecorder(cfgPath string) RunRecorder {
@@ -76,10 +77,10 @@ func (i *InfluxRunRecorder) RecordQuery(ctx context.Context, s *Stage, result *Q
 	if result.Query.ExpectedRowCount < 0 {
 		delete(fields, "expected_row_count")
 	} else if result.Query.ExpectedRowCount != result.RowCount {
-		i.mismatch++
+		i.mismatch.Add(1)
 	}
 	if result.QueryError != nil {
-		i.failed++
+		i.failed.Add(1)
 	}
 	if result.Query.File != nil {
 		fields["query_file"] = *result.Query.File
@@ -103,8 +104,8 @@ func (i *InfluxRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*
 	fields := map[string]interface{}{
 		"start_time":  s.States.RunStartTime.UnixNano(),
 		"queries_ran": len(results),
-		"failed":      i.failed,
-		"mismatch":    i.mismatch,
+		"failed":      i.failed.Load(),
+		"mismatch":    i.mismatch.Load(),
 		"duration_ms": s.States.RunFinishTime.Sub(s.States.RunStartTime).Milliseconds(),
 		"comment":     s.States.Comment,
 	}

@@ -440,6 +440,96 @@ func TestAutoNewClientOnCatalogChange(t *testing.T) {
 	assert.Equal(t, "child_schema", childStage.Client.GetSchema())
 }
 
+func TestPostQueryScriptErrorJoined(t *testing.T) {
+	// When a query fails AND the post_query_scripts also fail,
+	// errors.Join should preserve both errors in QueryResult.QueryError.
+	// abort_on_error must be true so runShellScripts returns the script error
+	// (when false, script errors are logged but not returned).
+	mock := setupMockServer()
+	defer mock.Close()
+
+	stageJson := `{
+		"queries": ["select 'query 6'\nfrom foo"],
+		"post_query_scripts": ["exit 42"],
+		"abort_on_error": true,
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`
+	tmpDir := t.TempDir()
+	stagePath := filepath.Join(tmpDir, "test_join.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	var queryErr error
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		queryErr = result.QueryError
+	}
+
+	s.Run(context.Background())
+
+	// The QueryError should contain both the Presto query error AND the script error
+	assert.NotNil(t, queryErr)
+	// errors.Join produces a multi-line error: each sub-error on its own line
+	var joinedErrs []error
+	if unwrapped, ok := queryErr.(interface{ Unwrap() []error }); ok {
+		joinedErrs = unwrapped.Unwrap()
+	}
+	assert.GreaterOrEqual(t, len(joinedErrs), 2, "should have at least 2 joined errors")
+	errMsg := queryErr.Error()
+	assert.Contains(t, errMsg, "Table tpch.sf1.foo does not exist", "should contain query error")
+	assert.Contains(t, errMsg, "exit status 42", "should contain script error")
+}
+
+func TestPostStageScriptErrorJoined(t *testing.T) {
+	// When queries fail AND post_stage_scripts also fail, errors.Join combines
+	// both in run()'s returnErr. The joined error is used for logging and
+	// context cancellation but is not observable via OnQueryCompletion (which
+	// only sees per-query errors). We verify the exit code is non-zero and
+	// the individual query error is propagated correctly.
+	mock := setupMockServer()
+	defer mock.Close()
+
+	stageJson := `{
+		"queries": ["select 'query 6'\nfrom foo"],
+		"post_stage_scripts": ["exit 1"],
+		"abort_on_error": true,
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`
+	tmpDir := t.TempDir()
+	stagePath := filepath.Join(tmpDir, "test_stage_join.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	var queryErr error
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		queryErr = result.QueryError
+	}
+
+	exitCode := s.Run(context.Background())
+	// The exit code should be non-zero because both query and script failed
+	assert.NotEqual(t, 0, exitCode)
+	// The query error should contain the Presto error
+	assert.NotNil(t, queryErr)
+	assert.Contains(t, queryErr.Error(), "Table tpch.sf1.foo does not exist")
+}
+
 func TestHttpError(t *testing.T) {
 	// Custom httptest server that returns 400 when schema is set but catalog is not,
 	// matching the behavior of a real Presto server.

@@ -19,7 +19,7 @@ type simpleOrmStruct struct {
 func TestCollectRowsForEachTable_Simple(t *testing.T) {
 	obj := simpleOrmStruct{ID: "1", Name: "Alice", Age: 30}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "table_a", "table_b")
+	result, _ := collectRowsForEachTable(v, "table_a", "table_b")
 
 	// table_a should have 1 row with 2 columns (id, name)
 	assert.Equal(t, 1, len(result["table_a"]))
@@ -45,7 +45,7 @@ func TestCollectRowsForEachTable_Nested(t *testing.T) {
 		Inner: simpleOrmStruct{ID: "inner-1", Name: "Bob", Age: 25},
 	}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "table_x", "table_a")
+	result, _ := collectRowsForEachTable(v, "table_x", "table_a")
 
 	// table_x has only the outer ID
 	assert.Equal(t, 1, len(result["table_x"]))
@@ -77,7 +77,7 @@ func TestCollectRowsForEachTable_Slice(t *testing.T) {
 		},
 	}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "table_s", "table_a")
+	result, _ := collectRowsForEachTable(v, "table_s", "table_a")
 
 	// table_s has 1 row (only Name field), inner Items don't have table_s tags
 	assert.Equal(t, 1, len(result["table_s"]))
@@ -97,7 +97,7 @@ func TestCollectRowsForEachTable_SliceCartesianProduct(t *testing.T) {
 		},
 	}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "table_a")
+	result, _ := collectRowsForEachTable(v, "table_a")
 
 	// table_a: parent_id="p1" × 2 items = 2 rows, each with parent_id + id + name columns
 	assert.Equal(t, 2, len(result["table_a"]))
@@ -113,7 +113,7 @@ func TestCollectRowsForEachTable_JsonRawMessage(t *testing.T) {
 	}
 	obj := withJson{Data: json.RawMessage(`{ "key" :  "value" }`)}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "table_j")
+	result, _ := collectRowsForEachTable(v, "table_j")
 
 	assert.Equal(t, 1, len(result["table_j"]))
 	// JSON should be compacted
@@ -129,7 +129,7 @@ func TestCollectRowsForEachTable_Duration(t *testing.T) {
 	require.NoError(t, err)
 	obj := withDuration{Elapsed: dur}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "table_d")
+	result, _ := collectRowsForEachTable(v, "table_d")
 
 	assert.Equal(t, 1, len(result["table_d"]))
 	// Duration should be converted to milliseconds
@@ -142,7 +142,7 @@ func TestCollectRowsForEachTable_NilPointer(t *testing.T) {
 	}
 	obj := withPtr{Name: nil}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "table_p")
+	result, _ := collectRowsForEachTable(v, "table_p")
 	// Nil pointer fields are skipped
 	assert.Equal(t, 0, len(result["table_p"]))
 }
@@ -150,7 +150,7 @@ func TestCollectRowsForEachTable_NilPointer(t *testing.T) {
 func TestCollectRowsForEachTable_NoMatchingTables(t *testing.T) {
 	obj := simpleOrmStruct{ID: "1", Name: "Alice", Age: 30}
 	v := reflect.ValueOf(obj)
-	result := collectRowsForEachTable(v, "nonexistent_table")
+	result, _ := collectRowsForEachTable(v, "nonexistent_table")
 	assert.Equal(t, 0, len(result))
 }
 
@@ -173,9 +173,31 @@ func TestMergeRowsMap(t *testing.T) {
 			return r
 		}()},
 	}
-	result := MergeRowsMap(a, b)
+	result, _ := MergeRowsMap(a, b)
 	// t1: 1 row * 2 rows = 2 rows (cartesian product)
 	assert.Equal(t, 2, len(result["t1"]))
+}
+
+func TestMergeRowsMap_CartesianProductLimit(t *testing.T) {
+	// Build a map where the product exceeds MaxCartesianProductSize
+	largeA := make([]*Row, 1000)
+	for i := range largeA {
+		r := NewRowWithColumnCapacity(1)
+		r.AddColumn("a", i)
+		largeA[i] = r
+	}
+	largeB := make([]*Row, 1000)
+	for i := range largeB {
+		r := NewRowWithColumnCapacity(1)
+		r.AddColumn("b", i)
+		largeB[i] = r
+	}
+	a := map[TableName][]*Row{"t": largeA}
+	b := map[TableName][]*Row{"t": largeB}
+	// 1000 * 1000 = 1_000_000 > MaxCartesianProductSize (100_000)
+	_, err := MergeRowsMap(a, b)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds limit")
 }
 
 func TestMergeRowsMap_NewTable(t *testing.T) {
@@ -187,7 +209,7 @@ func TestMergeRowsMap_NewTable(t *testing.T) {
 			return r
 		}()},
 	}
-	result := MergeRowsMap(a, b)
+	result, _ := MergeRowsMap(a, b)
 	// When a has no rows for a table, MergeRowsMap creates a default empty row and multiplies
 	assert.Equal(t, 1, len(result["new_table"]))
 }

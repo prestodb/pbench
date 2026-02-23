@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -291,9 +292,7 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 	}
 
 	postStageErr := s.runShellScripts(ctx, s.PostStageShellScripts)
-	if returnErr == nil {
-		returnErr = postStageErr
-	}
+	returnErr = errors.Join(returnErr, postStageErr)
 	return
 }
 
@@ -342,6 +341,7 @@ func (s *Stage) runQueryFile(ctx context.Context, queryFile string, expectedRowC
 	var queries []string
 	if err == nil {
 		queries, err = prestoapi.SplitQueries(file)
+		file.Close()
 	}
 	if err != nil {
 		if !*s.AbortOnError {
@@ -623,8 +623,6 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	})
 	// run post query shell scripts
 	postQueryErr := s.runShellScripts(ctx, s.PostQueryShellScripts)
-	if err == nil {
-		err = postQueryErr
-	}
+	err = errors.Join(err, postQueryErr)
 	return result, err
 }

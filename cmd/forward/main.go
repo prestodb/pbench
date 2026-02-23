@@ -123,6 +123,10 @@ func Run(_ *cobra.Command, _ []string) {
 		}
 	}
 
+	if len(SchemaMappingStrings)%2 != 0 {
+		log.Warn().Int("count", len(SchemaMappingStrings)).
+			Msg("schema mapping requires pairs of values, last unpaired value will be ignored")
+	}
 	for i := 0; i+1 < len(SchemaMappingStrings); i += 2 {
 		schemaMappings[SchemaMappingStrings[i]] = SchemaMappingStrings[i+1]
 		log.Info().Msgf("added schema mapping from %s to %s", SchemaMappingStrings[i], SchemaMappingStrings[i+1])
