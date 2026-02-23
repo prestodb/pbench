@@ -279,6 +279,58 @@ func TestRandomExecution(t *testing.T) {
 	assert.True(t, stage.States.RandSeedUsed)
 }
 
+func TestNoRandomDuplicates(t *testing.T) {
+	mock := setupMockServer()
+	defer mock.Close()
+
+	tmpDir := t.TempDir()
+	stageJson := `{
+		"queries": ["select 1", "select 2", "select 3"],
+		"random_execution": true,
+		"randomly_execute_until": "10",
+		"no_random_duplicates": true,
+		"catalog": "tpch",
+		"schema": "sf1",
+		"cold_runs": 1,
+		"warm_runs": 0
+	}`
+	stagePath := filepath.Join(tmpDir, "test_no_dup.json")
+	os.WriteFile(stagePath, []byte(stageJson), 0644)
+
+	s, _, parseErr := ParseStageGraphFromFile(stagePath)
+	assert.Nil(t, parseErr)
+	s.InitStates()
+	s.States.RandSeed = 42
+	s.States.OutputPath = tmpDir
+	s.States.NewClient = func() *presto.Client {
+		client, _ := presto.NewClient(mock.URL())
+		return client
+	}
+
+	var queryTexts []string
+	s.States.OnQueryCompletion = func(result *QueryResult) {
+		assert.Nil(t, result.QueryError)
+		queryTexts = append(queryTexts, result.Query.Text)
+	}
+
+	s.Run(context.Background())
+	assert.Equal(t, 10, len(queryTexts))
+
+	// With 3 queries and 10 executions, we get 3 complete rounds + 1 partial.
+	// Each complete round must contain all 3 queries exactly once.
+	for round := 0; round < 3; round++ {
+		batch := queryTexts[round*3 : (round+1)*3]
+		seen := map[string]bool{}
+		for _, q := range batch {
+			assert.False(t, seen[q], "duplicate query %q in round %d", q, round)
+			seen[q] = true
+		}
+		assert.Equal(t, 3, len(seen), "round %d should contain all 3 queries", round)
+	}
+	// The 10th query should be the first pick of a new shuffled round.
+	assert.Contains(t, []string{"select 1", "select 2", "select 3"}, queryTexts[9])
+}
+
 func TestWarmRuns(t *testing.T) {
 	mock := setupMockServer()
 	defer mock.Close()

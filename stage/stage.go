@@ -69,6 +69,9 @@ type Stage struct {
 	// Use RandomlyExecuteUntil to specify a duration like "1h" or an integer as the number of queries should be executed
 	// before exiting.
 	RandomlyExecuteUntil *string `json:"randomly_execute_until,omitempty"`
+	// If NoRandomDuplicates is true, queries are shuffled and each is executed once before any repeats.
+	// Only effective when RandomExecution is true.
+	NoRandomDuplicates *bool `json:"no_random_duplicates,omitempty"`
 	// If not set, the default is 1. The default value is set when the stage is run.
 	ColdRuns *int `json:"cold_runs,omitempty" validate:"omitempty,gte=0"`
 	// If not set, the default is 0.
@@ -394,9 +397,28 @@ func (s *Stage) runRandomly(ctx context.Context) error {
 	r := rand.New(rand.NewSource(s.States.RandSeed))
 	s.States.RandSeedUsed = true
 	log.Info().Int64("seed", s.States.RandSeed).Msg("random source seeded")
-	randIndexUpperBound := len(s.Queries) + len(s.QueryFiles)
+	totalQueries := len(s.Queries) + len(s.QueryFiles)
+
+	// nextIndex returns the next query index to execute.
+	// When no_random_duplicates is true, it shuffles all indices and cycles through them,
+	// ensuring each query runs once before any repeats.
+	var indices []int
+	var pos int
+	nextIndex := func() int {
+		if *s.NoRandomDuplicates {
+			if indices == nil || pos >= len(indices) {
+				indices = r.Perm(totalQueries)
+				pos = 0
+			}
+			idx := indices[pos]
+			pos++
+			return idx
+		}
+		return r.Intn(totalQueries)
+	}
+
 	for i := 1; continueExecution(i); i++ {
-		idx := r.Intn(randIndexUpperBound)
+		idx := nextIndex()
 		if i <= s.States.RandSkip {
 			if i == s.States.RandSkip {
 				log.Info().Msgf("skipped %d random selections", i)
