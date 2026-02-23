@@ -73,7 +73,7 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 
 ### Dependencies
 
-- **Go 1.22+** - Required by `go.mod`
+- **Go 1.25.7+** - Required by `go.mod`
 - **Python 3** - Required by some stage test hooks (shell scripts that invoke Python for JSON processing)
 
 ## Commands
@@ -88,3 +88,10 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 - `save` - Save table schema/data information
 - `queryplan` - Query plan visualization utilities
 - `round` - Round decimal values in benchmark output files (requires `experimental` build tag)
+
+## Workflow
+
+- After completing any code change, check whether CLAUDE.md or code comments need to be updated to reflect the change.
+- After completing a task, check if the [pbench.wiki](https://github.com/ethanyzhang/pbench/wiki) repo needs corresponding updates (e.g., new commands, changed behavior, updated usage).
+- Before finishing, run `gofmt -w .`, `go vet ./...`, `staticcheck ./...`, and `go mod tidy` to ensure no formatting or lint issues remain.
+- If cluster configs or templates change, run `make clusters` and commit the regenerated output.
