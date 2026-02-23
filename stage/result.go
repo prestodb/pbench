@@ -20,8 +20,9 @@ type QueryResult struct {
 }
 
 func (q *QueryResult) SimpleLogging() *QueryResult {
-	q.simpleLogging = true
-	return q
+	copy := *q
+	copy.simpleLogging = true
+	return &copy
 }
 
 func (q *QueryResult) MarshalZerologObject(e *zerolog.Event) {
@@ -36,7 +37,6 @@ func (q *QueryResult) MarshalZerologObject(e *zerolog.Event) {
 	e.Int("sequence_no", q.Query.SequenceNo)
 	e.Str("info_url", q.InfoUrl)
 	if q.simpleLogging {
-		q.simpleLogging = false
 		return
 	}
 	e.Str("query_id", q.QueryId)

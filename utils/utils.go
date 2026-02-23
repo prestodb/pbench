@@ -59,7 +59,8 @@ func InitLogFile(logPath string) (finalizer func()) {
 		return func() {}
 	} else {
 		bufWriter := bufio.NewWriter(logFile)
-		log.SetGlobalLogger(zerolog.New(io.MultiWriter(os.Stderr, bufWriter)).With().Timestamp().Stack().Logger())
+		syncWriter := zerolog.SyncWriter(io.MultiWriter(os.Stderr, bufWriter))
+		log.SetGlobalLogger(zerolog.New(syncWriter).With().Timestamp().Stack().Logger())
 		log.Info().Str("log_path", logPath).Msg("log file will be saved to this path")
 		return func() {
 			_ = bufWriter.Flush()

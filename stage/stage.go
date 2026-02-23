@@ -244,17 +244,19 @@ func (s *Stage) run(ctx context.Context) (returnErr error) {
 		return nil
 	}
 	defer func() {
-		// Remember to unblock children stages no matter this stage threw an error or not.
-		for _, nextStage := range s.NextStages {
-			nextStage.wgPrerequisites.Done()
-		}
 		if returnErr != nil {
 			s.logErr(ctx, returnErr)
 			if *s.AbortOnError {
 				log.Debug().EmbedObject(s).Msg("canceling the context because abort_on_error is set to true")
+				// Cancel context BEFORE unblocking children so they see the cancellation immediately.
 				s.States.AbortAll(returnErr)
 			}
-		} else {
+		}
+		// Unblock children stages no matter this stage threw an error or not.
+		for _, nextStage := range s.NextStages {
+			nextStage.wgPrerequisites.Done()
+		}
+		if returnErr == nil {
 			// Trigger descendant stages.
 			s.States.wgExitMainStage.Add(len(s.NextStages))
 			for _, nextStage := range s.NextStages {
@@ -580,6 +582,8 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 
 		// Start a goroutine to write query output in the background.
 		// Make sure the main stage won't exit until this background goroutine finishes.
+		// Capture a snapshot for logging to avoid racing with the defer that writes result.QueryError.
+		resultSnapshot := result.SimpleLogging()
 		s.States.wgExitMainStage.Add(1)
 		go func() {
 			for data := range queryOutputChan {
@@ -589,7 +593,7 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 						ioErr = queryOutputWriter.WriteByte('\n')
 					}
 					if ioErr != nil {
-						log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+						log.Error().Err(ioErr).EmbedObject(resultSnapshot).
 							Msg("failed to write query result")
 						// Skip the current batch on error.
 						break
@@ -597,10 +601,10 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 				}
 			}
 			if ioErr := queryOutputWriter.Flush(); ioErr != nil {
-				log.Error().Err(ioErr).EmbedObject(result.SimpleLogging()).
+				log.Error().Err(ioErr).EmbedObject(resultSnapshot).
 					Msg("failed to write query result")
 			} else {
-				log.Info().EmbedObject(result.SimpleLogging()).Msg("query data saved successfully")
+				log.Info().EmbedObject(resultSnapshot).Msg("query data saved successfully")
 			}
 			_ = queryOutputFile.Close()
 			s.States.wgExitMainStage.Done()

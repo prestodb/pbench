@@ -191,3 +191,98 @@ func TestQueryTableSummary_ErrorRecovery(t *testing.T) {
 	// DDL should be empty since query failed
 	assert.Equal(t, "", ts.Ddl)
 }
+
+func TestQueryTableSummary_Analyze(t *testing.T) {
+	mock := prestotest.NewMockPrestoServer()
+	defer mock.Close()
+
+	// SHOW CREATE TABLE
+	mock.AddQuery(&prestotest.MockQueryTemplate{
+		SQL:     "SHOW CREATE TABLE tpch.sf1.lineitem",
+		Columns: []presto.Column{{Name: "Create Table", Type: "varchar"}},
+		Data:    [][]any{{"CREATE TABLE tpch.sf1.lineitem (\n   orderkey bigint,\n   comment varchar\n)"}},
+	})
+
+	// SHOW STATS FOR — orderkey has full stats, comment has sparse stats
+	mock.AddQuery(&prestotest.MockQueryTemplate{
+		SQL: "SHOW STATS FOR tpch.sf1.lineitem",
+		Columns: []presto.Column{
+			{Name: "column_name", Type: "varchar"},
+			{Name: "data_size", Type: "double"},
+			{Name: "distinct_values_count", Type: "double"},
+			{Name: "nulls_fraction", Type: "double"},
+			{Name: "row_count", Type: "double"},
+			{Name: "low_value", Type: "varchar"},
+			{Name: "high_value", Type: "varchar"},
+		},
+		Data: [][]any{
+			{"orderkey", nil, nil, nil, nil, nil, nil},   // sparse — triggers analyze queries
+			{"comment", 5000.0, nil, nil, nil, nil, nil}, // has data_size but no distinct count
+			{nil, nil, nil, nil, 100.0, nil, nil},        // summary row with row count
+		},
+	})
+
+	// DESCRIBE
+	mock.AddQuery(&prestotest.MockQueryTemplate{
+		SQL: "DESCRIBE tpch.sf1.lineitem",
+		Columns: []presto.Column{
+			{Name: "Column", Type: "varchar"},
+			{Name: "Type", Type: "varchar"},
+			{Name: "Extra", Type: "varchar"},
+			{Name: "Comment", Type: "varchar"},
+			{Name: "Precision", Type: "bigint"},
+			{Name: "Scale", Type: "bigint"},
+			{Name: "Length", Type: "bigint"},
+		},
+		Data: [][]any{
+			{"orderkey", "bigint", "", "", 64.0, 0.0, nil},
+			{"comment", "varchar", "", "", nil, nil, 256.0},
+		},
+	})
+
+	// Analyze query for orderkey (bigint — numeric type, all stats missing)
+	mock.AddQuery(&prestotest.MockQueryTemplate{
+		SQL:     "SELECT count(orderkey) AS non_null_values_count, min(orderkey) AS low_value, max(orderkey) AS high_value, approx_distinct(orderkey) AS distinct_values_count FROM tpch.sf1.lineitem",
+		Columns: []presto.Column{{Name: "non_null_values_count", Type: "bigint"}, {Name: "low_value", Type: "bigint"}, {Name: "high_value", Type: "bigint"}, {Name: "distinct_values_count", Type: "bigint"}},
+		Data:    [][]any{{95.0, 1.0, 1000.0, 500.0}},
+	})
+
+	// Analyze query for comment (varchar — sizable type, data_size present, distinct missing)
+	mock.AddQuery(&prestotest.MockQueryTemplate{
+		SQL:     `SELECT count(comment) AS non_null_values_count, "max_data_size_for_stats"(comment) AS max_data_size, approx_distinct(comment) AS distinct_values_count FROM tpch.sf1.lineitem`,
+		Columns: []presto.Column{{Name: "non_null_values_count", Type: "bigint"}, {Name: "max_data_size", Type: "bigint"}, {Name: "distinct_values_count", Type: "bigint"}},
+		Data:    [][]any{{90.0, 128.0, 80.0}},
+	})
+
+	client, err := presto.NewClient(mock.URL())
+	require.NoError(t, err)
+
+	ts := &TableSummary{
+		Name:    "lineitem",
+		Catalog: "tpch",
+		Schema:  "sf1",
+	}
+
+	ts.QueryTableSummary(context.Background(), &client.Session, true)
+
+	// Basic assertions
+	assert.Contains(t, ts.Ddl, "CREATE TABLE")
+	require.NotNil(t, ts.RowCount)
+	assert.Equal(t, 100, *ts.RowCount)
+	assert.Equal(t, 3, len(ts.ColumnStats))
+
+	// orderkey: analyze should have filled in missing stats
+	orderkey := ts.ColumnStats[0]
+	assert.Equal(t, "orderkey", orderkey.ColumnName)
+	assert.NotNil(t, orderkey.NonNullValuesCount)
+	assert.NotNil(t, orderkey.NullsFraction)
+	assert.NotNil(t, orderkey.DistinctValuesCount)
+
+	// comment: analyze should have filled in max_data_size and distinct count
+	comment := ts.ColumnStats[1]
+	assert.Equal(t, "comment", comment.ColumnName)
+	assert.NotNil(t, comment.MaxDataSize)
+	assert.NotNil(t, comment.DistinctValuesCount)
+	assert.NotNil(t, comment.NonNullValuesCount)
+	assert.NotNil(t, comment.NullsFraction)
+}

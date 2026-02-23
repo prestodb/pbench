@@ -16,6 +16,13 @@ all: pre clean
     	$(foreach GOARCH, $(ARCHITECTURES),\
     		$(shell export GOOS=$(GOOS); export GOARCH=$(GOARCH); $(GO) -o $(BINARY)_$(GOOS)_$(GOARCH))))
 
+.PHONY: test
+test:
+	gofmt -l . | (! grep .) || (echo "gofmt: above files are not formatted" && exit 1)
+	go vet ./...
+	staticcheck ./...
+	go test ./... -race -count=1 -timeout 120s
+
 pre:
 ifeq "$(shell which go)" ""
 	$(error No go in $$PATH)

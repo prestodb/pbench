@@ -224,12 +224,12 @@ func TestParseStageGraph(t *testing.T) {
 		// With abort, stage_4 stops at the error query. Stage_5 may start 0-1 queries
 		// before context cancellation depending on goroutine scheduling.
 		testParseAndExecute(t, true, 9, 10, 16, []string{
-			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist"}, 9)
+			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist"}, 10)
 	})
 	t.Run("abortOnError = false", func(t *testing.T) {
 		testParseAndExecute(t, false, 15, 15, 24, []string{
 			"SYNTAX_ERROR: Table tpch.sf1.foo does not exist",
-			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 13)
+			"SYNTAX_ERROR: line 1:11: Function sum1 not registered"}, 14)
 	})
 }
 
