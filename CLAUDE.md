@@ -97,3 +97,4 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 - After completing a task, check if the [pbench.wiki](https://github.com/ethanyzhang/pbench/wiki) repo needs corresponding updates (e.g., new commands, changed behavior, updated usage).
 - Before finishing, run `gofmt -w .`, `go vet ./...`, `staticcheck ./...`, and `go mod tidy` to ensure no formatting or lint issues remain.
 - If cluster configs or templates change, run `make clusters` and commit the regenerated output.
+- When integrating stale PRs from contributors, cherry-pick the logic manually (don't merge the branch), fix any issues, and commit with `--author="Name <email>"` to preserve original authorship. Add `Closes #N` in the commit body so the PR closes automatically on push.
