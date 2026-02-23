@@ -10,7 +10,7 @@ import (
 
 const CreateTimeFormat = "2006-01-02 15:04:05.000 MST"
 
-var InvalidSessionParams = errors.New("invalid session params")
+var ErrInvalidSessionParams = errors.New("invalid session params")
 
 type QueryFrame struct {
 	QueryId           string

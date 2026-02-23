@@ -12,7 +12,7 @@ import (
 
 var (
 	RawJsonMessageType   = reflect.TypeOf((*json.RawMessage)(nil)).Elem()
-	UnmarshalError       = errors.New("unmarshall: receiving value")
+	ErrUnmarshal         = errors.New("unmarshall: receiving value")
 	structColumnMapCache = make(map[reflect.Type]map[string]int)
 )
 
@@ -23,7 +23,7 @@ func buildColumnMap(t reflect.Type) map[string]int {
 		t = t.Elem()
 		k = t.Kind()
 	}
-	if t.Kind() != reflect.Struct {
+	if k != reflect.Struct {
 		return nil
 	}
 	if columnMap, cached := structColumnMapCache[t]; cached {
@@ -69,7 +69,7 @@ func unmarshalRow(rawRowData json.RawMessage, v reflect.Value, columnFieldIndexe
 			v.Set(rawRowDataValue.Convert(vType))
 			return nil
 		}
-		return fmt.Errorf("%w cannot be set", UnmarshalError)
+		return fmt.Errorf("%w cannot be set", ErrUnmarshal)
 	}
 
 	row := make([]any, len(columnFieldIndexes))
@@ -97,12 +97,12 @@ func UnmarshalQueryData(data []json.RawMessage, columns []presto.Column, v any) 
 	}
 	vPtr := reflect.ValueOf(v)
 	if vPtr.Kind() != reflect.Pointer {
-		return fmt.Errorf("%w must be a pointer, but it is %T", UnmarshalError, v)
+		return fmt.Errorf("%w must be a pointer, but it is %T", ErrUnmarshal, v)
 	} else if vPtr.IsNil() {
 		if vPtr.CanAddr() {
 			vPtr.Set(reflect.New(vPtr.Type().Elem()))
 		} else {
-			return fmt.Errorf("%w non-addressable value", UnmarshalError)
+			return fmt.Errorf("%w non-addressable value", ErrUnmarshal)
 		}
 	}
 
@@ -124,7 +124,7 @@ func UnmarshalQueryData(data []json.RawMessage, columns []presto.Column, v any) 
 	} else {
 		// Then this is a scalar value!
 		if len(data) > 1 {
-			return fmt.Errorf("%w must be a pointer to an array, slice, or struct. But it is a pointer to %v", UnmarshalError, vArrayOrStruct.Type())
+			return fmt.Errorf("%w must be a pointer to an array, slice, or struct. But it is a pointer to %v", ErrUnmarshal, vArrayOrStruct.Type())
 		} else {
 			var cols []any
 			if err := json.Unmarshal(data[0], &cols); err != nil {

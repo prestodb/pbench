@@ -20,7 +20,7 @@ const (
 var (
 	boundMap = map[string]Bound{
 		"[": EXACTLY, "]": EXACTLY, "(": ABOVE, ")": BELOW, MinValue: ABOVE, MaxValue: BELOW}
-	InvalidMarkerError = errors.New("invalid Marker")
+	ErrInvalidMarker = errors.New("invalid Marker")
 )
 
 func (b *Bound) Capture(values []string) error {
@@ -35,7 +35,7 @@ func (s *UnquotedString) Capture(values []string) error {
 
 func (m *Marker) Capture(values []string) error {
 	if len(values) != 2 {
-		return fmt.Errorf("%w %s", InvalidMarkerError, strings.Join(values, " "))
+		return fmt.Errorf("%w %s", ErrInvalidMarker, strings.Join(values, " "))
 	}
 	for _, v := range values {
 		if bound, found := boundMap[v]; found {

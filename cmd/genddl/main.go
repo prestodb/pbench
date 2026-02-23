@@ -257,10 +257,7 @@ func cleanOutputDir(dir string) error {
 }
 
 func (s *Schema) shouldGenInsert() bool {
-	if !s.Iceberg {
-		return false
-	}
-	return true
+	return s.Iceberg
 }
 
 func isRegisterTable(table *Table, schema *Schema) bool {
