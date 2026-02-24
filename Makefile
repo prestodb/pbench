@@ -15,7 +15,7 @@ all: pre clean
 	@for goos in $(PLATFORMS); do \
 		for goarch in $(ARCHITECTURES); do \
 			echo "Building $$goos/$$goarch..."; \
-			GOOS=$$goos GOARCH=$$goarch $(GO) -o $(BINARY)_$${goos}_$${goarch} || exit 1; \
+			CGO_ENABLED=0 GOOS=$$goos GOARCH=$$goarch $(GO) -o $(BINARY)_$${goos}_$${goarch} || exit 1; \
 		done; \
 	done
 
@@ -64,7 +64,7 @@ check-version:
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is required. Usage: make release VERSION=1.2"; exit 1; fi
 
 upload:
-	GOOS=linux GOARCH=amd64 go build -tags=influx -o $(BINARY)_linux_amd64
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags=influx -o $(BINARY)_linux_amd64
 	aws s3 cp $(BINARY)_linux_amd64 s3://presto-deploy-infra-and-cluster-a9d5d14
 
 sync:
