@@ -37,7 +37,7 @@ func (pt *PrestoTime) UnmarshalJSON(b []byte) error {
 		return nil
 	case float64:
 		// Assume it's seconds since epoch (Unix timestamp)
-		pt.Time = time.Unix(int64(value), int64((value-float64(int64(value)))*1e9))
+		pt.Time = time.Unix(int64(value), int64((value-float64(int64(value)))*1e9)).UTC()
 		return nil
 	default:
 		return fmt.Errorf("invalid time type: %T", value)

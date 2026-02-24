@@ -44,5 +44,3 @@ func init() {
 	loadElJsonCmd.Flags().StringVar(&loadeljson.MySQLCfgPath, "mysql", "", "MySQL connection config for event listener and run recorder (optional)")
 	loadElJsonCmd.Flags().BoolVar(&loadeljson.IsNDJSON, "ndjson", false, "Process files as NDJSON (newline-delimited JSON) format")
 }
-
-// Made with Bob
