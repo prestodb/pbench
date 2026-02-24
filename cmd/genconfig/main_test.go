@@ -170,6 +170,39 @@ func TestStaleFileCleanup(t *testing.T) {
 	assert.NoError(t, err, "genconfig.json should not be removed")
 }
 
+func TestEmptyTemplateSkipped(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a template directory with a conditional template.
+	templateDir := filepath.Join(tmpDir, "templates")
+	require.NoError(t, os.MkdirAll(templateDir, 0755))
+	// This template produces output only when spark_enabled is true.
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "spark.conf"),
+		[]byte("{{ if .spark_enabled }}spark.master=local{{ end }}"), 0644))
+	// This template always produces output.
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "config.properties"),
+		[]byte("node.id={{ .cluster_size }}"), 0644))
+
+	// Create a cluster without spark_enabled.
+	clusterDir := filepath.Join(tmpDir, "cluster")
+	require.NoError(t, os.MkdirAll(clusterDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(clusterDir, genconfigJson),
+		[]byte(`{"cluster_size": "test"}`), 0644))
+
+	TemplatePath = templateDir
+	ParameterPaths = nil
+	Run(nil, []string{tmpDir})
+
+	// spark.conf should NOT exist (template output is empty).
+	_, err := os.Stat(filepath.Join(clusterDir, "spark.conf"))
+	assert.True(t, os.IsNotExist(err), "spark.conf should not be created when spark_enabled is absent")
+
+	// config.properties should exist.
+	data, err := os.ReadFile(filepath.Join(clusterDir, "config.properties"))
+	require.NoError(t, err)
+	assert.Equal(t, "node.id=test", string(data))
+}
+
 func TestParameterStacking(t *testing.T) {
 	tmpDir := t.TempDir()
 

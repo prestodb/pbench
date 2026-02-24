@@ -1,12 +1,12 @@
 package genconfig
 
 import (
+	"bytes"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
 	"pbench/log"
-	"pbench/utils"
 	"strings"
 	"text/template"
 )
@@ -85,6 +85,9 @@ var fm = template.FuncMap{
 		}
 		return val
 	},
+	"hasPrefix": func(s, prefix string) bool {
+		return strings.HasPrefix(s, prefix)
+	},
 	"seq": func(startAny, endAny any) (stream chan int) {
 		start := int(toFloat(startAny))
 		end := int(toFloat(endAny))
@@ -154,22 +157,24 @@ func GenerateFiles(configs []ConfigData) {
 		for _, cfg := range configs {
 			outputPath, _ := filepath.Rel(TemplatePath, path)
 			outputPath = filepath.Join(cfg.Path, outputPath)
+
+			// Execute template to a buffer first to check for empty output.
+			var buf bytes.Buffer
+			if execErr := tmpl.Execute(&buf, cfg.Values); execErr != nil {
+				log.Error().Err(execErr).Str("output_path", outputPath).Msg("failed to evaluate template")
+				continue
+			}
+			if strings.TrimSpace(buf.String()) == "" {
+				continue
+			}
+
 			err = os.MkdirAll(filepath.Dir(outputPath), 0755)
 			if err != nil {
 				log.Error().Err(err).Str("path", filepath.Dir(path)).Msg("failed to create directory")
 				return nil
 			}
-			f, err := os.OpenFile(outputPath, utils.OpenNewFileFlags, 0644)
-			if err != nil {
-				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to create file")
-				continue
-			}
-			err = func() error {
-				defer f.Close()
-				return tmpl.Execute(f, cfg.Values)
-			}()
-			if err != nil {
-				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to evaluate template")
+			if err = os.WriteFile(outputPath, buf.Bytes(), 0644); err != nil {
+				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to write file")
 				continue
 			}
 			writtenFiles[cfg.Path][outputPath] = true
