@@ -1,3 +1,4 @@
+{{ template "prelude" . -}}
 version: '3.8'
 
 networks:
@@ -14,11 +15,11 @@ services:
       replicas: 1
       resources:
         limits:
-          cpus: '{{ dec .VCPUPerWorker }}'
-          memory: {{ .ContainerMemoryGb }}G
+          cpus: '{{ dec .vcpu_per_worker }}'
+          memory: {{ .container_memory_gb }}G
         reservations:
-          cpus: '{{ dec .VCPUPerWorker }}'
-          memory: {{ .ContainerMemoryGb }}G
+          cpus: '{{ dec .vcpu_per_worker }}'
+          memory: {{ .container_memory_gb }}G
     ports:
     - 80:8080
     - 9404:9404
@@ -51,11 +52,11 @@ services:
       replicas: ${NUMBER_OF_WORKERS}
       resources:
         limits:
-          cpus: '{{ dec .VCPUPerWorker }}'
-          memory: {{ .ContainerMemoryGb }}G
+          cpus: '{{ dec .vcpu_per_worker }}'
+          memory: {{ .container_memory_gb }}G
         reservations:
-          cpus: '{{ dec .VCPUPerWorker }}'
-          memory: {{ .ContainerMemoryGb }}G
+          cpus: '{{ dec .vcpu_per_worker }}'
+          memory: {{ .container_memory_gb }}G
     ports:
     - 8080:8080
     volumes:

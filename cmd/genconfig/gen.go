@@ -2,6 +2,7 @@ package genconfig
 
 import (
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"pbench/log"
@@ -10,22 +11,90 @@ import (
 	"text/template"
 )
 
+// toFloat converts any numeric type to float64.
+func toFloat(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	case int:
+		return float64(n)
+	case int8:
+		return float64(n)
+	case int16:
+		return float64(n)
+	case int32:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case uint:
+		return float64(n)
+	case uint8:
+		return float64(n)
+	case uint16:
+		return float64(n)
+	case uint32:
+		return float64(n)
+	case uint64:
+		return float64(n)
+	default:
+		return 0
+	}
+}
+
 var fm = template.FuncMap{
-	// decrement
-	"dec": func(i uint) uint {
-		return i - 1
+	"dec": func(v any) int {
+		return int(toFloat(v)) - 1
 	},
-	"mul": func(a uint, b uint) uint { return a * b },
-	"add": func(a uint, b uint) uint { return a + b },
-	"sub": func(a uint, b uint) uint { return a - b },
-	"seq": func(start, end uint) (stream chan uint) {
+	"mul": func(args ...any) float64 {
+		result := 1.0
+		for _, arg := range args {
+			result *= toFloat(arg)
+		}
+		return result
+	},
+	"add": func(a, b any) float64 {
+		return toFloat(a) + toFloat(b)
+	},
+	"sub": func(a, b any) float64 {
+		return toFloat(a) - toFloat(b)
+	},
+	"div": func(a, b any) float64 {
+		return toFloat(a) / toFloat(b)
+	},
+	"min": func(a, b any) float64 {
+		return math.Min(toFloat(a), toFloat(b))
+	},
+	"max": func(a, b any) float64 {
+		return math.Max(toFloat(a), toFloat(b))
+	},
+	"floor": func(v any) int {
+		return int(math.Floor(toFloat(v)))
+	},
+	"ceil": func(v any) int {
+		return int(math.Ceil(toFloat(v)))
+	},
+	"set": func(m map[string]any, key string, value any) string {
+		m[key] = value
+		return ""
+	},
+	"default": func(val, fallback any) any {
+		if val == nil {
+			return fallback
+		}
+		return val
+	},
+	"seq": func(startAny, endAny any) (stream chan int) {
+		start := int(toFloat(startAny))
+		end := int(toFloat(endAny))
 		if end < start {
-			stream = make(chan uint)
+			stream = make(chan int)
 			close(stream)
 			return
 		}
 		n := end - start + 1
-		stream = make(chan uint, n)
+		stream = make(chan int, n)
 		for i := start; i <= end; i++ {
 			stream <- i
 		}
@@ -34,9 +103,31 @@ var fm = template.FuncMap{
 	},
 }
 
-// GenerateFiles For each .tmpl file under the "template" directory, generate the corresponding file with the same
-// directory structure for each config.
-func GenerateFiles(configs []*ClusterConfig) {
+// ConfigData holds the path and merged parameter values for a cluster configuration.
+type ConfigData struct {
+	Path   string
+	Values map[string]any
+}
+
+const preludeFile = ".prelude"
+
+// GenerateFiles generates configuration files from templates for each config.
+// For each template file under the template directory, the corresponding file is generated
+// with the same directory structure for each config. After generation, any files in the output
+// directories that were not generated (and are not genconfig.json) are removed.
+func GenerateFiles(configs []ConfigData) {
+	// Try to read the prelude template.
+	var preludeContent string
+	if data, err := fs.ReadFile(TemplateFS, filepath.Join(TemplatePath, preludeFile)); err == nil {
+		preludeContent = string(data)
+	}
+
+	// Track which files were written per config path.
+	writtenFiles := make(map[string]map[string]bool, len(configs))
+	for _, cfg := range configs {
+		writtenFiles[cfg.Path] = make(map[string]bool)
+	}
+
 	traverseTemplateDir := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			log.Error().Err(err).Str("path", path).Send()
@@ -48,9 +139,15 @@ func GenerateFiles(configs []*ClusterConfig) {
 			return nil
 		}
 
-		tmpl, err := template.New(d.Name()).Funcs(fm).ParseFS(TemplateFS, path)
-		if err != nil {
-			log.Error().Err(err).Str("path", path).Msg("failed to parse template")
+		tmpl := template.New(d.Name()).Funcs(fm)
+		if preludeContent != "" {
+			if _, parseErr := tmpl.Parse(preludeContent); parseErr != nil {
+				log.Error().Err(parseErr).Msg("failed to parse prelude template")
+				return nil
+			}
+		}
+		if _, parseErr := tmpl.ParseFS(TemplateFS, path); parseErr != nil {
+			log.Error().Err(parseErr).Str("path", path).Msg("failed to parse template")
 			return nil
 		}
 
@@ -69,15 +166,31 @@ func GenerateFiles(configs []*ClusterConfig) {
 			}
 			err = func() error {
 				defer f.Close()
-				return tmpl.Execute(f, cfg)
+				return tmpl.Execute(f, cfg.Values)
 			}()
 			if err != nil {
 				log.Error().Err(err).Str("output_path", outputPath).Msg("failed to evaluate template")
 				continue
 			}
+			writtenFiles[cfg.Path][outputPath] = true
 			log.Info().Msgf("wrote %s", outputPath)
 		}
 		return nil
 	}
 	_ = fs.WalkDir(TemplateFS, TemplatePath, traverseTemplateDir)
+
+	// Remove stale files that exist in output directories but have no corresponding template.
+	for _, cfg := range configs {
+		written := writtenFiles[cfg.Path]
+		_ = filepath.Walk(cfg.Path, func(path string, info fs.FileInfo, err error) error {
+			if err != nil || info.IsDir() || info.Name() == genconfigJson {
+				return nil
+			}
+			if !written[path] {
+				log.Info().Msgf("removing stale file %s", path)
+				os.Remove(path)
+			}
+			return nil
+		})
+	}
 }

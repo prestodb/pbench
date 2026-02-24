@@ -12,29 +12,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const configJson = "config.json"
+const genconfigJson = "genconfig.json"
 
 var (
-	TemplatePath  = ""
-	TemplateFS    fs.FS
-	ParameterPath = ""
+	TemplatePath   = ""
+	TemplateFS     fs.FS
+	ParameterPaths []string
 )
 
 func Run(_ *cobra.Command, args []string) {
-	gParams := DefaultGeneratorParameters
-	if ParameterPath != "" {
-		if paramsByte, ioErr := os.ReadFile(ParameterPath); ioErr != nil {
-			log.Error().Err(ioErr).Str("parameter_path", ParameterPath).
-				Msg("failed to read generator parameter file")
-			ParameterPath = ""
-		} else {
-			params := &GeneratorParameters{}
-			if unmarshalErr := json.Unmarshal(paramsByte, params); unmarshalErr != nil {
-				log.Error().Err(unmarshalErr).Str("parameter_path", ParameterPath).
-					Msg("failed to unmarshal generator parameter file")
-			} else {
-				gParams = params
+	params := make(map[string]any)
+	if len(ParameterPaths) > 0 {
+		for _, paramPath := range ParameterPaths {
+			paramBytes, ioErr := os.ReadFile(paramPath)
+			if ioErr != nil {
+				log.Error().Err(ioErr).Str("parameter_path", paramPath).
+					Msg("failed to read generator parameter file")
+				continue
 			}
+			m := make(map[string]any)
+			if unmarshalErr := json.Unmarshal(paramBytes, &m); unmarshalErr != nil {
+				log.Error().Err(unmarshalErr).Str("parameter_path", paramPath).
+					Msg("failed to unmarshal generator parameter file")
+				continue
+			}
+			for k, v := range m {
+				params[k] = v
+			}
+		}
+	} else {
+		if unmarshalErr := json.Unmarshal(clusters.BuiltinGeneratorParametersBytes, &params); unmarshalErr != nil {
+			log.Error().Err(unmarshalErr).Msg("failed to unmarshal built-in generator parameters")
+			return
 		}
 	}
 	if TemplatePath == "" {
@@ -44,13 +53,13 @@ func Run(_ *cobra.Command, args []string) {
 		TemplateFS = os.DirFS(TemplatePath)
 		TemplatePath = "."
 	}
-	configs := make([]*ClusterConfig, 0, 3)
+	configs := make([]ConfigData, 0, 3)
 	_ = filepath.Walk(args[0], func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			log.Error().Err(err).Send()
 			return err
 		}
-		if info.IsDir() || info.Name() != configJson {
+		if info.IsDir() || info.Name() != genconfigJson {
 			return nil
 		}
 		bytes, ioErr := os.ReadFile(path)
@@ -58,18 +67,24 @@ func Run(_ *cobra.Command, args []string) {
 			log.Error().Err(ioErr).Str("path", path).Msg("failed to read config file.")
 			return nil
 		}
-		cfg := &ClusterConfig{
-			GeneratorParameters: gParams,
-		}
-		if ioErr = json.Unmarshal(bytes, cfg); ioErr != nil {
+		configMap := make(map[string]any)
+		if ioErr = json.Unmarshal(bytes, &configMap); ioErr != nil {
 			log.Error().Err(ioErr).Str("path", path).Msg("failed to parse config file.")
-		} else {
-			cfg.Path = filepath.Dir(path)
-			// Calculate the variables based on the spec in the config.json
-			log.Info().Str("path", path).Msg("parsed configuration")
-			cfg.Calculate()
-			configs = append(configs, cfg)
+			return nil
 		}
+		// Merge: start with params, overlay config values.
+		merged := make(map[string]any, len(params)+len(configMap))
+		for k, v := range params {
+			merged[k] = v
+		}
+		for k, v := range configMap {
+			merged[k] = v
+		}
+		log.Info().Str("path", path).Msg("parsed configuration")
+		configs = append(configs, ConfigData{
+			Path:   filepath.Dir(path),
+			Values: merged,
+		})
 		return nil
 	})
 	// Generate config files for each config we read.

@@ -1,0 +1,14 @@
+{{ define "prelude" -}}
+{{ set . "container_memory_gb" (sub .memory_per_node_gb (ceil (min .sys_reserved_mem_cap_gb (mul .memory_per_node_gb .sys_reserved_mem_percent)))) -}}
+{{ set . "heap_size_gb" (floor (mul .container_memory_gb .heap_size_percent_of_container_mem)) -}}
+{{ set . "headroom_gb" (ceil (mul .heap_size_gb .headroom_percent_of_heap)) -}}
+{{ set . "java_query_max_total_mem_per_node_gb" (floor (mul .heap_size_gb .query_max_total_mem_per_node_percent_of_heap)) -}}
+{{ set . "java_query_max_mem_per_node_gb" (floor (mul .java_query_max_total_mem_per_node_gb .query_max_mem_per_node_percent_of_total)) -}}
+{{ set . "native_proxygen_mem_gb" (ceil (min .proxygen_mem_cap_gb (mul .proxygen_mem_per_worker_gb .number_of_workers))) -}}
+{{ set . "native_buffer_mem_gb" (ceil (min .native_buffer_mem_cap_gb (mul .container_memory_gb .native_buffer_mem_percent))) -}}
+{{ set . "native_system_mem_gb" (sub .container_memory_gb (add .native_buffer_mem_gb .native_proxygen_mem_gb)) -}}
+{{ set . "native_query_mem_gb" (floor (mul .native_system_mem_gb .native_query_mem_percent_of_sys_mem)) -}}
+{{ set . "join_max_broadcast_table_size_mb" (ceil (mul .container_memory_gb .join_max_bcast_size_percent_of_container_mem 1024)) -}}
+{{ set . "fragment_result_cache_size_gb" (ceil (mul .memory_per_node_gb 2 0.95)) -}}
+{{ set . "data_cache_size_gb" (ceil (mul .memory_per_node_gb 3 0.95)) -}}
+{{ end }}

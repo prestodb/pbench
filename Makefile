@@ -81,9 +81,9 @@ sync:
 .PHONY: clusters
 clusters:
 	@echo "Cleaning cluster directories..."
-	@find clusters -name config.json -type f | sed 's/\/config.json$$//' | while read dir; do \
+	@find clusters -name genconfig.json -type f | sed 's/\/genconfig.json$$//' | while read dir; do \
 		echo "Cleaning $$dir..."; \
-		find "$$dir" -type f ! -name config.json -delete; \
+		find "$$dir" -type f ! -name genconfig.json -delete; \
 	done
 	@echo "Generating cluster configurations..."
 	./pbench genconfig -t clusters/templates -p clusters/params.json clusters

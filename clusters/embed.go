@@ -3,7 +3,7 @@ package clusters
 import "embed"
 
 var (
-	//go:embed templates
+	//go:embed all:templates
 	BuiltinTemplate embed.FS
 
 	//go:embed params.json
