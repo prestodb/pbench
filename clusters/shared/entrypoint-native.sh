@@ -12,6 +12,8 @@
 # limitations under the License.
 
 echo "node.id=$HOSTNAME" >> /opt/presto-server/etc/node.properties
+NODE_IP=$(getent hosts | awk -v hn="$HOSTNAME" '$2==hn && $1 !~ /:/ {print $1}')
+echo "node.internal-address=$NODE_IP" >> /opt/presto-server/etc/node.properties
 
 dnf install procps-ng -y
 

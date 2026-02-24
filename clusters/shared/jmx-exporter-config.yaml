@@ -1,4 +1,10 @@
 rules:
+  # Router
+  - pattern: "com.facebook.presto.router.scheduler<name=PlanCheckerRouterPluginPrestoClient><>(.+):"
+    name: presto_router_$1
+    attrNameSnakeCase: true
+    cache: true
+
   # Pause Meter
   # com.facebook.airlift.stats<name=PauseMeter><>10msTo50msPauses
   # com.facebook.airlift.stats<name=PauseMeter><>10sTo1mPauses
@@ -293,5 +299,32 @@ rules:
 
   - pattern: "presto.memory<name=ClusterMemoryManager><>cluster_(.+):"
     name: presto_memory_cluster_memory_manager_cluster_$1
+    attrNameSnakeCase: true
+    cache: true
+
+  # Quick stats related
+  - pattern: "presto.execution<name=QueryManager><>(.+)._one_minute.(.+):"
+    name: presto_query_manager_$1_one_minute$2
+    attrNameSnakeCase: true
+    cache: true
+
+  - pattern: 'presto\.hive\.statistics.*=(.+)_QuickStatsProvider.*RequestCount'
+    name: presto_hive_statistics_quick_stats_provider_request_count
+    cache: true
+    labels:
+      catalog_name: $1
+  - pattern: 'presto\.hive\.statistics.*=(.+)_QuickStatsProvider.*SuccesfulResolveFromCacheCount'
+    name: presto_hive_statistics_quick_stats_provider_succesful_resolve_from_cache_count
+    cache: true
+    labels:
+      catalog_name: $1
+  - pattern: 'presto\.hive\.statistics.*=(.+)_QuickStatsProvider.*SuccesfulResolveFromProviderCount'
+    name: presto_hive_statistics_quick_stats_provider_succesful_resolve_from_provider_count
+    cache: true
+    labels:
+      catalog_name: $1
+
+  - pattern: 'com.facebook.presto.iceberg<name=iceberg,type=manifestfilecache><>(.+)'
+    name: presto_iceberg_hive_catalog_manifest_file_cache_$1
     attrNameSnakeCase: true
     cache: true

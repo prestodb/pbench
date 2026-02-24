@@ -60,6 +60,7 @@ sudo chown -R spark:spark "${SPARK_HOME}"
 if [ "$SPARK_MODE" == "master" ]; then
     # Start notebook
     nohup jupyter notebook --ip=0.0.0.0 --port=8989 --no-browser --notebook-dir=/opt/spark/work-dir/ipython &
+    nohup /opt/spark/sbin/start-history-server.sh &
     # Master constants
     EXEC=$(command -v ${SPARK_HOME}/sbin/start-master.sh)
     ARGS=()
@@ -71,5 +72,5 @@ else
     echo "** Starting Spark in worker mode **"
 fi
 
-/usr/bin/telegraf &
+/usr/bin/telegraf > /dev/null &
 exec "$EXEC" "${ARGS[@]-}"

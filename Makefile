@@ -68,15 +68,10 @@ upload:
 	aws s3 cp $(BINARY)_linux_amd64 s3://presto-deploy-infra-and-cluster-a9d5d14
 
 sync:
+	@if [ ! -d ../presto-performance/presto-deploy-cluster/clusters ]; then echo "Error: ../presto-performance/presto-deploy-cluster/clusters does not exist"; exit 1; fi
+	rm -r ../presto-performance/presto-deploy-cluster/clusters/*
 	cp -r clusters/* ../presto-performance/presto-deploy-cluster/clusters
-	rm -f ../presto-performance/presto-deploy-cluster/clusters/*.go \
-		../presto-performance/presto-deploy-cluster/clusters/large/docker-stack-spark.yaml \
-		../presto-performance/presto-deploy-cluster/clusters/large-ssd/docker-stack-spark.yaml \
-		../presto-performance/presto-deploy-cluster/clusters/medium-ssd/docker-stack-spark.yaml \
-		../presto-performance/presto-deploy-cluster/clusters/medium/docker-stack-spark.yaml \
-		../presto-performance/presto-deploy-cluster/clusters/medium-spill/docker-stack-spark.yaml \
-		../presto-performance/presto-deploy-cluster/clusters/xlarge/docker-stack-spark.yaml \
-		../presto-performance/presto-deploy-cluster/clusters/2xlarge/docker-stack-spark.yaml
+	rm -f ../presto-performance/presto-deploy-cluster/clusters/*.go
 
 .PHONY: clusters
 clusters:
