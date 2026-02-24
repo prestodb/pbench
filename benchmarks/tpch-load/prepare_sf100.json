@@ -1,0 +1,27 @@
+{
+  "description": "Loading tpch with scaling factor 100 to hive/iceberg parquet format tables.",
+  "query_files": [
+    "schema/create_sf100.sql",
+    "create-table/customer.sql",
+    "create-table/lineitem.sql",
+    "create-table/nation.sql",
+    "create-table/orders.sql",
+    "create-table/part.sql",
+    "create-table/partsupp.sql",
+    "create-table/region.sql",
+    "create-table/supplier.sql"
+  ],
+  "expected_row_counts": {
+    "load_tpch_sf100_parquet": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ]
+  }
+}
