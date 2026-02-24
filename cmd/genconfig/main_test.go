@@ -203,6 +203,43 @@ func TestEmptyTemplateSkipped(t *testing.T) {
 	assert.Equal(t, "node.id=test", string(data))
 }
 
+func TestGenconfigIgnore(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a template directory with a simple template.
+	templateDir := filepath.Join(tmpDir, "templates")
+	require.NoError(t, os.MkdirAll(templateDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "config.properties"),
+		[]byte("node.id={{ .cluster_size }}"), 0644))
+
+	// Create a normal cluster.
+	normalDir := filepath.Join(tmpDir, "normal-cluster")
+	require.NoError(t, os.MkdirAll(normalDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(normalDir, genconfigJson),
+		[]byte(`{"cluster_size": "normal"}`), 0644))
+
+	// Create an ignored cluster with .genconfigignore.
+	ignoredDir := filepath.Join(tmpDir, "ignored-cluster")
+	require.NoError(t, os.MkdirAll(ignoredDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(ignoredDir, genconfigJson),
+		[]byte(`{"cluster_size": "ignored"}`), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(ignoredDir, ".genconfigignore"),
+		[]byte(""), 0644))
+
+	TemplatePath = templateDir
+	ParameterPaths = nil
+	Run(nil, []string{tmpDir})
+
+	// Normal cluster should have generated files.
+	data, err := os.ReadFile(filepath.Join(normalDir, "config.properties"))
+	require.NoError(t, err)
+	assert.Equal(t, "node.id=normal", string(data))
+
+	// Ignored cluster should NOT have generated files.
+	_, err = os.Stat(filepath.Join(ignoredDir, "config.properties"))
+	assert.True(t, os.IsNotExist(err), "ignored cluster should not have generated files")
+}
+
 func TestParameterStacking(t *testing.T) {
 	tmpDir := t.TempDir()
 

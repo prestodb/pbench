@@ -62,6 +62,10 @@ func Run(_ *cobra.Command, args []string) {
 		if info.IsDir() || info.Name() != genconfigJson {
 			return nil
 		}
+		if _, statErr := os.Stat(filepath.Join(filepath.Dir(path), ".genconfigignore")); statErr == nil {
+			log.Info().Str("path", path).Msg("skipping directory (.genconfigignore found)")
+			return nil
+		}
 		bytes, ioErr := os.ReadFile(path)
 		if ioErr != nil {
 			log.Error().Err(ioErr).Str("path", path).Msg("failed to read config file.")
