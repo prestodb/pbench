@@ -69,16 +69,9 @@ upload:
 
 sync:
 	@if [ ! -d ../presto-performance/presto-deploy-cluster/clusters ]; then echo "Error: ../presto-performance/presto-deploy-cluster/clusters does not exist"; exit 1; fi
-	rm -r ../presto-performance/presto-deploy-cluster/clusters/*
-	cp -r clusters/* ../presto-performance/presto-deploy-cluster/clusters
-	rm -f ../presto-performance/presto-deploy-cluster/clusters/*.go
+	./pbench genconfig -t clusters/templates -p clusters/params.json ../presto-performance/presto-deploy-cluster/clusters
 
 .PHONY: clusters
 clusters:
-	@echo "Cleaning cluster directories..."
-	@find clusters -name genconfig.json -type f | sed 's/\/genconfig.json$$//' | while read dir; do \
-		echo "Cleaning $$dir..."; \
-		find "$$dir" -type f ! -name genconfig.json -delete; \
-	done
 	@echo "Generating cluster configurations..."
 	./pbench genconfig -t clusters/templates -p clusters/params.json clusters

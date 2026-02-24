@@ -88,6 +88,12 @@ var fm = template.FuncMap{
 	"hasPrefix": func(s, prefix string) bool {
 		return strings.HasPrefix(s, prefix)
 	},
+	"hasSuffix": func(s, suffix string) bool {
+		return strings.HasSuffix(s, suffix)
+	},
+	"contains": func(s, substr string) bool {
+		return strings.Contains(s, substr)
+	},
 	"seq": func(startAny, endAny any) (stream chan int) {
 		start := int(toFloat(startAny))
 		end := int(toFloat(endAny))

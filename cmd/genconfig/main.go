@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const genconfigJson = "genconfig.json"
+const genconfigJson = "config.json"
 
 var (
 	TemplatePath   = ""

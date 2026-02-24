@@ -1,4 +1,5 @@
 {{ template "prelude" . -}}
+{{- if .generate_spark_config -}}
 version: '3.8'
 
 networks:
@@ -15,6 +16,12 @@ services:
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
       - SPARK_MASTER_HOST=0.0.0.0
+      {{- if hasSuffix .cluster_size "ssd" }}
+      - SPARK_LOCAL_DIRS=/opt/spark/localdir/data1
+      {{- end }}
+      {{- if hasPrefix .coordinator_instance_type "g" }}
+      - NVIDIA_VISIBLE_DEVICES=all
+      {{- end }}
     deploy:
       placement:
         constraints:
@@ -35,6 +42,7 @@ services:
     - 6066:6066
     - 7077:7077
     - 8081:8081
+    - 8989:8989
     - 15002:15002
     - 18080:18080
     entrypoint:
@@ -44,6 +52,9 @@ services:
     - /home/centos/presto/log/spark/events:/opt/spark/events
     - /home/centos/presto/log/spark/logs:/opt/spark/logs
     - /home/centos/presto/log/spark/work:/opt/spark/work
+    {{- if hasSuffix .cluster_size "ssd" }}
+    - /home/centos/presto/mnt_data/data1:/opt/spark/localdir/data1
+    {{- end }}
     - /home/centos/presto/spark/hive-site.xml:/opt/spark/conf/hive-site.xml
     - /home/centos/presto/spark/log4j2.properties:/opt/spark/conf/log4j2.properties
     - /home/centos/presto/spark/metrics.properties:/opt/spark/conf/metrics.properties
@@ -66,6 +77,12 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+      {{- if hasSuffix .cluster_size "ssd" }}
+      - SPARK_LOCAL_DIRS=/opt/spark/localdir/data1
+      {{- end }}
+      {{- if hasPrefix .worker_instance_type "g" }}
+      - NVIDIA_VISIBLE_DEVICES=all
+      {{- end }}
     depends_on:
     - coordinator
     deploy:
@@ -88,6 +105,9 @@ services:
     - /home/centos/presto/log/spark/events:/opt/spark/events
     - /home/centos/presto/log/spark/logs:/opt/spark/logs
     - /home/centos/presto/log/spark/work:/opt/spark/work
+    {{- if hasSuffix .cluster_size "ssd" }}
+    - /home/centos/presto/mnt_data/data1:/opt/spark/localdir/data1
+    {{- end }}
     - /home/centos/presto/spark/hive-site.xml:/opt/spark/conf/hive-site.xml
     - /home/centos/presto/spark/log4j2.properties:/opt/spark/conf/log4j2.properties
     - /home/centos/presto/spark/metrics.properties:/opt/spark/conf/metrics.properties
@@ -101,3 +121,4 @@ services:
       presto-swarm:
     cap_add:
     - PERFMON
+{{- end }}
