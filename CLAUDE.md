@@ -84,7 +84,7 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 
 ### Dependencies
 
-- **Go 1.25.7+** - Required by `go.mod`
+- **Go 1.25.+** - Required by `go.mod`
 - **Python 3** - Required by some stage test hooks (shell scripts that invoke Python for JSON processing)
 
 ## Commands
