@@ -53,9 +53,15 @@ func Run(_ *cobra.Command, args []string) {
 	} else {
 		mainStage.States.RunName = strings.ReplaceAll(mainStage.States.RunName, `%t`, mainStage.States.RunStartTime.Format(utils.DirectoryNameTimeFormat))
 	}
+	var workloads []string
 	for _, path := range args {
 		if st, err := processStagePath(path); err == nil {
 			mainStage.MergeWith(st)
+			// Extract workload from this path
+			workload := extractWorkloadFromStagePath(path)
+			if workload != "" {
+				workloads = append(workloads, workload)
+			}
 			if defaultRunNameBuilder != nil {
 				if defaultRunNameBuilder.Len() > 0 {
 					defaultRunNameBuilder.WriteByte('_')
@@ -66,12 +72,27 @@ func Run(_ *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 	}
+	
+	// Set the workload field (join multiple workloads with comma if there are multiple)
+	if len(workloads) > 0 {
+		// Remove duplicates and join
+		workloadMap := make(map[string]bool)
+		uniqueWorkloads := []string{}
+		for _, w := range workloads {
+			if !workloadMap[w] {
+				workloadMap[w] = true
+				uniqueWorkloads = append(uniqueWorkloads, w)
+			}
+		}
+		mainStage.States.Workload = strings.Join(uniqueWorkloads, ",")
+	}
+	
 	if defaultRunNameBuilder != nil {
 		defaultRunNameBuilder.WriteByte('_')
 		defaultRunNameBuilder.WriteString(mainStage.States.RunStartTime.Format(utils.DirectoryNameTimeFormat))
 		mainStage.States.RunName = defaultRunNameBuilder.String()
 	}
-	log.Info().Str("run_name", mainStage.States.RunName).Send()
+	log.Info().Str("run_name", mainStage.States.RunName).Str("workload", mainStage.States.Workload).Send()
 
 	if _, _, err := stage.ParseStageGraph(mainStage); err != nil {
 		log.Fatal().Err(err).Msg("failed to parse benchmark stage graph")
@@ -120,4 +141,35 @@ func processStagePath(path string) (st *stage.Stage, returnErr error) {
 		}
 		return stage.ReadStageFromFile(path)
 	}
+}
+
+// extractWorkloadFromStagePath extracts the workload name from stage file paths
+// Examples: benchmarks/clickbench/clickbench.json -> clickbench
+//          benchmarks/tpc-ds/tpc-ds.json -> tpc-ds
+//          imdb.json -> imdb
+func extractWorkloadFromStagePath(path string) string {
+	// Get the directory name containing the stage file
+	dir := filepath.Dir(path)
+	dirName := filepath.Base(dir)
+	
+	// If the directory is "benchmarks" or current directory, use the filename
+	if dirName == "benchmarks" || dirName == "." {
+		filename := filepath.Base(path)
+		// Remove the .json extension
+		if strings.HasSuffix(filename, ".json") {
+			return strings.TrimSuffix(filename, ".json")
+		}
+		return filename
+	}
+	
+	// Check if this is a known workload directory
+	knownWorkloads := []string{"biday3", "bolt", "catalina", "clickbench", "imdb", "nielsen", "tpc-ds", "tpch"}
+	for _, workload := range knownWorkloads {
+		if dirName == workload {
+			return workload
+		}
+	}
+	
+	// If not a known workload, use the directory name
+	return dirName
 }
