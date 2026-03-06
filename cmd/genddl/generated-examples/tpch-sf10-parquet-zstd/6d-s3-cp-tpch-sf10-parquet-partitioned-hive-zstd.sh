@@ -1,0 +1,2 @@
+aws s3 cp --recursive s3://presto-workload-v2/tpch-sf10-parquet-partitioned-iceberg/lineitem/data/l_shipdate=__HIVE_DEFAULT_PARTITION__/ s3://presto-workload-v2/tpch-sf10-parquet-partitioned-iceberg/lineitem/data/l_shipdate=null/
+aws s3 cp --recursive s3://presto-workload-v2/tpch-sf10-parquet-partitioned-iceberg/orders/data/o_orderdate=__HIVE_DEFAULT_PARTITION__/ s3://presto-workload-v2/tpch-sf10-parquet-partitioned-iceberg/orders/data/o_orderdate=null/

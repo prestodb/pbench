@@ -1,0 +1,71 @@
+{
+  "name": "lineitem",
+  "partitioned": true,
+  "columns": [
+    {
+      "name": "l_orderkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "l_partkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "l_suppkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "l_linenumber",
+      "type": "INTEGER"
+    },
+    {
+      "name": "l_quantity",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "l_extendedprice",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "l_discount",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "l_tax",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "l_returnflag",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "l_linestatus",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "l_shipdate",
+      "type": "DATE",
+      "partition_key": true
+    },
+    {
+      "name": "l_commitdate",
+      "type": "DATE"
+    },
+    {
+      "name": "l_receiptdate",
+      "type": "DATE"
+    },
+    {
+      "name": "l_shipinstruct",
+      "type": "VARCHAR(25)"
+    },
+    {
+      "name": "l_shipmode",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "l_comment",
+      "type": "VARCHAR(44)"
+    }
+  ]
+}
