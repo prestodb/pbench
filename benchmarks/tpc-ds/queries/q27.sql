@@ -1,6 +1,6 @@
---q27.sql--
+-- q27.sql
 
- select i_item_id,
+select  i_item_id,
         s_state, grouping(s_state) g_state,
         avg(ss_quantity) agg1,
         avg(ss_list_price) agg2,
@@ -13,10 +13,10 @@
        ss_cdemo_sk = cd_demo_sk and
        cd_gender = 'M' and
        cd_marital_status = 'S' and
-       cd_education_status = 'College' and
-       d_year = 2002 and
-       s_state in ('TN','TN', 'TN', 'TN', 'TN', 'TN')
+       cd_education_status = 'Secondary' and
+       d_year = 1998 and
+       s_state in ('SD','MO', 'MN', 'NC', 'MI', 'IL')
  group by rollup (i_item_id, s_state)
- order by i_item_id, s_state
- limit 100
-            
+ order by i_item_id
+         ,s_state
+ limit 100;
