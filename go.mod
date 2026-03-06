@@ -3,6 +3,7 @@ module pbench
 go 1.25.7
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/alecthomas/participle/v2 v2.1.1
 	github.com/ethanyzhang/presto-go v0.0.0-20260213063102-87041e7e27c8
 	github.com/go-playground/validator/v10 v10.24.0
