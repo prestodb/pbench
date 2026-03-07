@@ -1,9 +1,9 @@
---q54.sql--
+-- q54.sql
 
- with my_customers as (
+with my_customers as (
  select distinct c_customer_sk
         , c_current_addr_sk
- from
+ from   
         ( select cs_sold_date_sk sold_date_sk,
                  cs_bill_customer_sk customer_sk,
                  cs_item_sk item_sk
@@ -19,11 +19,11 @@
          customer
  where   sold_date_sk = d_date_sk
          and item_sk = i_item_sk
-         and i_category = 'Women'
-         and i_class = 'maternity'
+         and i_category = 'Home'
+         and i_class = 'glassware'
          and c_customer_sk = cs_or_ws_sales.customer_sk
-         and d_moy = 12
-         and d_year = 1998
+         and d_moy = 5
+         and d_year = 2000
  )
  , my_revenue as (
  select c_customer_sk,
@@ -39,16 +39,17 @@
         and ss_sold_date_sk = d_date_sk
         and c_customer_sk = ss_customer_sk
         and d_month_seq between (select distinct d_month_seq+1
-                                 from   date_dim where d_year = 1998 and d_moy = 12)
+                                 from   date_dim where d_year = 2000 and d_moy = 5)
                            and  (select distinct d_month_seq+3
-                                 from   date_dim where d_year = 1998 and d_moy = 12)
+                                 from   date_dim where d_year = 2000 and d_moy = 5)
  group by c_customer_sk
  )
  , segments as
- (select cast((revenue/50) as integer) as segment from my_revenue)
- select segment, count(*) as num_customers, segment*50 as segment_base
+ (select cast((revenue/50) as int) as segment
+  from   my_revenue
+ )
+  select  segment, count(*) as num_customers, segment*50 as segment_base
  from segments
  group by segment
  order by segment, num_customers
- limit 100
-            
+ limit 100;
