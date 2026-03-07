@@ -1,4 +1,4 @@
---q14b.sql--
+-- q14b.sql
 
 with  cross_items as
 (select i_item_sk ss_item_sk
