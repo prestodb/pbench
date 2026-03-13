@@ -26,7 +26,7 @@ Template Fixes Applied:
 - 40 total fixes for Presto C++ compatibility
 - Date arithmetic converted to INTERVAL syntax
 - Subquery aliases added where required
-- See TPCDS_FIXES_SUMMARY_PRESTO.md for complete details
+- See [TPCDS_FIXES_SUMMARY_PRESTO.md](TPCDS_FIXES_SUMMARY_PRESTO.md) for complete details
 
 Notes:
 ------
@@ -41,5 +41,5 @@ Notes:
 
 For more information, see:
 - TPC-DS Specification v4.0.0 at https://www.tpc.org/TPC_Documents_Current_Versions/pdf/TPC-DS_v4.0.0.pdf
-- TPCDS_FIXES_SUMMARY_PRESTO.md
+- [TPCDS_FIXES_SUMMARY_PRESTO.md](TPCDS_FIXES_SUMMARY_PRESTO.md)
 
