@@ -42,13 +42,12 @@ install: pbench uninstall
 
 tar: clean all
 	mkdir -p release/$(BINARY)
-	cp -r $(BINARY) $(BINARY)_* benchmarks clusters/params.json *.template.json clusters/templates release/$(BINARY)
+	cp -r $(BINARY) $(BINARY)_* clusters/params.json *.template.json clusters/templates release/$(BINARY)
 	cd release $(foreach GOOS, $(PLATFORMS),\
 		$(foreach GOARCH, $(ARCHITECTURES),\
 			&& tar -czf ../$(BINARY)_$(GOOS)_$(GOARCH).tar.gz \
 				$(BINARY)/$(BINARY) \
 				$(BINARY)/$(BINARY)_$(GOOS)_$(GOARCH) \
-				$(BINARY)/benchmarks \
 				$(BINARY)/templates \
 				$(BINARY)/*.template.json \
 				$(BINARY)/params.json))
