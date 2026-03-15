@@ -28,6 +28,7 @@ mysql.json
 pulumi.json
 
 # binaries
+bin/
 pbench_*
 
 # tarball
