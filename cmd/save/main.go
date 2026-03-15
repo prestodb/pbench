@@ -13,7 +13,7 @@ import (
 	"pbench/log"
 	"pbench/utils"
 
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 	"strings"
 	"sync"
 	"syscall"

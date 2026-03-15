@@ -11,7 +11,7 @@ import (
 	"pbench/utils"
 	"sync"
 
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 	"strings"
 	"syscall"
 )

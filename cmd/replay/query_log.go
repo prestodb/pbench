@@ -3,7 +3,7 @@ package replay
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethanyzhang/presto-go/query_json"
+	"github.com/prestodb/presto-go-client/v2/query_json"
 	"time"
 )
 

@@ -2,7 +2,7 @@ package replay
 
 import (
 	"encoding/csv"
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"sort"

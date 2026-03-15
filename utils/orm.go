@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ethanyzhang/presto-go/query_json"
+	"github.com/prestodb/presto-go-client/v2/query_json"
 )
 
 type TableName string

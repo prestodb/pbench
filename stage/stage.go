@@ -25,7 +25,7 @@ import (
 	"syscall"
 	"time"
 
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 
 	"github.com/rs/zerolog"
 )

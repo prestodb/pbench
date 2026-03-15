@@ -1,14 +1,14 @@
 module pbench
 
-go 1.25.7
+go 1.26.1
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.1
-	github.com/ethanyzhang/presto-go v0.0.0-20260213063102-87041e7e27c8
 	github.com/go-playground/validator/v10 v10.24.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0
 	github.com/pkg/errors v0.9.1
+	github.com/prestodb/presto-go-client/v2 v2.0.0
 	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
