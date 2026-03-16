@@ -37,6 +37,9 @@ go test ./prestoapi
 
 # Run a single test
 go test ./stage -run TestConcurrentQueries
+
+# Run full CI check (fmt, vet, staticcheck, tests with -race)
+make test
 ```
 
 ## Architecture
@@ -50,6 +53,7 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 - **prestoapi/** - Presto/Trino query helpers, unmarshaller, and column stats types (uses `presto-go` library)
 - **stage/** - Core benchmark execution engine. A `Stage` defines queries, settings, and can chain to other stages via `next` field in JSON
 - **utils/** - Shared utilities including Presto flag handling, ORM-style row extraction, and path helpers
+- **log/** - Thin wrapper around zerolog providing project-wide structured logging with `OverrideFatal` support
 - **clusters/** - Cluster configuration templates and generated configs
 - **benchmarks/** - Benchmark definitions (TPC-DS, TPC-H, ClickBench, etc.) as JSON stage files and SQL queries
 
@@ -64,14 +68,7 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 - `abort_on_error` - Stop on first failure
 - `random_execution`, `randomly_execute_until`, `no_random_duplicates` - Random query selection mode
 
-**Adding a new Stage field** — when adding a new parameter to the `Stage` struct, check each of these locations:
-1. `stage/stage.go` — add the field to the `Stage` struct with a JSON tag
-2. `stage/stage_utils.go` `MergeWith()` — merge the field from `other` into `s`
-3. `stage/stage_utils.go` `setDefaults()` — set a default value if needed
-4. `stage/stage_utils.go` `propagateStates()` — propagate to child stages if the field should be inherited
-5. `stage/stage.go` `newStreamInstance()` — copy the field if it's relevant to stream execution
-6. Wiki: [Parameters](https://github.com/prestodb/pbench/wiki/Parameters) — document the parameter
-7. Wiki: [Configuring PBench - Inherited Parameters](https://github.com/prestodb/pbench/wiki/Configuring-PBench#inherited-parameters-in-stage-files) — add to the inherited list if propagated
+**Adding a new Stage field** — use the `/add-stage-field` skill (`.claude/skills/add-stage-field/SKILL.md`), which has the full 7-location checklist with merge patterns and verification steps.
 
 **Run Recorders**: Results can be recorded to file (default), InfluxDB (requires `TAGS=influx` build), or MySQL. The Pulumi recorder (`pulumi_run_recorder.go`) is internal-only with IBM PrestoDB infrastructure patterns.
 
@@ -84,7 +81,7 @@ PBench is a Presto/Trino benchmark runner built with Cobra CLI. It replaces Benc
 
 ### Dependencies
 
-- **Go 1.25.+** - Required by `go.mod`
+- **Go 1.26.+** - Required by `go.mod`
 - **Python 3** - Required by some stage test hooks (shell scripts that invoke Python for JSON processing)
 
 ## Commands

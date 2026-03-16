@@ -44,4 +44,4 @@ cmd/genddl/out/
 __pycache__/
 
 mysql_wxd.json
-.claude
+.claude/settings.local.json
