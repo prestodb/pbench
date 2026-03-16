@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ethanyzhang/presto-go/query_json"
+	"github.com/prestodb/presto-go-client/v2/query_json"
 
 	"github.com/spf13/cobra"
 )

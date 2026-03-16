@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	presto "github.com/ethanyzhang/presto-go"
-	"github.com/ethanyzhang/presto-go/prestotest"
+	presto "github.com/prestodb/presto-go-client/v2"
+	"github.com/prestodb/presto-go-client/v2/prestotest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

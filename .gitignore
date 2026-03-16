@@ -28,6 +28,7 @@ mysql.json
 pulumi.json
 
 # binaries
+bin/
 pbench_*
 
 # tarball
@@ -43,4 +44,4 @@ cmd/genddl/out/
 __pycache__/
 
 mysql_wxd.json
-.claude
+.claude/settings.local.json

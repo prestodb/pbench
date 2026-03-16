@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 	"os"
 	"path/filepath"
 	"pbench/log"

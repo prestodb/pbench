@@ -3,7 +3,7 @@ package loadjson
 import (
 	"embed"
 	"encoding/json"
-	"github.com/ethanyzhang/presto-go/query_json"
+	"github.com/prestodb/presto-go-client/v2/query_json"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

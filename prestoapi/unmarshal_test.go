@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 	"github.com/stretchr/testify/assert"
 )
 

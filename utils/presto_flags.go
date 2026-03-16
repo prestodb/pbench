@@ -1,7 +1,7 @@
 package utils
 
 import (
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 	"pbench/log"
 
 	"github.com/spf13/cobra"

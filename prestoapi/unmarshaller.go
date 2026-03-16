@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"sync"
 
-	presto "github.com/ethanyzhang/presto-go"
+	presto "github.com/prestodb/presto-go-client/v2"
 )
 
 var (

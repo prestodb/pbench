@@ -9,8 +9,8 @@ import (
 	"pbench/log"
 	"pbench/utils"
 
-	presto "github.com/ethanyzhang/presto-go"
-	"github.com/ethanyzhang/presto-go/query_json"
+	presto "github.com/prestodb/presto-go-client/v2"
+	"github.com/prestodb/presto-go-client/v2/query_json"
 	"regexp"
 	"sync"
 	"sync/atomic"
