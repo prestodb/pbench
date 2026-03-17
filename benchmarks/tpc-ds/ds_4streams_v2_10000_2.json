@@ -1,0 +1,9 @@
+{
+  "description": "Run 4 parallel queries streams starting from s5 (s5 to s8) defined in the TPC-DS spec Appendix D: Query Ordering.",
+  "next": [
+    "streams_v2/10000/s5.json",
+    "streams_v2/10000/s6.json",
+    "streams_v2/10000/s7.json",
+    "streams_v2/10000/s8.json"
+  ]
+}
