@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
-	_ "github.com/go-sql-driver/mysql"
 	"pbench/log"
 	"pbench/utils"
 	"sync/atomic"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 var (
@@ -50,7 +51,7 @@ func NewMySQLRunRecorderWithDb(db *sql.DB) *MySQLRunRecorder {
 }
 
 func (m *MySQLRunRecorder) Start(_ context.Context, s *Stage) error {
-	recordNewRun := `INSERT INTO pbench_runs (run_name, cluster_fqdn, start_time, queries_ran, failed, mismatch, comment)
+	recordNewRun := `REPLACE INTO pbench_runs (run_name, cluster_fqdn, start_time, queries_ran, failed, mismatch, comment)
 VALUES (?, ?, ?, 0, 0, 0, ?)`
 	res, err := m.db.Exec(recordNewRun, s.States.RunName, s.States.ServerFQDN, s.States.RunStartTime, s.States.Comment)
 	if err != nil {
@@ -71,7 +72,7 @@ VALUES (?, ?, ?, 0, 0, 0, ?)`
 }
 
 func (m *MySQLRunRecorder) RecordQuery(_ context.Context, s *Stage, result *QueryResult) {
-	recordNewQuery := `INSERT INTO pbench_queries (run_id, stage_id, query_file, query_index, query_id, sequence_no,
+	recordNewQuery := `REPLACE INTO pbench_queries (run_id, stage_id, query_file, query_index, query_id, sequence_no,
 cold_run, succeeded, start_time, end_time, row_count, expected_row_count, duration_ms, info_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	var queryFile string
 	if result.Query.File != nil {
