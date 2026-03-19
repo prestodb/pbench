@@ -124,21 +124,11 @@ func ParseStage(stage *Stage, stages Map) (*Stage, error) {
 }
 
 func fileNameWithoutPathAndExt(filePath string) string {
-	// The stage ID is the file name without directory path and extension.
-	// It will be filePath[lastPathSeparator+1 : lastDot], so we have the following default values.
-	lastPathSeparator, lastDot := -1, len(filePath)
-	for i := 0; i < len(filePath); i++ {
-		switch filePath[i] {
-		case os.PathSeparator:
-			lastPathSeparator = i
-		case '.':
-			lastDot = i
-		}
+	base := filepath.Base(filePath)
+	if ext := filepath.Ext(base); ext != "" {
+		return base[:len(base)-len(ext)]
 	}
-	if lastDot <= lastPathSeparator+1 || lastPathSeparator+1 >= len(filePath) {
-		return filePath
-	}
-	return filePath[lastPathSeparator+1 : lastDot]
+	return base
 }
 
 func checkStageLinks(stage *Stage) error {

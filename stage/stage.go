@@ -548,7 +548,7 @@ func (s *Stage) runShellScripts(ctx context.Context, shellScripts []string, extr
 		} else {
 			logEntry = log.Info()
 		}
-		logEntry.EmbedObject(s).Int("script_index", i).Str("script", script).
+		logEntry = logEntry.EmbedObject(s).Int("script_index", i).Str("script", script).
 			Int("exit_code", cmd.ProcessState.ExitCode()).Str("status", cmd.ProcessState.String()).
 			Dur("system_time", cmd.ProcessState.SystemTime()).Str("stdout", outBuf.String()).
 			Str("stderr", errBuf.String())

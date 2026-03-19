@@ -1,11 +1,14 @@
 package stage
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+	"pbench/log"
+	"strconv"
 	"time"
 )
 
@@ -16,7 +19,8 @@ type RunRecorder interface {
 }
 
 type FileBasedRunRecorder struct {
-	summaryBuilder strings.Builder
+	buf       bytes.Buffer
+	csvWriter *csv.Writer
 }
 
 func NewFileBasedRunRecorder() *FileBasedRunRecorder {
@@ -24,18 +28,21 @@ func NewFileBasedRunRecorder() *FileBasedRunRecorder {
 }
 
 func (f *FileBasedRunRecorder) Start(_ context.Context, _ *Stage) error {
-	f.summaryBuilder.WriteString("stage_id,query_file,query_index,cold_run,sequence_no,info_url,succeeded,row_count,expected_row_count,start_time,end_time,duration_in_seconds\n")
+	f.csvWriter = csv.NewWriter(&f.buf)
+	f.csvWriter.UseCRLF = false
+	f.csvWriter.Write([]string{
+		"stage_id", "query_file", "query_index", "cold_run", "sequence_no",
+		"info_url", "succeeded", "row_count", "expected_row_count",
+		"start_time", "end_time", "duration_in_seconds",
+	})
 	return nil
 }
 
 func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *QueryResult) {
-	f.summaryBuilder.WriteString(result.StageId + ",")
+	queryFile := "inline"
 	if result.Query.File != nil {
-		f.summaryBuilder.WriteString(*result.Query.File)
-	} else {
-		f.summaryBuilder.WriteString("inline")
+		queryFile = *result.Query.File
 	}
-	// EndTime and Duration are nil when ConcludeExecution was not called (e.g., query error).
 	endTimeStr := ""
 	if result.EndTime != nil {
 		endTimeStr = result.EndTime.Format(time.RFC3339)
@@ -44,12 +51,25 @@ func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *
 	if result.Duration != nil {
 		durationSecs = result.Duration.Seconds()
 	}
-	f.summaryBuilder.WriteString(fmt.Sprintf(",%d,%t,%d,%s,%t,%d,%d,%s,%s,%f\n",
-		result.Query.Index, result.Query.ColdRun, result.Query.SequenceNo, result.InfoUrl,
-		result.QueryError == nil, result.RowCount, result.Query.ExpectedRowCount, result.StartTime.Format(time.RFC3339),
-		endTimeStr, durationSecs))
+	f.csvWriter.Write([]string{
+		result.StageId,
+		queryFile,
+		strconv.Itoa(result.Query.Index),
+		strconv.FormatBool(result.Query.ColdRun),
+		strconv.Itoa(result.Query.SequenceNo),
+		result.InfoUrl,
+		strconv.FormatBool(result.QueryError == nil),
+		strconv.Itoa(result.RowCount),
+		strconv.Itoa(result.Query.ExpectedRowCount),
+		result.StartTime.Format(time.RFC3339),
+		endTimeStr,
+		fmt.Sprintf("%f", durationSecs),
+	})
 }
 
 func (f *FileBasedRunRecorder) RecordRun(_ context.Context, s *Stage, _ []*QueryResult) {
-	_ = os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), []byte(f.summaryBuilder.String()), 0644)
+	f.csvWriter.Flush()
+	if err := os.WriteFile(filepath.Join(s.States.OutputPath, s.Id+"_summary.csv"), f.buf.Bytes(), 0644); err != nil {
+		log.Error().Err(err).Msg("failed to write run summary CSV")
+	}
 }

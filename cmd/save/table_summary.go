@@ -132,7 +132,10 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Ses
 	}
 	// Unlikely but if the row count is still NULL, then do SELECT COUNT(*)
 	if s.RowCount == nil {
-		handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount), true)
+		if _, fatal := handleQueryError(prestoapi.QueryAndUnmarshal(ctx, client, "SELECT COUNT(*) FROM "+fullyQualifiedTableName, &s.RowCount), true); fatal != nil {
+			abortLog(fatal)
+			return
+		}
 	}
 
 	// Zero rows, no need to do anything more.

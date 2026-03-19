@@ -51,7 +51,6 @@ func init() {
 }
 
 func run(c *cobra.Command, args []string) {
-	c.ValidateRequiredFlags()
 	csvFile := args[0]
 
 	log.Info().Msgf("parsing the query plan at column %d in %s", queryPlanColumn, csvFile)

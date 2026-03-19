@@ -14,6 +14,8 @@ import (
 
 type TableName string
 
+const MaxCartesianProductSize = 100_000
+
 // MergeRowsMap merges two table→rows maps by computing a cartesian product per table. For each table
 // in b, its rows are cross-joined with the existing rows in a for that table (via MultiplyRows). If a
 // has no rows yet for a table, a single empty row is used as the seed so that b's columns are preserved.
@@ -21,8 +23,6 @@ type TableName string
 // This is the core mechanism for denormalizing nested structs: parent-level scalar fields produce 1 row
 // in a, and a nested slice of N structs produces N rows in b. The merge yields N rows, each carrying
 // both the parent's columns and one child's columns — equivalent to a SQL cross join.
-const MaxCartesianProductSize = 100_000
-
 func MergeRowsMap(a, b map[TableName][]*Row) (map[TableName][]*Row, error) {
 	for tableName, rows2 := range b {
 		rows1 := a[tableName]
