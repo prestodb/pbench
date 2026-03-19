@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -76,7 +76,7 @@ func Run(_ *cobra.Command, args []string) {
 	// To reuse the `pbench run` code, especially run recorders, we create a pseudo main stage.
 	pseudoStage = &stage.Stage{
 		Id:       "load_json",
-		ColdRuns: &stage.RunsValueOne,
+		ColdRuns: intPtr(1),
 		States: &stage.SharedStageStates{
 			RunName:      RunName,
 			Comment:      Comment,
@@ -179,15 +179,13 @@ func processFile(ctx context.Context, path string) {
 	}
 	if queryInfo.ErrorCode != nil {
 		// Need to set this so the run recorders will mark this query as failed.
-		queryResult.QueryError = fmt.Errorf("%s", *queryInfo.ErrorCode.Name)
+		queryResult.QueryError = errors.New(*queryInfo.ErrorCode.Name)
 	}
 	// Unlike benchmarks run by pbench, we do not know when did the run start and finish when loading them from files.
 	// We infer that the whole run starts at min(queryStartTime) and ends at max(queryEndTime).
 	runStartTime.Synchronized(func(st *syncedTime) {
 		if queryResult.StartTime.Before(st.t) {
 			st.t = queryResult.StartTime
-			// Changes to the pseudoStage will be synced to the database by the run recorder.
-			pseudoStage.States.RunStartTime = queryResult.StartTime
 		}
 	})
 	if queryResult.EndTime != nil {
@@ -267,6 +265,8 @@ func processPath(ctx context.Context, path string) error {
 	}
 	return nil
 }
+
+func intPtr(v int) *int { return &v }
 
 func registerRunRecorder(r stage.RunRecorder) {
 	if r == nil || reflect.ValueOf(r).IsNil() {

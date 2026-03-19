@@ -199,7 +199,9 @@ func GenerateFiles(configs []ConfigData) {
 			}
 			if !written[path] {
 				log.Info().Msgf("removing stale file %s", path)
-				os.Remove(path)
+				if err := os.Remove(path); err != nil {
+					log.Error().Err(err).Str("path", path).Msg("failed to remove stale file")
+				}
 			}
 			return nil
 		})

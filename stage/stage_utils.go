@@ -20,10 +20,7 @@ const (
 	DefaultStageFileExt = ".json"
 )
 
-var (
-	RunsValueOne  = 1
-	RunsValueZero = 0
-)
+func intPtr(v int) *int { return &v }
 
 type OnQueryCompletionFn func(result *QueryResult)
 
@@ -233,14 +230,14 @@ func (s *Stage) setDefaults() {
 		s.SaveJson = &falseValue
 	}
 	if s.ColdRuns == nil {
-		s.ColdRuns = &RunsValueZero
+		s.ColdRuns = intPtr(0)
 	}
 	if s.WarmRuns == nil {
-		s.WarmRuns = &RunsValueZero
+		s.WarmRuns = intPtr(0)
 	}
 	if *s.ColdRuns+*s.WarmRuns <= 0 {
-		s.ColdRuns = &RunsValueOne
-		s.WarmRuns = &RunsValueZero
+		s.ColdRuns = intPtr(1)
+		s.WarmRuns = intPtr(0)
 	}
 }
 
@@ -280,13 +277,13 @@ func (s *Stage) propagateStates() {
 				nextStage.ColdRuns = s.ColdRuns
 				nextStage.WarmRuns = s.WarmRuns
 			} else if nextStage.ColdRuns == nil {
-				nextStage.ColdRuns = &RunsValueZero
+				nextStage.ColdRuns = intPtr(0)
 			} else if nextStage.WarmRuns == nil {
-				nextStage.WarmRuns = &RunsValueZero
+				nextStage.WarmRuns = intPtr(0)
 			}
 			if *nextStage.ColdRuns+*nextStage.WarmRuns <= 0 {
-				nextStage.ColdRuns = &RunsValueOne
-				nextStage.WarmRuns = &RunsValueZero
+				nextStage.ColdRuns = intPtr(1)
+				nextStage.WarmRuns = intPtr(0)
 			}
 			if nextStage.AbortOnError == nil {
 				nextStage.AbortOnError = s.AbortOnError
@@ -309,6 +306,9 @@ func (s *Stage) propagateStates() {
 func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 	// We do not save json file when saveJson is false. But when there is an error, we always save the json file.
 	if !*s.SaveJson && result.QueryError == nil {
+		return
+	}
+	if result.QueryId == "" {
 		return
 	}
 	s.States.wgExitMainStage.Add(1)
