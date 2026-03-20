@@ -24,3 +24,4 @@ def execute_mysql_query(connection, query, cluster_name):
         return result
     except Error as e:
         print(f"The error '{e}' occurred")
+        return []
