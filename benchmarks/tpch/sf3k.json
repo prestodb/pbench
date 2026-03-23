@@ -1,0 +1,5 @@
+{
+  "description": "Specifies the schema for TPCH scale factor 3k.",
+  "catalog": "tpch",
+  "schema": "sf3000"
+}
