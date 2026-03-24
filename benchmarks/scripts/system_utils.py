@@ -19,6 +19,7 @@ def execute_ssh_command(worker_ip, login_user, ssh_key_path, command):
             sys.exit(1)
         else:
             print(f'Successfully finished running command on {worker_ip}')
+            return stdout_output
     except paramiko.SSHException as ssh_err:
         print(f'SSH error on {worker_ip}: {ssh_err}')
         sys.exit(1)
