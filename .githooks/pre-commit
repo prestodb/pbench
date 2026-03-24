@@ -1,0 +1,58 @@
+#!/bin/bash
+# Git pre-commit hook: runs fmt, vet, staticcheck, tests, and coverage
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT" || exit 1
+
+FAILED=0
+
+# Format check
+echo "Checking formatting..."
+UNFORMATTED=$(gofmt -l .)
+if [ -n "$UNFORMATTED" ]; then
+  echo "Files not formatted:"
+  echo "$UNFORMATTED"
+  FAILED=1
+fi
+
+# Vet
+echo "Running go vet..."
+if ! go vet ./...; then
+  FAILED=1
+fi
+
+# Staticcheck
+if command -v staticcheck &>/dev/null; then
+  echo "Running staticcheck..."
+  if ! staticcheck ./...; then
+    FAILED=1
+  fi
+fi
+
+# Tests with race detection
+echo "Running tests..."
+if ! go test ./... -race -count=1 -timeout 120s; then
+  FAILED=1
+fi
+
+# Coverage threshold (80%)
+echo "Checking coverage..."
+go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic -timeout 120s
+COVERAGE=$(go tool cover -func=coverage.out 2>/dev/null | grep total | awk '{print $3}' | sed 's/%//')
+if [ -n "$COVERAGE" ]; then
+  if (( $(echo "$COVERAGE < 50" | bc -l) )); then
+    echo "Coverage ${COVERAGE}% is below 50% threshold"
+    FAILED=1
+  else
+    echo "Coverage: ${COVERAGE}%"
+  fi
+fi
+rm -f coverage.out
+
+if [ "$FAILED" -eq 1 ]; then
+  echo "Pre-commit checks failed. Fix issues before committing."
+  exit 1
+fi
+
+echo "All checks passed."
+exit 0
