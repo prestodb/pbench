@@ -249,6 +249,8 @@ func (t *Float64Time) UnmarshalJSON(bytes []byte) error {
 		return err
 	}
 	switch value := v.(type) {
+	case nil:
+		return nil
 	case float64:
 		t.Time = time.UnixMilli(int64(value * 1000))
 		return nil

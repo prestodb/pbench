@@ -110,7 +110,10 @@ cold_run, succeeded, start_time, end_time, row_count, expected_row_count, durati
 			Msg("failed to update the run information in the MySQL database")
 		return
 	}
-	if rowsAffected, _ := res.RowsAffected(); rowsAffected > 1 {
+	if rowsAffected, raErr := res.RowsAffected(); raErr != nil {
+		log.Error().Err(raErr).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
+			Msg("failed to get rows affected when updating run information")
+	} else if rowsAffected > 1 {
 		log.Error().Str("run_name", s.States.RunName).Int64("run_id", m.runId).Int64("rows_affected", rowsAffected).
 			Msg("more than 1 row was affected when trying to complete the run information in the MySQL database")
 	}
@@ -129,7 +132,10 @@ func (m *MySQLRunRecorder) RecordRun(ctx context.Context, s *Stage, results []*Q
 			Msg("failed to complete the run information in the MySQL database")
 		return
 	}
-	if rowsAffected, _ := res.RowsAffected(); rowsAffected > 1 {
+	if rowsAffected, raErr := res.RowsAffected(); raErr != nil {
+		log.Error().Err(raErr).Str("run_name", s.States.RunName).Int64("run_id", m.runId).
+			Msg("failed to get rows affected when completing run information")
+	} else if rowsAffected > 1 {
 		log.Error().Str("run_name", s.States.RunName).Int64("run_id", m.runId).Int64("rows_affected", rowsAffected).
 			Msg("more than 1 row was affected when trying to complete the run information in the MySQL database")
 	}

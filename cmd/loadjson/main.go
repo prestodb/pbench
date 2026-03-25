@@ -118,7 +118,7 @@ func Run(_ *cobra.Command, args []string) {
 	pseudoStage.States.RunStartTime = runStartTime.GetTime()
 	pseudoStage.States.RunFinishTime = runEndTime.GetTime()
 	for _, r := range runRecorders {
-		rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+		rCtx, rCancel := context.WithTimeout(ctx, time.Second*5)
 		r.RecordRun(rCtx, pseudoStage, queryResults)
 		rCancel()
 	}
@@ -230,7 +230,7 @@ func processFile(ctx context.Context, path string) {
 		}
 	}
 	for _, r := range runRecorders {
-		rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+		rCtx, rCancel := context.WithTimeout(ctx, time.Second*5)
 		r.RecordQuery(rCtx, pseudoStage, queryResult)
 		rCancel()
 	}

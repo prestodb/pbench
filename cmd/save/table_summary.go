@@ -16,6 +16,11 @@ import (
 	"syscall"
 )
 
+// sqlIdent quotes a SQL identifier to prevent injection via adversarial names.
+func sqlIdent(name string) string {
+	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
+}
+
 const (
 	BooleanType   = "boolean"
 	TinyIntType   = "tinyint"
@@ -104,7 +109,7 @@ func handleQueryError(err error, abortOnError bool) (retry bool, fatal error) {
 }
 
 func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Session, analyze bool) {
-	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", s.Catalog, s.Schema, s.Name)
+	fullyQualifiedTableName := fmt.Sprintf("%s.%s.%s", sqlIdent(s.Catalog), sqlIdent(s.Schema), sqlIdent(s.Name))
 
 	abortLog := func(err error) {
 		log.Error().Err(err).Msgf("querying table summary for %s aborted", fullyQualifiedTableName)
@@ -158,31 +163,32 @@ func (s *TableSummary) QueryTableSummary(ctx context.Context, client *presto.Ses
 			rawDataType = rawDataType[:parenthesis]
 		}
 		statistics := make([]string, 0, 4)
+		quotedCol := sqlIdent(stat.ColumnName)
 		if stat.NullsFraction == nil {
-			statistics = append(statistics, fmt.Sprintf("count(%s) AS non_null_values_count", stat.ColumnName))
+			statistics = append(statistics, fmt.Sprintf("count(%s) AS non_null_values_count", quotedCol))
 		}
 		internalFunctionPrefixMu.RLock()
 		prefix := internalFunctionPrefix
 		internalFunctionPrefixMu.RUnlock()
 		if rawDataType == BooleanType {
-			statistics = append(statistics, fmt.Sprintf("count_if(%s) AS true_values_count", stat.ColumnName))
+			statistics = append(statistics, fmt.Sprintf("count_if(%s) AS true_values_count", quotedCol))
 		} else if IsSizable[rawDataType] {
-			statistics = append(statistics, fmt.Sprintf("\"%smax_data_size_for_stats\"(%s) AS max_data_size", prefix, stat.ColumnName))
+			statistics = append(statistics, fmt.Sprintf("\"%smax_data_size_for_stats\"(%s) AS max_data_size", prefix, quotedCol))
 			if stat.DataSize == nil {
-				statistics = append(statistics, fmt.Sprintf("\"%ssum_data_size_for_stats\"(%s) AS data_size", prefix, stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("\"%ssum_data_size_for_stats\"(%s) AS data_size", prefix, quotedCol))
 			}
 			if stat.DistinctValuesCount == nil && (rawDataType == VarcharType || rawDataType == CharType) {
-				statistics = append(statistics, fmt.Sprintf("approx_distinct(%s) AS distinct_values_count", stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("approx_distinct(%s) AS distinct_values_count", quotedCol))
 			}
 		} else if IsNumericType[rawDataType] || rawDataType == DateType || rawDataType == TimestampType {
 			if stat.LowValue == nil {
-				statistics = append(statistics, fmt.Sprintf("min(%s) AS low_value", stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("min(%s) AS low_value", quotedCol))
 			}
 			if stat.HighValue == nil {
-				statistics = append(statistics, fmt.Sprintf("max(%s) AS high_value", stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("max(%s) AS high_value", quotedCol))
 			}
 			if stat.DistinctValuesCount == nil {
-				statistics = append(statistics, fmt.Sprintf("approx_distinct(%s) AS distinct_values_count", stat.ColumnName))
+				statistics = append(statistics, fmt.Sprintf("approx_distinct(%s) AS distinct_values_count", quotedCol))
 			}
 		}
 

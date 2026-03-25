@@ -19,14 +19,14 @@ func TestQueryTableSummary_Basic(t *testing.T) {
 
 	// SHOW CREATE TABLE
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL:     "SHOW CREATE TABLE test_catalog.test_schema.test_table",
+		SQL:     `SHOW CREATE TABLE "test_catalog"."test_schema"."test_table"`,
 		Columns: []presto.Column{{Name: "Create Table", Type: "varchar"}},
 		Data:    [][]any{{"CREATE TABLE test_catalog.test_schema.test_table (\n   id bigint,\n   name varchar\n)"}},
 	})
 
 	// SHOW STATS FOR
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL: "SHOW STATS FOR test_catalog.test_schema.test_table",
+		SQL: `SHOW STATS FOR "test_catalog"."test_schema"."test_table"`,
 		Columns: []presto.Column{
 			{Name: "column_name", Type: "varchar"},
 			{Name: "data_size", Type: "double"},
@@ -45,7 +45,7 @@ func TestQueryTableSummary_Basic(t *testing.T) {
 
 	// DESCRIBE — returns column metadata, not statistics
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL: "DESCRIBE test_catalog.test_schema.test_table",
+		SQL: `DESCRIBE "test_catalog"."test_schema"."test_table"`,
 		Columns: []presto.Column{
 			{Name: "Column", Type: "varchar"},
 			{Name: "Type", Type: "varchar"},
@@ -101,14 +101,14 @@ func TestQueryTableSummary_FallbackToCount(t *testing.T) {
 
 	// SHOW CREATE TABLE
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL:     "SHOW CREATE TABLE cat.sch.tbl",
+		SQL:     `SHOW CREATE TABLE "cat"."sch"."tbl"`,
 		Columns: []presto.Column{{Name: "Create Table", Type: "varchar"}},
 		Data:    [][]any{{"CREATE TABLE cat.sch.tbl (id bigint)"}},
 	})
 
 	// SHOW STATS FOR - no row count in summary row
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL: "SHOW STATS FOR cat.sch.tbl",
+		SQL: `SHOW STATS FOR "cat"."sch"."tbl"`,
 		Columns: []presto.Column{
 			{Name: "column_name", Type: "varchar"},
 			{Name: "data_size", Type: "double"},
@@ -126,7 +126,7 @@ func TestQueryTableSummary_FallbackToCount(t *testing.T) {
 
 	// DESCRIBE — returns column metadata, not statistics
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL: "DESCRIBE cat.sch.tbl",
+		SQL: `DESCRIBE "cat"."sch"."tbl"`,
 		Columns: []presto.Column{
 			{Name: "Column", Type: "varchar"},
 			{Name: "Type", Type: "varchar"},
@@ -143,7 +143,7 @@ func TestQueryTableSummary_FallbackToCount(t *testing.T) {
 
 	// SELECT COUNT(*) fallback
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL:     "SELECT COUNT(*) FROM cat.sch.tbl",
+		SQL:     `SELECT COUNT(*) FROM "cat"."sch"."tbl"`,
 		Columns: []presto.Column{{Name: "_col0", Type: "bigint"}},
 		Data:    [][]any{{42}},
 	})
@@ -169,7 +169,7 @@ func TestQueryTableSummary_ErrorRecovery(t *testing.T) {
 
 	// SHOW CREATE TABLE returns an error
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL:          "SHOW CREATE TABLE err_cat.err_sch.err_tbl",
+		SQL:          `SHOW CREATE TABLE "err_cat"."err_sch"."err_tbl"`,
 		QueueBatches: 1,
 		Error: &presto.QueryError{
 			ErrorName: "TABLE_NOT_FOUND",
@@ -201,14 +201,14 @@ func TestQueryTableSummary_Analyze(t *testing.T) {
 
 	// SHOW CREATE TABLE
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL:     "SHOW CREATE TABLE tpch.sf1.lineitem",
+		SQL:     `SHOW CREATE TABLE "tpch"."sf1"."lineitem"`,
 		Columns: []presto.Column{{Name: "Create Table", Type: "varchar"}},
 		Data:    [][]any{{"CREATE TABLE tpch.sf1.lineitem (\n   orderkey bigint,\n   comment varchar\n)"}},
 	})
 
 	// SHOW STATS FOR — orderkey has full stats, comment has sparse stats
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL: "SHOW STATS FOR tpch.sf1.lineitem",
+		SQL: `SHOW STATS FOR "tpch"."sf1"."lineitem"`,
 		Columns: []presto.Column{
 			{Name: "column_name", Type: "varchar"},
 			{Name: "data_size", Type: "double"},
@@ -227,7 +227,7 @@ func TestQueryTableSummary_Analyze(t *testing.T) {
 
 	// DESCRIBE
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL: "DESCRIBE tpch.sf1.lineitem",
+		SQL: `DESCRIBE "tpch"."sf1"."lineitem"`,
 		Columns: []presto.Column{
 			{Name: "Column", Type: "varchar"},
 			{Name: "Type", Type: "varchar"},
@@ -245,14 +245,14 @@ func TestQueryTableSummary_Analyze(t *testing.T) {
 
 	// Analyze query for orderkey (bigint — numeric type, all stats missing)
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL:     "SELECT count(orderkey) AS non_null_values_count, min(orderkey) AS low_value, max(orderkey) AS high_value, approx_distinct(orderkey) AS distinct_values_count FROM tpch.sf1.lineitem",
+		SQL:     `SELECT count("orderkey") AS non_null_values_count, min("orderkey") AS low_value, max("orderkey") AS high_value, approx_distinct("orderkey") AS distinct_values_count FROM "tpch"."sf1"."lineitem"`,
 		Columns: []presto.Column{{Name: "non_null_values_count", Type: "bigint"}, {Name: "low_value", Type: "bigint"}, {Name: "high_value", Type: "bigint"}, {Name: "distinct_values_count", Type: "bigint"}},
 		Data:    [][]any{{95.0, 1.0, 1000.0, 500.0}},
 	})
 
 	// Analyze query for comment (varchar — sizable type, data_size present, distinct missing)
 	mock.AddQuery(&prestotest.MockQueryTemplate{
-		SQL:     `SELECT count(comment) AS non_null_values_count, "max_data_size_for_stats"(comment) AS max_data_size, approx_distinct(comment) AS distinct_values_count FROM tpch.sf1.lineitem`,
+		SQL:     `SELECT count("comment") AS non_null_values_count, "max_data_size_for_stats"("comment") AS max_data_size, approx_distinct("comment") AS distinct_values_count FROM "tpch"."sf1"."lineitem"`,
 		Columns: []presto.Column{{Name: "non_null_values_count", Type: "bigint"}, {Name: "max_data_size", Type: "bigint"}, {Name: "distinct_values_count", Type: "bigint"}},
 		Data:    [][]any{{90.0, 128.0, 80.0}},
 	})

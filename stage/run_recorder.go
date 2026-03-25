@@ -30,11 +30,13 @@ func NewFileBasedRunRecorder() *FileBasedRunRecorder {
 func (f *FileBasedRunRecorder) Start(_ context.Context, _ *Stage) error {
 	f.csvWriter = csv.NewWriter(&f.buf)
 	f.csvWriter.UseCRLF = false
-	f.csvWriter.Write([]string{
+	if err := f.csvWriter.Write([]string{
 		"stage_id", "query_file", "query_index", "cold_run", "sequence_no",
 		"info_url", "succeeded", "row_count", "expected_row_count",
 		"start_time", "end_time", "duration_in_seconds",
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to write CSV header: %w", err)
+	}
 	return nil
 }
 
@@ -51,7 +53,7 @@ func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *
 	if result.Duration != nil {
 		durationSecs = result.Duration.Seconds()
 	}
-	f.csvWriter.Write([]string{
+	if err := f.csvWriter.Write([]string{
 		result.StageId,
 		queryFile,
 		strconv.Itoa(result.Query.Index),
@@ -64,7 +66,9 @@ func (f *FileBasedRunRecorder) RecordQuery(_ context.Context, _ *Stage, result *
 		result.StartTime.Format(time.RFC3339),
 		endTimeStr,
 		fmt.Sprintf("%f", durationSecs),
-	})
+	}); err != nil {
+		log.Error().Err(err).Msg("failed to write CSV row")
+	}
 }
 
 func (f *FileBasedRunRecorder) RecordRun(_ context.Context, s *Stage, _ []*QueryResult) {

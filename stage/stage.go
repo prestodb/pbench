@@ -199,7 +199,7 @@ func (s *Stage) Run(ctx context.Context) int {
 		case result := <-s.States.resultChan:
 			results = append(results, result)
 			for _, recorder := range s.States.runRecorders {
-				rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				rCtx, rCancel := context.WithTimeout(ctx, time.Second*5)
 				recorder.RecordQuery(rCtx, s, result)
 				rCancel()
 			}
@@ -218,7 +218,7 @@ func (s *Stage) Run(ctx context.Context) int {
 				case result := <-s.States.resultChan:
 					results = append(results, result)
 					for _, recorder := range s.States.runRecorders {
-						rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+						rCtx, rCancel := context.WithTimeout(ctx, time.Second*5)
 						recorder.RecordQuery(rCtx, s, result)
 						rCancel()
 					}
@@ -236,7 +236,7 @@ func (s *Stage) Run(ctx context.Context) int {
 				}
 			}
 			for _, recorder := range s.States.runRecorders {
-				rCtx, rCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				rCtx, rCancel := context.WithTimeout(ctx, time.Second*5)
 				recorder.RecordRun(rCtx, s, results)
 				rCancel()
 			}
@@ -732,7 +732,9 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 			} else {
 				log.Info().EmbedObject(resultSnapshot).Msg("query data saved successfully")
 			}
-			_ = queryOutputFile.Close()
+			if closeErr := queryOutputFile.Close(); closeErr != nil {
+				log.Error().Err(closeErr).EmbedObject(resultSnapshot).Msg("failed to close query output file")
+			}
 			s.States.wgExitMainStage.Done()
 		}()
 	}
