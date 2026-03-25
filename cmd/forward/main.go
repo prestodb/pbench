@@ -10,7 +10,7 @@ import (
 	"pbench/utils"
 
 	presto "github.com/prestodb/presto-go-client/v2"
-	"github.com/prestodb/presto-go-client/v2/query_json"
+	"github.com/prestodb/presto-go-client/v2/queryjson"
 	"regexp"
 	"sync"
 	"sync/atomic"
@@ -218,11 +218,11 @@ func checkAndCancelQuery(ctx context.Context, queryState *presto.QueryStateInfo)
 func forwardQuery(ctx context.Context, queryState *presto.QueryStateInfo, clients []*presto.Client) {
 	defer runningTasks.Done()
 	var queryInfoErr error
-	queryInfo := new(query_json.QueryInfo)
+	queryInfo := new(queryjson.QueryInfo)
 	for attempt := 1; attempt <= maxRetry; attempt++ {
 		_, queryInfoErr = clients[0].GetQueryInfo(ctx, queryState.QueryId, queryInfo)
 		if queryInfoErr != nil {
-			queryInfo = new(query_json.QueryInfo)
+			queryInfo = new(queryjson.QueryInfo)
 			log.Error().Str("source_query_id", queryState.QueryId).Err(queryInfoErr).
 				Msgf("failed to get query info for forwarding, attempt %d/%d", attempt, maxRetry)
 			waitForNextPoll(ctx)
