@@ -58,7 +58,6 @@ func unmarshalScalar(data any, v reflect.Value) {
 		}
 		v = v.Elem()
 		vt = v.Type()
-		continue
 	}
 	if !v.CanSet() {
 		return

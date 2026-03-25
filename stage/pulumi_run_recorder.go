@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+var pulumiHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 const PulumiAPIEndpoint = "https://api.pulumi.com"
 const PulumiResourceTypeStack = "pulumi:pulumi:Stack"
 
@@ -82,7 +84,7 @@ func (p *PulumiMySQLRunRecorder) newGetRequest(urlStr string) (*http.Request, er
 
 func (p *PulumiMySQLRunRecorder) doRequest(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
 	req = req.WithContext(ctx)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := pulumiHTTPClient.Do(req)
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.

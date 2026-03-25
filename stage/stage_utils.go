@@ -326,7 +326,7 @@ func (s *Stage) saveQueryJsonFile(result *QueryResult) {
 			checkErr(err)
 			if err == nil {
 				// We need to save the query json file even if the stage context is canceled.
-				qCtx, qCancel := utils.GetCtxWithTimeout(time.Second * 5)
+				qCtx, qCancel := context.WithTimeout(context.Background(), time.Second*5)
 				_, err = s.Client.GetQueryInfo(qCtx, result.QueryId, queryJsonFile)
 				qCancel()
 				checkErr(err)

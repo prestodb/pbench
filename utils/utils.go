@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bufio"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -15,17 +14,12 @@ import (
 	"pbench/log"
 	"reflect"
 	"strings"
-	"time"
 )
 
 const (
 	OpenNewFileFlags        = os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	DirectoryNameTimeFormat = "060102-150405"
 )
-
-func GetCtxWithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), timeout)
-}
 
 func ExpandHomeDirectory(path *string) {
 	if path != nil && (*path == "~" || strings.HasPrefix(*path, "~/")) {
