@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prestodb/presto-go-client/v2/query_json"
+	"github.com/prestodb/presto-go-client/v2/queryjson"
 
 	"github.com/spf13/cobra"
 )
@@ -147,7 +147,7 @@ func processFile(ctx context.Context, path string) {
 		log.Error().Err(ioErr).Str("path", path).Msg("failed to read file")
 		return
 	}
-	queryInfo := new(query_json.QueryInfo)
+	queryInfo := new(queryjson.QueryInfo)
 	// Note that this step can succeed with any valid JSON file. But we need to do some additional validation to skip
 	// invalid query JSON files.
 	if unmarshalErr := json.Unmarshal(bytes, queryInfo); unmarshalErr != nil {

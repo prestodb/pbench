@@ -3,7 +3,7 @@ package loadjson
 import (
 	"embed"
 	"encoding/json"
-	"github.com/prestodb/presto-go-client/v2/query_json"
+	"github.com/prestodb/presto-go-client/v2/queryjson"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -39,7 +39,7 @@ func TestParseQueryInfo(t *testing.T) {
 			jsonBytes, err := testFiles.ReadFile(tc.filePath)
 			assert.Nil(t, err)
 
-			queryInfo := new(query_json.QueryInfo)
+			queryInfo := new(queryjson.QueryInfo)
 			assert.Nil(t, json.Unmarshal(jsonBytes, queryInfo))
 			assert.Nil(t, queryInfo.PrepareForInsert())
 			assert.Nil(t, queryInfo.OutputStage)
