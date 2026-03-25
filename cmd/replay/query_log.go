@@ -3,7 +3,7 @@ package replay
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/prestodb/presto-go-client/v2/query_json"
+	"github.com/prestodb/presto-go-client/v2/queryjson"
 	"time"
 )
 
@@ -222,11 +222,11 @@ type QueryLog struct {
 	//QueryOptimiserEvent  any    `json:"queryOptimiserEvent,omitempty"`
 	//SplitCompletedEvent  any    `json:"splitCompletedEvent,omitempty"`
 	//Plan                 string `json:"plan,omitempty"`
-	CPUTimeMillis        query_json.Duration `json:"cpuTimeMillis,omitempty"`
-	RetriedCPUTimeMillis query_json.Duration `json:"retriedCpuTimeMillis,omitempty"`
-	WallTimeMillis       query_json.Duration `json:"wallTimeMillis,omitempty"`
-	QueuedTimeMillis     query_json.Duration `json:"queuedTimeMillis,omitempty"`
-	AnalysisTimeMillis   query_json.Duration `json:"analysisTimeMillis,omitempty"`
+	CPUTimeMillis        queryjson.Duration `json:"cpuTimeMillis,omitempty"`
+	RetriedCPUTimeMillis queryjson.Duration `json:"retriedCpuTimeMillis,omitempty"`
+	WallTimeMillis       queryjson.Duration `json:"wallTimeMillis,omitempty"`
+	QueuedTimeMillis     queryjson.Duration `json:"queuedTimeMillis,omitempty"`
+	AnalysisTimeMillis   queryjson.Duration `json:"analysisTimeMillis,omitempty"`
 }
 
 type Value struct {

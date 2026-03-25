@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/prestodb/presto-go-client/v2/query_json"
+	"github.com/prestodb/presto-go-client/v2/queryjson"
 )
 
 type TableName string
@@ -95,7 +95,7 @@ func SqlInsertObject(ctx context.Context, db *sql.DB, obj any, tableNames ...Tab
 // Nested structs are traversed recursively and their columns are merged via cartesian product with the
 // parent's columns (so if a parent contributes 1 row and a child slice contributes 3, the result is 3
 // rows each containing both parent and child columns). Slice/array fields of structs produce one row
-// per element. json.RawMessage values are compacted, and query_json.Duration values are converted to
+// per element. json.RawMessage values are compacted, and queryjson.Duration values are converted to
 // milliseconds.
 func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap map[TableName][]*Row, err error) {
 	rowsMap = make(map[TableName][]*Row)
@@ -123,7 +123,7 @@ func collectRowsForEachTable(v reflect.Value, tableNames ...TableName) (rowsMap 
 						typed = compactedJson.Bytes()
 					}
 					fieldValue = string(typed)
-				case query_json.Duration:
+				case queryjson.Duration:
 					// TODO: Add a tag for precision. EventListener only uses ms.
 					fieldValue = typed.Milliseconds()
 				default:

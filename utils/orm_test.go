@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/prestodb/presto-go-client/v2/query_json"
+	"github.com/prestodb/presto-go-client/v2/queryjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -122,9 +122,9 @@ func TestCollectRowsForEachTable_JsonRawMessage(t *testing.T) {
 
 func TestCollectRowsForEachTable_Duration(t *testing.T) {
 	type withDuration struct {
-		Elapsed query_json.Duration `table_d:"elapsed_ms"`
+		Elapsed queryjson.Duration `table_d:"elapsed_ms"`
 	}
-	var dur query_json.Duration
+	var dur queryjson.Duration
 	err := json.Unmarshal([]byte(`"5.00s"`), &dur)
 	require.NoError(t, err)
 	obj := withDuration{Elapsed: dur}
