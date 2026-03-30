@@ -31,6 +31,17 @@ type Schema struct {
 	Tables              map[string]*Table `json:"tables"`
 	InsertTables        map[string]*Table `json:"insert_tables"`
 	SessionVariables    map[string]string `json:"session_variables"`
+	
+	// Enhanced ingestion workflow fields
+	Mode                string            `json:"mode"`                 // "legacy", "ingestion", or "enhanced_ingestion"
+	S3SourceLocation    string            `json:"s3_source_location"`   // S3 path for source data
+	S3TargetLocation    string            `json:"s3_target_location"`   // S3 path for target data
+	SourceSchema        string            `json:"source_schema"`        // Source schema name
+	TargetSchema        string            `json:"target_schema"`        // Target schema name
+	SourceFileFormat    string            `json:"source_file_format"`   // "CSV" or "TEXTFILE"
+	SourceCatalog       string            `json:"source_catalog"`       // Source catalog name (optional)
+	TargetCatalog       string            `json:"target_catalog"`       // Target catalog name (optional)
+	Engine              string            `json:"engine"`               // "presto" or "spark"
 }
 
 type Column struct {
@@ -52,6 +63,12 @@ type Table struct {
 type RegisterTable struct {
 	TableName        string
 	ExternalLocation *string
+}
+
+// isEnhancedIngestionMode returns true if this schema should use the enhanced ingestion workflow
+// (source tables + target tables + INSERT statements with catalog support and CSV/TEXTFILE handling)
+func (s *Schema) isEnhancedIngestionMode() bool {
+	return s.Mode == "enhanced_ingestion"
 }
 
 func Run(_ *cobra.Command, args []string) {
@@ -140,8 +157,12 @@ func generateSchemaFromDef(schema *Schema, defDir string, configDir string, outp
 			registerTable.ExternalLocation = externalLoc
 			schema.RegisterTables = append(schema.RegisterTables, &registerTable)
 		} else {
-			tbl.reorderColumns(schema) // Move PartitionKey columns to the bottom
-			tbl.LastColumn = tbl.Columns[len(tbl.Columns)-1]
+			// Only reorder columns for Hive tables (Iceberg doesn't require partition columns at end)
+			if !schema.Iceberg {
+				tbl.reorderColumns(schema)
+			}
+			// Set LastColumn for template rendering (finds partition key or uses last column)
+			tbl.setLastColumn(schema)
 			schema.Tables[tbl.Name] = tbl
 		}
 		if isInsertTable(tbl, schema) {
@@ -161,21 +182,42 @@ func generateSchemaFromDef(schema *Schema, defDir string, configDir string, outp
 func generateCreateTable(schema *Schema, currDir string, outputDirs []string, step int) {
 	genSubSteps := !schema.Iceberg && schema.Partitioned
 
-	tName := "create_table.sql.tmpl"
-	var fName string
-	if genSubSteps {
-		// If there are sub-tasks, prefix the first output file with step a
-		fName = strconv.Itoa(step+1) + "a-create-" + schema.LocationName + ".sql"
+	if schema.isEnhancedIngestionMode() {
+		// Enhanced ingestion mode: generate separate source and target table files
+		generateSourceTable(schema, currDir, outputDirs, step)
+		generateTargetTable(schema, currDir, outputDirs, step)
 	} else {
-		fName = strconv.Itoa(step+1) + "-create-" + schema.LocationName + ".sql"
+		// Legacy mode: single create table file
+		tName := "create_table.sql.tmpl"
+		var fName string
+		if genSubSteps {
+			// If there are sub-tasks, prefix the first output file with step a
+			fName = strconv.Itoa(step+1) + "a-create-" + schema.LocationName + ".sql"
+		} else {
+			fName = strconv.Itoa(step+1) + "-create-" + schema.LocationName + ".sql"
+		}
+		execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 	}
-	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 
 	if genSubSteps {
 		generateAwsS3Mv(schema, currDir, outputDirs, step)     // Generate step b
 		generateCallAnalyze(schema, currDir, outputDirs, step) // Generate step c
 		generateAwsS3Cp(schema, currDir, outputDirs, step)     // Generate step d
 	}
+}
+
+// generateSourceTable generates source table DDL for enhanced ingestion mode
+func generateSourceTable(schema *Schema, currDir string, outputDirs []string, step int) {
+	tName := "create_source_table.sql.tmpl"
+	fName := strconv.Itoa(step+1) + "a-create-source-" + schema.LocationName + ".sql"
+	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
+}
+
+// generateTargetTable generates target table DDL for enhanced ingestion mode
+func generateTargetTable(schema *Schema, currDir string, outputDirs []string, step int) {
+	tName := "create_target_table.sql.tmpl"
+	fName := strconv.Itoa(step+1) + "b-create-target-" + schema.LocationName + ".sql"
+	execTemplate(schema, getTemplate(tName, currDir), fName, outputDirs)
 }
 
 func generateInsertTable(schema *Schema, currDir string, outputDirs []string, step int) {
@@ -265,10 +307,20 @@ func cleanOutputDir(dir string) error {
 }
 
 func (s *Schema) shouldGenInsert() bool {
+	// Enhanced ingestion mode always generates inserts
+	if s.isEnhancedIngestionMode() {
+		return true
+	}
+	// Legacy mode: only generate inserts for Iceberg
 	return s.Iceberg
 }
 
 func isRegisterTable(table *Table, schema *Schema) bool {
+	// Enhanced ingestion mode doesn't use register tables
+	if schema.isEnhancedIngestionMode() {
+		return false
+	}
+	// Legacy mode: register non-partitioned tables in Iceberg partitioned schemas
 	if schema.Iceberg && schema.Partitioned {
 		return !table.Partitioned
 	}
@@ -276,6 +328,11 @@ func isRegisterTable(table *Table, schema *Schema) bool {
 }
 
 func isInsertTable(table *Table, schema *Schema) bool {
+	// Enhanced ingestion mode: all tables get inserts
+	if schema.isEnhancedIngestionMode() {
+		return true
+	}
+	// Legacy mode: partitioned tables in partitioned schemas, or all tables in non-partitioned
 	if schema.Partitioned {
 		return table.Partitioned
 	}
@@ -283,14 +340,26 @@ func isInsertTable(table *Table, schema *Schema) bool {
 }
 
 func getNamedOutput(configData []byte, workload string) (string, error) {
-	var config map[string]string
+	// Use interface{} to handle both string and boolean values in config
+	var config map[string]interface{}
 	if err := json.Unmarshal(configData, &config); err != nil {
 		return "", err
 	}
 
-	scaleFactor := config["scale_factor"]
-	fileFormat := config["file_format"]
-	compressionMethod := config["compression_method"]
+	// Extract string values with type assertion (these are always strings in config)
+	scaleFactor, ok := config["scale_factor"].(string)
+	if !ok {
+		return "", fmt.Errorf("scale_factor must be a string")
+	}
+	fileFormat, ok := config["file_format"].(string)
+	if !ok {
+		return "", fmt.Errorf("file_format must be a string")
+	}
+	compressionMethod, ok := config["compression_method"].(string)
+	if !ok {
+		return "", fmt.Errorf("compression_method must be a string")
+	}
+	
 	var compressionSuffix string
 	if compressionMethod == "uncompressed" {
 		compressionSuffix = ""
@@ -322,6 +391,10 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 	}
 	if base.WorkloadDefinition == "" {
 		base.WorkloadDefinition = "tpc-ds"
+	}
+	// Default engine for enhanced ingestion mode
+	if base.Engine == "" && base.isEnhancedIngestionMode() {
+		base.Engine = "presto"
 	}
 
 	combinations := []struct {
@@ -392,6 +465,24 @@ func (t *Table) reorderColumns(s *Schema) {
 	}
 	if len(partition) > 0 {
 		t.Columns = append(nonPartition, partition...)
+	}
+}
+
+// setLastColumn sets the LastColumn field for template rendering.
+// For partitioned tables, it finds the column marked with partition_key=true.
+// For non-partitioned tables or if no partition key is found, it uses the last column.
+// This works for both Iceberg (partition columns can be anywhere) and Hive (after reordering).
+func (t *Table) setLastColumn(s *Schema) {
+	// Look for partition key column
+	for _, col := range t.Columns {
+		if col.PartitionKey != nil && *col.PartitionKey {
+			t.LastColumn = col
+			return
+		}
+	}
+	// Fallback to last column if no partition key found
+	if len(t.Columns) > 0 {
+		t.LastColumn = t.Columns[len(t.Columns)-1]
 	}
 }
 
