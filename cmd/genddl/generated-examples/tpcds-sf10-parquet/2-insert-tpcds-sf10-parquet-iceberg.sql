@@ -263,7 +263,7 @@ SELECT
     cast(p_end_date_sk as INT),
     cast(p_item_sk as INT),
     cast(p_cost as DECIMAL(15,2)),
-    cast(p_response_targe as INT),
+    cast(p_response_target as INT),
     trim(cast(p_promo_name as VARCHAR(50))),
     trim(cast(p_channel_dmail as VARCHAR(1))),
     trim(cast(p_channel_email as VARCHAR(1))),

@@ -1,0 +1,18 @@
+{
+  "mode": "enhanced_ingestion",
+  "scale_factor": "1000",
+  "file_format": "parquet",
+  "compression_method": "uncompressed",
+  "workload": "tpcds",
+  "workload_definition": "tpc-ds",
+  "iceberg": true,
+  "source_file_format": "CSV",
+  "source_catalog": "source_catalog_name",
+  "target_catalog": "target_catalog_name",
+  "source_schema": "source_schema_name",
+  "target_schema": "target_schema_name",
+  "s3_source_location": "s3a://bucket-name/path/to/source/data",
+  "s3_target_location": "s3a://bucket-name/path/to/target/data",
+  "engine": "presto",
+  "session_variables": {}
+}

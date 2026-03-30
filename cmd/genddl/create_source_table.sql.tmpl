@@ -1,0 +1,45 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+{{- /* This template is used for ENHANCED_INGESTION mode - creates source tables */ -}}
+{{- if .SourceSchema }}
+{{- if .SourceCatalog }}
+CREATE SCHEMA IF NOT EXISTS {{ .SourceCatalog }}.{{ .SourceSchema }}
+WITH (
+  location = '{{ .S3SourceLocation }}/'
+);
+
+USE {{ .SourceCatalog }}.{{ .SourceSchema }};
+{{- else }}
+CREATE SCHEMA IF NOT EXISTS hive.{{ .SourceSchema }}
+WITH (
+  location = '{{ .S3SourceLocation }}/'
+);
+
+USE hive.{{ .SourceSchema }};
+{{- end }}
+
+{{ range .Tables }}
+CREATE TABLE IF NOT EXISTS {{ .Name }} (
+{{- $first := true }}
+{{- range .Columns }}
+  {{- if $first }}
+  {{- $first = false }}
+  {{- else }},
+  {{- end }}
+  {{- if eq $.SourceFileFormat "CSV" }}
+  {{ .Name }} varchar
+  {{- else }}
+  {{ .Name }} {{ .Type }}
+  {{- end }}
+{{- end }})
+WITH (
+  external_location = '{{ $.S3SourceLocation }}/{{ .Name }}/',
+  {{- if eq $.SourceFileFormat "CSV" }}
+  format = 'CSV',
+  csv_separator = '|'
+  {{- else }}
+  format = 'TEXTFILE',
+  textfile_field_delim = '|'
+  {{- end }}
+);
+{{ end }}
+{{- end }}

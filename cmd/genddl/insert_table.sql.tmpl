@@ -3,6 +3,48 @@
 SET SESSION {{ $key }}='{{ $value }}';
 {{ end }}
 
+{{- if .TargetSchema }}
+{{- /* ENHANCED_INGESTION MODE */ -}}
+{{- if .TargetCatalog }}
+USE {{ .TargetCatalog }}.{{ .TargetSchema }};
+{{- else }}
+{{- if .Iceberg }}
+USE iceberg.{{ .TargetSchema }};
+{{- else }}
+USE hive.{{ .TargetSchema }};
+{{- end }}
+{{- end }}
+
+{{ range .InsertTables -}}
+{{- if $.TargetCatalog }}
+INSERT INTO {{ $.TargetCatalog }}.{{ $.TargetSchema }}.{{ .Name }}
+{{- else }}
+INSERT INTO {{ .Name }}
+{{- end }}
+{{- if eq $.SourceFileFormat "TEXTFILE" }}
+SELECT * FROM {{ if $.SourceCatalog }}{{ $.SourceCatalog }}.{{ $.SourceSchema }}.{{ .Name }}{{ else }}hive.{{ $.SourceSchema }}.{{ .Name }}{{ end }};
+{{- else }}
+SELECT
+{{- $first := true }}
+{{- range .Columns }}
+  {{- if $first }}
+  {{- $first = false }}
+  {{- else }},
+  {{- end }}
+  {{- if eq $.SourceFileFormat "CSV" }}
+    {{- if .IsVarchar }}
+  NULLIF({{ .Name }}, '') AS {{ .Name }}
+    {{- else }}
+  CAST(NULLIF({{ .Name }}, '') AS {{ .Type }}) AS {{ .Name }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+FROM {{ if $.SourceCatalog }}{{ $.SourceCatalog }}.{{ $.SourceSchema }}.{{ .Name }}{{ else }}hive.{{ $.SourceSchema }}.{{ .Name }}{{ end }};
+{{- end }}
+
+{{ end }}
+{{- else }}
+{{- /* LEGACY MODE (old workflow) */ -}}
 {{- if .Iceberg }}
 USE iceberg.{{ .SchemaName }};
 {{- else }}
@@ -31,6 +73,8 @@ SELECT * FROM {{ if $.Iceberg }}iceberg{{ else }}hive{{ end }}.{{ $.Uncompressed
 {{- end }}
 
 {{ end }}
+{{- end }}
+
 {{- range .InsertTables -}}
 ANALYZE {{ .Name }};
 {{ end -}}
