@@ -2,18 +2,22 @@ package utils
 
 import (
 	"bufio"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog"
-	"golang.org/x/sys/unix"
 	"io"
 	"os"
 	"path/filepath"
 	"pbench/log"
 	"reflect"
 	"strings"
+
+	"github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -64,6 +68,23 @@ func InitLogFile(logPath string) (finalizer func()) {
 	}
 }
 
+func createTLSConfig(caCertPath string) (*tls.Config, error) {
+	rootCertPool := x509.NewCertPool()
+	pem, err := os.ReadFile(caCertPath)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to read CA certificate")
+		return nil, err
+	}
+	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+		log.Error().Msg("failed to append CA certificate")
+		return nil, fmt.Errorf("failed to append CA certificate from PEM")
+	}
+	return &tls.Config{
+		MinVersion: tls.VersionTLS13, // Explicitly setting TLS version to 1.3 to remediate vulnerability CWE-327
+		RootCAs:    rootCertPool,
+	}, nil
+}
+
 func InitMySQLConnFromCfg(cfgPath string) *sql.DB {
 	if cfgPath == "" {
 		return nil
@@ -73,17 +94,31 @@ func InitMySQLConnFromCfg(cfgPath string) *sql.DB {
 		return nil
 	} else {
 		mySQLCfg := &struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-			Server   string `json:"server"`
-			Database string `json:"database"`
-		}{}
+			Username   string `json:"username"`
+			Password   string `json:"password"`
+			Server     string `json:"server"`
+			Database   string `json:"database"`
+			TLS        bool   `json:"tls"`
+			CaCertPath string `json:"caCertPath"`
+		}{
+			TLS: false,
+		}
 		if err := json.Unmarshal(cfgBytes, mySQLCfg); err != nil {
 			log.Error().Err(err).Msg("failed to unmarshal MySQL connection config for the run recorder")
 			return nil
 		}
-		if db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true",
-			mySQLCfg.Username, mySQLCfg.Password, mySQLCfg.Server, mySQLCfg.Database)); err != nil {
+		tlsType := "false"
+		if mySQLCfg.TLS {
+			tlsType = "custom"
+			tlsConfig, err := createTLSConfig(mySQLCfg.CaCertPath)
+			if err != nil {
+				log.Error().Msg("TLS enabled but failed to load certificates")
+				return nil
+			}
+			mysql.RegisterTLSConfig(tlsType, tlsConfig)
+		}
+		if db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=%s&parseTime=true",
+			mySQLCfg.Username, mySQLCfg.Password, mySQLCfg.Server, mySQLCfg.Database, tlsType)); err != nil {
 			log.Error().Err(err).Msg("failed to initialize MySQL connection for the run recorder")
 			return nil
 		} else if err = db.Ping(); err != nil {
