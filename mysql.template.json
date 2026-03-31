@@ -2,5 +2,6 @@
   "username": "user",
   "password": "password",
   "server": "localhost",
-  "database": "mydb"
+  "database": "mydb",
+  "tls": "true"
 }

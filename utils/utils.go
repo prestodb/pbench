@@ -77,13 +77,16 @@ func InitMySQLConnFromCfg(cfgPath string) *sql.DB {
 			Password string `json:"password"`
 			Server   string `json:"server"`
 			Database string `json:"database"`
-		}{}
+			Tls      bool   `json:"tls,string"`
+		}{
+			Tls: false,
+		}
 		if err := json.Unmarshal(cfgBytes, mySQLCfg); err != nil {
 			log.Error().Err(err).Msg("failed to unmarshal MySQL connection config for the run recorder")
 			return nil
 		}
-		if db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true",
-			mySQLCfg.Username, mySQLCfg.Password, mySQLCfg.Server, mySQLCfg.Database)); err != nil {
+		if db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?tls=%t&parseTime=true",
+			mySQLCfg.Username, mySQLCfg.Password, mySQLCfg.Server, mySQLCfg.Database, mySQLCfg.Tls)); err != nil {
 			log.Error().Err(err).Msg("failed to initialize MySQL connection for the run recorder")
 			return nil
 		} else if err = db.Ping(); err != nil {
