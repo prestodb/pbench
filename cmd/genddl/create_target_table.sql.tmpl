@@ -2,23 +2,18 @@
 {{- /* This template is used for ENHANCED_INGESTION mode - creates target tables */ -}}
 {{- if .TargetSchema }}
 {{- if .TargetCatalog }}
-{{- if .Iceberg }}
-USE {{ .TargetCatalog }};
-CREATE SCHEMA IF NOT EXISTS {{ .TargetSchema }} LOCATION '{{ .S3TargetLocation }}/';
-
-USE {{ .TargetCatalog }}.{{ .TargetSchema }};
-{{- else }}
 CREATE SCHEMA IF NOT EXISTS {{ .TargetCatalog }}.{{ .TargetSchema }}
 WITH (
   location = '{{ .S3TargetLocation }}/'
 );
 
 USE {{ .TargetCatalog }}.{{ .TargetSchema }};
-{{- end }}
 {{- else }}
 {{- if .Iceberg }}
-USE iceberg;
-CREATE SCHEMA IF NOT EXISTS {{ .TargetSchema }} LOCATION '{{ .S3TargetLocation }}/';
+CREATE SCHEMA IF NOT EXISTS iceberg.{{ .TargetSchema }}
+WITH (
+  location = '{{ .S3TargetLocation }}/'
+);
 
 USE iceberg.{{ .TargetSchema }};
 {{- else }}

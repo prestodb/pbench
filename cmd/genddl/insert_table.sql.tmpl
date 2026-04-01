@@ -21,6 +21,9 @@ INSERT INTO {{ $.TargetCatalog }}.{{ $.TargetSchema }}.{{ .Name }}
 {{- else }}
 INSERT INTO {{ .Name }}
 {{- end }}
+{{- if eq $.SourceFileFormat "TEXTFILE" }}
+SELECT * FROM {{ if $.SourceCatalog }}{{ $.SourceCatalog }}.{{ $.SourceSchema }}.{{ .Name }}{{ else }}hive.{{ $.SourceSchema }}.{{ .Name }}{{ end }};
+{{- else }}
 SELECT
 {{- $first := true }}
 {{- range .Columns }}
@@ -34,15 +37,10 @@ SELECT
     {{- else }}
   CAST(NULLIF({{ .Name }}, '') AS {{ .Type }}) AS {{ .Name }}
     {{- end }}
-  {{- else }}
-    {{- if .IsVarchar }}
-  {{ .Name }}
-    {{- else }}
-  CAST({{ .Name }} AS {{ .Type }}) AS {{ .Name }}
-    {{- end }}
   {{- end }}
 {{- end }}
 FROM {{ if $.SourceCatalog }}{{ $.SourceCatalog }}.{{ $.SourceSchema }}.{{ .Name }}{{ else }}hive.{{ $.SourceSchema }}.{{ .Name }}{{ end }};
+{{- end }}
 
 {{ end }}
 {{- else }}

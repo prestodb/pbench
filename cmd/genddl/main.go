@@ -397,14 +397,33 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 		base.Engine = "presto"
 	}
 
-	combinations := []struct {
+	// In enhanced ingestion mode, detect catalog type and generate only for that type
+	var combinations []struct {
 		Iceberg     bool
 		Partitioned bool
-	}{
-		{true, false},
-		{true, true},
-		{false, false},
-		{false, true},
+	}
+	
+	if base.isEnhancedIngestionMode() {
+		// Use the iceberg property from config to determine catalog type
+		// Generate only for the specified catalog type, with both partitioned variants
+		combinations = []struct {
+			Iceberg     bool
+			Partitioned bool
+		}{
+			{base.Iceberg, false},
+			{base.Iceberg, true},
+		}
+	} else {
+		// Legacy mode: generate all 4 combinations
+		combinations = []struct {
+			Iceberg     bool
+			Partitioned bool
+		}{
+			{true, false},
+			{true, true},
+			{false, false},
+			{false, true},
+		}
 	}
 
 	for _, c := range combinations {
