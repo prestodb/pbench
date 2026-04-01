@@ -53,12 +53,7 @@ WITH (
     , partitioning = array['{{ .LastColumn.Name }}']
     {{- else if .Partitioned }}
     , partitioned_by = array['{{ .LastColumn.Name }}']
-    , external_location = '{{ $.S3TargetLocation }}/{{ .Name }}/'
-    {{- else }}
-    , external_location = '{{ $.S3TargetLocation }}/{{ .Name }}/'
     {{- end }}
-    {{- else }}
-    , external_location = '{{ $.S3TargetLocation }}/{{ .Name }}/'
     {{- end }}
 );
 {{- end }}
