@@ -1,0 +1,53 @@
+{
+  "description": "Sequentially run all 22 TPCH official queries. (column names have _ instead of . in the queries)",
+  "query_files": [
+    "queries_official/query_01.sql",
+    "queries_official/query_02.sql",
+    "queries_official/query_03.sql",
+    "queries_official/query_04.sql",
+    "queries_official/query_05.sql",
+    "queries_official/query_06.sql",
+    "queries_official/query_07.sql",
+    "queries_official/query_08.sql",
+    "queries_official/query_09.sql",
+    "queries_official/query_10.sql",
+    "queries_official/query_11.sql",
+    "queries_official/query_12.sql",
+    "queries_official/query_13.sql",
+    "queries_official/query_14.sql",
+    "queries_official/query_15.sql",
+    "queries_official/query_16.sql",
+    "queries_official/query_17.sql",
+    "queries_official/query_18.sql",
+    "queries_official/query_19.sql",
+    "queries_official/query_20.sql",
+    "queries_official/query_21.sql",
+    "queries_official/query_22.sql"
+  ],
+  "expected_row_counts": {
+    "tpch_sf1000_": [
+      4,
+      100,
+      10,
+      5,
+      1,
+      1,
+      4,
+      2,
+      175,
+      20,
+      0,
+      2,
+      30,
+      1,
+      20,
+      27840,
+      1,
+      100,
+      1,
+      112013,
+      100,
+      7
+    ]
+  }
+}
