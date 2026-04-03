@@ -3,5 +3,8 @@
   "password": "password",
   "server": "localhost",
   "database": "mydb",
-  "tls": "true"
+  "tls": false,
+  "caCertPath": "/path/to/CA/certificate",
+  "clientCertPath": "/path/to/client/certificate",
+  "clientkeyPath": "/path/to/client/key"
 }
