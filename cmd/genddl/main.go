@@ -404,14 +404,12 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 	}
 	
 	if base.isEnhancedIngestionMode() {
-		// Use the iceberg property from config to determine catalog type
-		// Generate only for the specified catalog type, with both partitioned variants
+		// Enhanced ingestion mode: generate only for the exact configuration specified
 		combinations = []struct {
 			Iceberg     bool
 			Partitioned bool
 		}{
-			{base.Iceberg, false},
-			{base.Iceberg, true},
+			{base.Iceberg, base.Partitioned},
 		}
 	} else {
 		// Legacy mode: generate all 4 combinations
