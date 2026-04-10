@@ -1,0 +1,8 @@
+{
+    "description": "Quick sanity test - Run first 3 queries from power stream (s0) for 1GB scale factor.",
+    "query_files": [
+        "queries_v2/1/s0/q96.sql",
+        "queries_v2/1/s0/q07.sql",
+        "queries_v2/1/s0/q75.sql"
+    ]
+}
