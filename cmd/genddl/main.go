@@ -504,6 +504,13 @@ func (t *Table) setLastColumn(s *Schema) {
 }
 
 func (s *Schema) setSessionVars() {
+	// In enhanced ingestion mode, only use session variables from config
+	// Don't auto-add compression codec - let users control it via config
+	if s.isEnhancedIngestionMode() {
+		return
+	}
+	
+	// Legacy mode: auto-add default session variables
 	s.SessionVariables["query_max_execution_time"] = "12h"
 	s.SessionVariables["query_max_run_time"] = "12h"
 	if s.Iceberg && s.CompressionMethod == "uncompressed" {
