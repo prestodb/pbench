@@ -1,14 +1,15 @@
 import paramiko
 import sys
 
-def execute_ssh_command(worker_ip, login_user, ssh_key_path, command):
+def execute_ssh_command(worker_ip, login_user, ssh_key_path, command, timeout=30):
     ssh = None
     try:
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        private_key = paramiko.Ed25519Key(filename=ssh_key_path)
+        ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.RejectPolicy())
+        private_key = paramiko.PKey.from_path(ssh_key_path)
 
-        ssh.connect(hostname=worker_ip, username=login_user, pkey=private_key, timeout=30)
+        ssh.connect(hostname=worker_ip, username=login_user, pkey=private_key, timeout=timeout)
 
         stdin, stdout, stderr = ssh.exec_command(command)
         stdout_output = stdout.read().decode()
