@@ -8,7 +8,7 @@ def execute_ssh_command(worker_ip, login_user, ssh_key_path, command):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         private_key = paramiko.Ed25519Key(filename=ssh_key_path)
 
-        ssh.connect(hostname=worker_ip, username=login_user, pkey=private_key)
+        ssh.connect(hostname=worker_ip, username=login_user, pkey=private_key, timeout=30)
 
         stdin, stdout, stderr = ssh.exec_command(command)
         stdout_output = stdout.read().decode()
