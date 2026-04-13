@@ -14,10 +14,16 @@ def execute_ssh_command(worker_ip, login_user, ssh_key_path, command):
         stdout_output = stdout.read().decode()
         stderr_output = stderr.read().decode()
 
-        if stderr_output:
-            print(f'Error on {worker_ip}: {stderr_output}')
+        exit_status = stdout.channel.recv_exit_status()
+        if exit_status != 0:
+            if stderr_output:
+                print(f'Error on {worker_ip} (exit status {exit_status}): {stderr_output}')
+            else:
+                print(f'Error on {worker_ip}: command exited with status {exit_status}')
             sys.exit(1)
         else:
+            if stderr_output:
+                print(f'Command on {worker_ip} completed with warnings: {stderr_output}')
             print(f'Successfully finished running command on {worker_ip}')
             return stdout_output
     except paramiko.SSHException as ssh_err:
