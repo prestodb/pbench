@@ -29,15 +29,14 @@ if command -v staticcheck &>/dev/null; then
   fi
 fi
 
-# Tests with race detection
+# Tests with race detection and coverage (combined; -race requires -covermode=atomic)
 echo "Running tests..."
-if ! go test ./... -race -count=1 -timeout 120s; then
+if ! go test ./... -race -count=1 -coverprofile=coverage.out -covermode=atomic -timeout 120s; then
   FAILED=1
 fi
 
 # Coverage threshold (50%)
 echo "Checking coverage..."
-go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic -timeout 120s
 COVERAGE=$(go tool cover -func=coverage.out 2>/dev/null | grep total | awk '{print $3}' | sed 's/%//')
 if [ -n "$COVERAGE" ]; then
   COVERAGE_INT=$(awk -v c="$COVERAGE" 'BEGIN { printf "%d", c * 100 }')
@@ -47,6 +46,9 @@ if [ -n "$COVERAGE" ]; then
   else
     echo "Coverage: ${COVERAGE}%"
   fi
+else
+  echo "Coverage collection failed (no total in coverage.out)"
+  FAILED=1
 fi
 rm -f coverage.out
 
