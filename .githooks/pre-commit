@@ -35,7 +35,7 @@ if ! go test ./... -race -count=1 -timeout 120s; then
   FAILED=1
 fi
 
-# Coverage threshold (80%)
+# Coverage threshold (50%)
 echo "Checking coverage..."
 go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic -timeout 120s
 COVERAGE=$(go tool cover -func=coverage.out 2>/dev/null | grep total | awk '{print $3}' | sed 's/%//')
