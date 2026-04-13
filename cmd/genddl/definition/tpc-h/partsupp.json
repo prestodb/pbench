@@ -1,0 +1,25 @@
+{
+  "name": "partsupp",
+  "columns": [
+    {
+      "name": "ps_partkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "ps_suppkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "ps_availqty",
+      "type": "INTEGER"
+    },
+    {
+      "name": "ps_supplycost",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "ps_comment",
+      "type": "VARCHAR(199)"
+    }
+  ]
+}

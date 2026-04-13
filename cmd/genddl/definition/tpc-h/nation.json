@@ -1,0 +1,21 @@
+{
+  "name": "nation",
+  "columns": [
+    {
+      "name": "n_nationkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "n_name",
+      "type": "VARCHAR(25)"
+    },
+    {
+      "name": "n_regionkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "n_comment",
+      "type": "VARCHAR(152)"
+    }
+  ]
+}

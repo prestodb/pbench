@@ -1,0 +1,37 @@
+{
+  "name": "customer",
+  "columns": [
+    {
+      "name": "c_custkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "c_name",
+      "type": "VARCHAR(25)"
+    },
+    {
+      "name": "c_address",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "c_nationkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "c_phone",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "c_acctbal",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "c_mktsegment",
+      "type": "VARCHAR(10)"
+    },
+    {
+      "name": "c_comment",
+      "type": "VARCHAR(117)"
+    }
+  ]
+}

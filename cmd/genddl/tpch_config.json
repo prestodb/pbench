@@ -1,0 +1,7 @@
+{
+  "scale_factor": "10",
+  "file_format": "parquet",
+  "compression_method": "zstd",
+  "workload": "tpch",
+  "workload_definition": "tpc-h"
+}
