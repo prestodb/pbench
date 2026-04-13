@@ -21,7 +21,7 @@ def cleanup_worker_disk_cache(worker_public_ips, login_user, ssh_key_path, worke
 
 def cleanup_worker_os_cache(worker_public_ips, login_user, ssh_key_path):
     for worker_ip in worker_public_ips:
-        os_cache_clean_commands = ["sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches", "sudo swapoff -a; sudo swapon -a"]
+        os_cache_clean_commands = ["sudo sync && echo 3 | sudo tee /proc/sys/vm/drop_caches", "sudo swapoff -a && sudo swapon -a"]
         for command in os_cache_clean_commands:
             execute_ssh_command(worker_ip, login_user, ssh_key_path, command)
     print("cleanup_worker_os_cache is successful!")
