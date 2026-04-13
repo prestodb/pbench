@@ -17,11 +17,19 @@ def create_connection(host_name, user_name, user_password, db_name):
     return connection
 
 def execute_mysql_query(connection, query, cluster_name):
-    cursor = connection.cursor()
+    cursor = None
     try:
+        cursor = connection.cursor()
         cursor.execute(query, (cluster_name,))
         result = cursor.fetchall()
         return result
     except Error as e:
         print(f"The error '{e}' occurred")
         return []
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Error:
+                # Ignore errors on close to avoid masking the original exception
+                pass
