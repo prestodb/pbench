@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pbench/log"
+	"pbench/prestoapi"
 	"pbench/stage"
 	"pbench/utils"
 	"reflect"
@@ -17,7 +18,6 @@ import (
 	"time"
 
 	"github.com/prestodb/presto-go-client/v2/queryjson"
-
 	"github.com/spf13/cobra"
 )
 
@@ -204,6 +204,18 @@ func processFile(ctx context.Context, path string) {
 		if err := queryInfo.PrepareForInsert(); err != nil {
 			log.Error().Err(err).Str("path", path).Msg("failed to pre-process query info JSON")
 			return
+		}
+
+		// Generate the text plan from the JSON plan
+		if queryInfo.AssembledQueryPlanJson != "" {
+			textPlan, err := prestoapi.FormatQueryPlanAsText(queryInfo.AssembledQueryPlanJson)
+			if err != nil {
+				// Log the error but don't fail the entire operation
+				// The json_plan will still be available
+				log.Error().Err(err).Str("path", path).Msg("failed to generate text plan")
+			} else {
+				queryInfo.TextPlan = textPlan
+			}
 		}
 	}
 	if ExtractPlanJson {
