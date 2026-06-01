@@ -176,7 +176,7 @@ func TestIsPartitioned(t *testing.T) {
 	// Create a partition key column for testing
 	partitionKeyTrue := true
 	partitionCol := &Column{Name: "date_sk", PartitionKey: &partitionKeyTrue}
-	
+
 	// Table with explicit PartitionedMinScale.
 	tbl := &Table{PartitionedMinScale: 100, Columns: []*Column{partitionCol}}
 	assert.False(t, tbl.isPartitioned(10, false, "legacy"))
@@ -189,12 +189,12 @@ func TestIsPartitioned(t *testing.T) {
 
 	tbl3 := &Table{Partitioned: false, Columns: []*Column{partitionCol}}
 	assert.False(t, tbl3.isPartitioned(1, false, "legacy"))
-	
+
 	// Test enhanced_ingestion mode with schema.Partitioned = true overrides min scale
 	tbl4 := &Table{PartitionedMinScale: 10000, Columns: []*Column{partitionCol}}
 	assert.False(t, tbl4.isPartitioned(1000, false, "enhanced_ingestion"))
 	assert.True(t, tbl4.isPartitioned(1000, true, "enhanced_ingestion"))
-	
+
 	// Test legacy mode does NOT override min scale even with schema.Partitioned = true
 	tbl5 := &Table{PartitionedMinScale: 10000, Columns: []*Column{partitionCol}}
 	assert.False(t, tbl5.isPartitioned(1000, true, "legacy"))

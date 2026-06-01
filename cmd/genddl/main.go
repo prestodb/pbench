@@ -31,17 +31,17 @@ type Schema struct {
 	Tables              map[string]*Table `json:"tables"`
 	InsertTables        map[string]*Table `json:"insert_tables"`
 	SessionVariables    map[string]string `json:"session_variables"`
-	
+
 	// Enhanced ingestion workflow fields
-	Mode                string            `json:"mode"`                 // "legacy", "ingestion", or "enhanced_ingestion"
-	S3SourceLocation    string            `json:"s3_source_location"`   // S3 path for source data
-	S3TargetLocation    string            `json:"s3_target_location"`   // S3 path for target data
-	SourceSchema        string            `json:"source_schema"`        // Source schema name
-	TargetSchema        string            `json:"target_schema"`        // Target schema name
-	SourceFileFormat    string            `json:"source_file_format"`   // "CSV" or "TEXTFILE"
-	SourceCatalog       string            `json:"source_catalog"`       // Source catalog name (optional)
-	TargetCatalog       string            `json:"target_catalog"`       // Target catalog name (optional)
-	Engine              string            `json:"engine"`               // "presto" or "spark"
+	Mode             string `json:"mode"`               // "legacy", "ingestion", or "enhanced_ingestion"
+	S3SourceLocation string `json:"s3_source_location"` // S3 path for source data
+	S3TargetLocation string `json:"s3_target_location"` // S3 path for target data
+	SourceSchema     string `json:"source_schema"`      // Source schema name
+	TargetSchema     string `json:"target_schema"`      // Target schema name
+	SourceFileFormat string `json:"source_file_format"` // "CSV" or "TEXTFILE"
+	SourceCatalog    string `json:"source_catalog"`     // Source catalog name (optional)
+	TargetCatalog    string `json:"target_catalog"`     // Target catalog name (optional)
+	Engine           string `json:"engine"`             // "presto" or "spark"
 }
 
 type Column struct {
@@ -359,7 +359,7 @@ func getNamedOutput(configData []byte, workload string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("compression_method must be a string")
 	}
-	
+
 	var compressionSuffix string
 	if compressionMethod == "uncompressed" {
 		compressionSuffix = ""
@@ -402,7 +402,7 @@ func loadSchemas(data []byte) ([]*Schema, error) {
 		Iceberg     bool
 		Partitioned bool
 	}
-	
+
 	if base.isEnhancedIngestionMode() {
 		// Enhanced ingestion mode: generate only for the exact configuration specified
 		combinations = []struct {
@@ -509,7 +509,7 @@ func (s *Schema) setSessionVars() {
 	if s.isEnhancedIngestionMode() {
 		return
 	}
-	
+
 	// Legacy mode: auto-add default session variables
 	s.SessionVariables["query_max_execution_time"] = "12h"
 	s.SessionVariables["query_max_run_time"] = "12h"
@@ -567,22 +567,22 @@ func (t *Table) isPartitioned(sf int, schemaPartitioned bool, mode string) bool 
 			break
 		}
 	}
-	
+
 	// If no partition keys defined, table cannot be partitioned
 	if !hasPartitionKeys {
 		return false
 	}
-	
+
 	// If schema.Partitioned is explicitly true AND mode is enhanced_ingestion, override min scale check
 	if schemaPartitioned && mode == "enhanced_ingestion" {
 		return true
 	}
-	
+
 	// If PartitionedMinScale is set, check scale factor threshold
 	if t.PartitionedMinScale > 0 {
 		return sf >= t.PartitionedMinScale
 	}
-	
+
 	// Otherwise, use the Partitioned field from table definition
 	return t.Partitioned
 }
