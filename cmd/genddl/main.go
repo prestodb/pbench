@@ -33,7 +33,7 @@ type Schema struct {
 	SessionVariables    map[string]string `json:"session_variables"`
 
 	// Enhanced ingestion workflow fields
-	Mode             string `json:"mode"`               // "legacy", "ingestion", or "enhanced_ingestion"
+	Mode             string `json:"mode"`               // "legacy" or "enhanced_ingestion"
 	S3SourceLocation string `json:"s3_source_location"` // S3 path for source data
 	S3TargetLocation string `json:"s3_target_location"` // S3 path for target data
 	SourceSchema     string `json:"source_schema"`      // Source schema name
@@ -158,7 +158,8 @@ func generateSchemaFromDef(schema *Schema, defDir string, configDir string, outp
 			schema.RegisterTables = append(schema.RegisterTables, &registerTable)
 		} else {
 			// Only reorder columns for Hive tables (Iceberg doesn't require partition columns at end)
-			if !schema.Iceberg {
+			// In enhanced ingestion mode, skip reordering for Iceberg tables
+			if !schema.Iceberg || !schema.isEnhancedIngestionMode() {
 				tbl.reorderColumns(schema)
 			}
 			// Set LastColumn for template rendering (finds partition key or uses last column)

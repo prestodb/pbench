@@ -31,7 +31,6 @@ CALL iceberg.system.register_table('tpcds_sf10_parquet_partitioned_iceberg', 'we
 CALL iceberg.system.register_table('tpcds_sf10_parquet_partitioned_iceberg', 'web_site', 's3a://presto-workload-v2/tpcds-sf10-parquet-iceberg/web_site/metadata');
 
 CREATE TABLE IF NOT EXISTS catalog_sales (
-    cs_sold_date_sk INT,
     cs_sold_time_sk INT,
     cs_ship_date_sk INT,
     cs_bill_customer_sk INT,
@@ -64,7 +63,8 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
     cs_net_paid_inc_tax DECIMAL(7,2),
     cs_net_paid_inc_ship DECIMAL(7,2),
     cs_net_paid_inc_ship_tax DECIMAL(7,2),
-    cs_net_profit DECIMAL(7,2)
+    cs_net_profit DECIMAL(7,2),
+    cs_sold_date_sk INT
 )
 WITH (
     format = 'PARQUET',
@@ -72,10 +72,10 @@ WITH (
 );
 
 CREATE TABLE IF NOT EXISTS inventory (
-    inv_date_sk INT,
     inv_item_sk INT,
     inv_warehouse_sk INT,
-    inv_quantity_on_hand INT
+    inv_quantity_on_hand INT,
+    inv_date_sk INT
 )
 WITH (
     format = 'PARQUET',
@@ -83,7 +83,6 @@ WITH (
 );
 
 CREATE TABLE IF NOT EXISTS store_sales (
-    ss_sold_date_sk INT,
     ss_sold_time_sk INT,
     ss_item_sk INT,
     ss_customer_sk INT,
@@ -105,7 +104,8 @@ CREATE TABLE IF NOT EXISTS store_sales (
     ss_coupon_amt DECIMAL(7,2),
     ss_net_paid DECIMAL(7,2),
     ss_net_paid_inc_tax DECIMAL(7,2),
-    ss_net_profit DECIMAL(7,2)
+    ss_net_profit DECIMAL(7,2),
+    ss_sold_date_sk INT
 )
 WITH (
     format = 'PARQUET',
@@ -113,7 +113,6 @@ WITH (
 );
 
 CREATE TABLE IF NOT EXISTS web_sales (
-    ws_sold_date_sk INT,
     ws_sold_time_sk INT,
     ws_ship_date_sk INT,
     ws_item_sk INT,
@@ -146,7 +145,8 @@ CREATE TABLE IF NOT EXISTS web_sales (
     ws_net_paid_inc_tax DECIMAL(7,2),
     ws_net_paid_inc_ship DECIMAL(7,2),
     ws_net_paid_inc_ship_tax DECIMAL(7,2),
-    ws_net_profit DECIMAL(7,2)
+    ws_net_profit DECIMAL(7,2),
+    ws_sold_date_sk INT
 )
 WITH (
     format = 'PARQUET',

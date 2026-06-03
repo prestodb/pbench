@@ -6,7 +6,6 @@ USE iceberg.tpcds_sf10_parquet_partitioned_iceberg;
 
 INSERT INTO catalog_sales
 SELECT
-    cast(cs_sold_date_sk as INT),
     cast(cs_sold_time_sk as INT),
     cast(cs_ship_date_sk as INT),
     cast(cs_bill_customer_sk as INT),
@@ -39,20 +38,20 @@ SELECT
     cast(cs_net_paid_inc_tax as DECIMAL(7,2)),
     cast(cs_net_paid_inc_ship as DECIMAL(7,2)),
     cast(cs_net_paid_inc_ship_tax as DECIMAL(7,2)),
-    cast(cs_net_profit as DECIMAL(7,2))
+    cast(cs_net_profit as DECIMAL(7,2)),
+    cast(cs_sold_date_sk as INT)
 FROM tpcds.sf10.catalog_sales;
 
 INSERT INTO inventory
 SELECT
-    cast(inv_date_sk as INT),
     cast(inv_item_sk as INT),
     cast(inv_warehouse_sk as INT),
-    cast(inv_quantity_on_hand as INT)
+    cast(inv_quantity_on_hand as INT),
+    cast(inv_date_sk as INT)
 FROM tpcds.sf10.inventory;
 
 INSERT INTO store_sales
 SELECT
-    cast(ss_sold_date_sk as INT),
     cast(ss_sold_time_sk as INT),
     cast(ss_item_sk as INT),
     cast(ss_customer_sk as INT),
@@ -74,12 +73,12 @@ SELECT
     cast(ss_coupon_amt as DECIMAL(7,2)),
     cast(ss_net_paid as DECIMAL(7,2)),
     cast(ss_net_paid_inc_tax as DECIMAL(7,2)),
-    cast(ss_net_profit as DECIMAL(7,2))
+    cast(ss_net_profit as DECIMAL(7,2)),
+    cast(ss_sold_date_sk as INT)
 FROM tpcds.sf10.store_sales;
 
 INSERT INTO web_sales
 SELECT
-    cast(ws_sold_date_sk as INT),
     cast(ws_sold_time_sk as INT),
     cast(ws_ship_date_sk as INT),
     cast(ws_item_sk as INT),
@@ -112,7 +111,8 @@ SELECT
     cast(ws_net_paid_inc_tax as DECIMAL(7,2)),
     cast(ws_net_paid_inc_ship as DECIMAL(7,2)),
     cast(ws_net_paid_inc_ship_tax as DECIMAL(7,2)),
-    cast(ws_net_profit as DECIMAL(7,2))
+    cast(ws_net_profit as DECIMAL(7,2)),
+    cast(ws_sold_date_sk as INT)
 FROM tpcds.sf10.web_sales;
 
 ANALYZE catalog_sales;

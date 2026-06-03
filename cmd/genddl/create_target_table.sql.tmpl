@@ -38,14 +38,6 @@ CREATE TABLE IF NOT EXISTS {{ .Name }} (
     {{ .Name }} {{ .Type }}
 {{- end }}
 )
-{{- if eq $.Engine "spark" }}
-USING iceberg
-{{- if .Partitioned }}
-PARTITIONED BY ({{ .LastColumn.Name }})
-{{- end }}
-TBLPROPERTIES ('write.target-file-size-bytes' = 268435456, 'write.parquet.row-group-size-bytes' = 67108864)
-LOCATION '{{ $.S3TargetLocation }}/{{ .Name }}';
-{{- else }}
 WITH (
     format = 'PARQUET'
     {{- if and $.Partitioned .Partitioned }}
@@ -56,6 +48,5 @@ WITH (
     {{- end }}
     {{- end }}
 );
-{{- end }}
 {{ end }}
 {{- end }}
