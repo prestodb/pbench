@@ -74,6 +74,40 @@ func TestGeneratedExamplesMatchEnhancedIngestion(t *testing.T) {
 			"regeneration produced unexpected file: %s", relPath)
 	}
 }
+// TestGeneratedExamplesMatchEnhancedIngestionTextfilePartitioned runs genddl with
+// config_enhanced_ingestion_textfile_partitioned.json and verifies the output matches golden files.
+// This test covers TEXTFILE source format with partitioned tables.
+func TestGeneratedExamplesMatchEnhancedIngestionTextfilePartitioned(t *testing.T) {
+	configPath := filepath.Join("config_enhanced_ingestion_textfile_partitioned.json")
+	absConfig, err := filepath.Abs(configPath)
+	require.NoError(t, err)
+
+	configDir := filepath.Dir(absConfig)
+	examplesDir := filepath.Join(configDir, "generated-examples")
+
+	// Snapshot all golden files before regeneration.
+	golden := snapshotDir(t, examplesDir)
+	require.NotEmpty(t, golden, "no golden files found in generated-examples/")
+
+	// Run genddl (overwrites generated-examples/ in place).
+	Run(nil, []string{configPath})
+
+	// Compare every regenerated file against the golden snapshot.
+	for relPath, expected := range golden {
+		actual, readErr := os.ReadFile(filepath.Join(examplesDir, relPath))
+		require.NoError(t, readErr, "failed to read regenerated file %s", relPath)
+		assert.Equal(t, string(expected), string(actual),
+			"generated output differs from checked-in golden file: %s", relPath)
+	}
+
+	// Also check that no extra files were produced.
+	regenerated := snapshotDir(t, examplesDir)
+	for relPath := range regenerated {
+		assert.Contains(t, golden, relPath,
+			"regeneration produced unexpected file: %s", relPath)
+	}
+}
+
 
 // snapshotDir reads all files under dir (recursively) and returns a map of
 // relative path → file contents.
