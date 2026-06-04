@@ -74,6 +74,7 @@ func TestGeneratedExamplesMatchEnhancedIngestion(t *testing.T) {
 			"regeneration produced unexpected file: %s", relPath)
 	}
 }
+
 // TestGeneratedExamplesMatchEnhancedIngestionTextfilePartitioned runs genddl with
 // config_enhanced_ingestion_textfile_partitioned.json and verifies the output matches golden files.
 // This test covers TEXTFILE source format with partitioned tables.
@@ -107,7 +108,6 @@ func TestGeneratedExamplesMatchEnhancedIngestionTextfilePartitioned(t *testing.T
 			"regeneration produced unexpected file: %s", relPath)
 	}
 }
-
 
 // snapshotDir reads all files under dir (recursively) and returns a map of
 // relative path → file contents.
