@@ -121,4 +121,4 @@ SELECT * FROM {{ if $.Iceberg }}iceberg{{ else }}hive{{ end }}.{{ $.Uncompressed
 {{- range .InsertTables -}}
 ANALYZE {{ .Name }};
 {{ end -}}
-{{- end }}
+{{- end -}}
