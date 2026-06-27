@@ -1,0 +1,19 @@
+{
+  "mode": "enhanced_ingestion",
+  "scale_factor": "100",
+  "file_format": "parquet",
+  "compression_method": "uncompressed",
+  "workload": "tpcds",
+  "workload_definition": "tpc-ds",
+  "iceberg": true,
+  "partitioned": true,
+  "source_file_format": "TEXTFILE",
+  "source_catalog": "hive",
+  "target_catalog": "iceberg",
+  "source_schema": "tpcds_source_textfile",
+  "target_schema": "tpcds_target_textfile",
+  "s3_source_location": "s3a://test-bucket/source-textfile",
+  "s3_target_location": "s3a://test-bucket/target-textfile",
+  "engine": "presto",
+  "session_variables": {}
+}

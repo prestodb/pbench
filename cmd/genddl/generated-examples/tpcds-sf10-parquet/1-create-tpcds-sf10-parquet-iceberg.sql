@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS promotion (
     p_end_date_sk INT,
     p_item_sk INT,
     p_cost DECIMAL(15,2),
-    p_response_targe INT,
+    p_response_target INT,
     p_promo_name VARCHAR(50),
     p_channel_dmail VARCHAR(1),
     p_channel_email VARCHAR(1),
