@@ -1,33 +1,24 @@
 --TPCH Q15
+WITH revenue AS (
+    SELECT
+        l.suppkey,
+        SUM(l.extendedprice * (1 - l.discount)) AS total_revenue
+    FROM lineitem l
+    WHERE l.shipdate >= DATE '1996-01-01'
+      AND l.shipdate < DATE '1996-01-01' + INTERVAL '3' MONTH
+    GROUP BY l.suppkey
+)
 SELECT
-    c.custkey,
-    c.name,
-    sum(l.extendedprice * (1 - l.discount)) AS revenue,
-    c.acctbal,
-    n.name,
-    c.address,
-    c.phone,
-    c.comment
-FROM
-    lineitem AS l,
-    orders AS o,
-    customer AS c,
-    nation AS n
-WHERE
-    c.custkey = o.custkey
-  AND l.orderkey = o.orderkey
-  AND o.orderdate >= DATE '1993-10-01'
-  AND o.orderdate < DATE '1993-10-01' + INTERVAL '3' MONTH
-  AND l.returnflag = 'R'
-  AND c.nationkey = n.nationkey
-GROUP BY
-    c.custkey,
-    c.name,
-    c.acctbal,
-    c.phone,
-    n.name,
-    c.address,
-    c.comment
-ORDER BY
-    revenue DESC
-    LIMIT 20;
+    s.suppkey,
+    s.name,
+    s.address,
+    s.phone,
+    r.total_revenue
+FROM supplier s
+JOIN revenue r
+    ON s.suppkey = r.suppkey
+WHERE r.total_revenue = (
+    SELECT MAX(total_revenue)
+    FROM revenue
+)
+ORDER BY s.suppkey;
