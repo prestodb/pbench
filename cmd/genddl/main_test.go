@@ -42,6 +42,73 @@ func TestGeneratedExamplesMatch(t *testing.T) {
 	}
 }
 
+// TestGeneratedExamplesMatchEnhancedIngestion runs genddl with config_enhanced_ingestion.json
+// and verifies the output in generated-examples/ matches the checked-in golden files.
+func TestGeneratedExamplesMatchEnhancedIngestion(t *testing.T) {
+	configPath := filepath.Join("config_enhanced_ingestion.json")
+	absConfig, err := filepath.Abs(configPath)
+	require.NoError(t, err)
+
+	configDir := filepath.Dir(absConfig)
+	examplesDir := filepath.Join(configDir, "generated-examples")
+
+	// Snapshot all golden files before regeneration.
+	golden := snapshotDir(t, examplesDir)
+	require.NotEmpty(t, golden, "no golden files found in generated-examples/")
+
+	// Run genddl (overwrites generated-examples/ in place).
+	Run(nil, []string{configPath})
+
+	// Compare every regenerated file against the golden snapshot.
+	for relPath, expected := range golden {
+		actual, readErr := os.ReadFile(filepath.Join(examplesDir, relPath))
+		require.NoError(t, readErr, "failed to read regenerated file %s", relPath)
+		assert.Equal(t, string(expected), string(actual),
+			"generated output differs from checked-in golden file: %s", relPath)
+	}
+
+	// Also check that no extra files were produced.
+	regenerated := snapshotDir(t, examplesDir)
+	for relPath := range regenerated {
+		assert.Contains(t, golden, relPath,
+			"regeneration produced unexpected file: %s", relPath)
+	}
+}
+
+// TestGeneratedExamplesMatchEnhancedIngestionTextfilePartitioned runs genddl with
+// config_enhanced_ingestion_textfile_partitioned.json and verifies the output matches golden files.
+// This test covers TEXTFILE source format with partitioned tables.
+func TestGeneratedExamplesMatchEnhancedIngestionTextfilePartitioned(t *testing.T) {
+	configPath := filepath.Join("config_enhanced_ingestion_textfile_partitioned.json")
+	absConfig, err := filepath.Abs(configPath)
+	require.NoError(t, err)
+
+	configDir := filepath.Dir(absConfig)
+	examplesDir := filepath.Join(configDir, "generated-examples")
+
+	// Snapshot all golden files before regeneration.
+	golden := snapshotDir(t, examplesDir)
+	require.NotEmpty(t, golden, "no golden files found in generated-examples/")
+
+	// Run genddl (overwrites generated-examples/ in place).
+	Run(nil, []string{configPath})
+
+	// Compare every regenerated file against the golden snapshot.
+	for relPath, expected := range golden {
+		actual, readErr := os.ReadFile(filepath.Join(examplesDir, relPath))
+		require.NoError(t, readErr, "failed to read regenerated file %s", relPath)
+		assert.Equal(t, string(expected), string(actual),
+			"generated output differs from checked-in golden file: %s", relPath)
+	}
+
+	// Also check that no extra files were produced.
+	regenerated := snapshotDir(t, examplesDir)
+	for relPath := range regenerated {
+		assert.Contains(t, golden, relPath,
+			"regeneration produced unexpected file: %s", relPath)
+	}
+}
+
 // snapshotDir reads all files under dir (recursively) and returns a map of
 // relative path → file contents.
 func snapshotDir(t *testing.T, dir string) map[string][]byte {
@@ -173,18 +240,31 @@ func TestCleanOutputDirNonExistent(t *testing.T) {
 }
 
 func TestIsPartitioned(t *testing.T) {
+	// Create a partition key column for testing
+	partitionKeyTrue := true
+	partitionCol := &Column{Name: "date_sk", PartitionKey: &partitionKeyTrue}
+
 	// Table with explicit PartitionedMinScale.
-	tbl := &Table{PartitionedMinScale: 100}
-	assert.False(t, tbl.isPartitioned(10))
-	assert.True(t, tbl.isPartitioned(100))
-	assert.True(t, tbl.isPartitioned(1000))
+	tbl := &Table{PartitionedMinScale: 100, Columns: []*Column{partitionCol}}
+	assert.False(t, tbl.isPartitioned(10, false, "legacy"))
+	assert.True(t, tbl.isPartitioned(100, false, "legacy"))
+	assert.True(t, tbl.isPartitioned(1000, false, "legacy"))
 
 	// Table without PartitionedMinScale uses Partitioned field.
-	tbl2 := &Table{Partitioned: true}
-	assert.True(t, tbl2.isPartitioned(1))
+	tbl2 := &Table{Partitioned: true, Columns: []*Column{partitionCol}}
+	assert.True(t, tbl2.isPartitioned(1, false, "legacy"))
 
-	tbl3 := &Table{Partitioned: false}
-	assert.False(t, tbl3.isPartitioned(1))
+	tbl3 := &Table{Partitioned: false, Columns: []*Column{partitionCol}}
+	assert.False(t, tbl3.isPartitioned(1, false, "legacy"))
+
+	// Test enhanced_ingestion mode with schema.Partitioned = true overrides min scale
+	tbl4 := &Table{PartitionedMinScale: 10000, Columns: []*Column{partitionCol}}
+	assert.False(t, tbl4.isPartitioned(1000, false, "enhanced_ingestion"))
+	assert.True(t, tbl4.isPartitioned(1000, true, "enhanced_ingestion"))
+
+	// Test legacy mode does NOT override min scale even with schema.Partitioned = true
+	tbl5 := &Table{PartitionedMinScale: 10000, Columns: []*Column{partitionCol}}
+	assert.False(t, tbl5.isPartitioned(1000, true, "legacy"))
 }
 
 func TestInitIsVarchar(t *testing.T) {

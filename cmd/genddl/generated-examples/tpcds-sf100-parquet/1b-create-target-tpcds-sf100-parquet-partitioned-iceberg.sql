@@ -1,13 +1,11 @@
-SET SESSION hive.compression_codec='NONE';
-SET SESSION query_max_execution_time='12h';
-SET SESSION query_max_run_time='12h';
 
-CREATE SCHEMA IF NOT EXISTS hive.tpcds_sf100_parquet_hive
+CREATE SCHEMA IF NOT EXISTS iceberg.tpcds_target_textfile
 WITH (
-    location = 's3a://presto-workload-v2/tpcds-sf100-parquet-hive/'
+  location = 's3a://test-bucket/target-textfile/'
 );
 
-USE hive.tpcds_sf100_parquet_hive;
+USE iceberg.tpcds_target_textfile;
+
 
 CREATE TABLE IF NOT EXISTS call_center (
     cc_call_center_sk INT,
@@ -43,8 +41,7 @@ CREATE TABLE IF NOT EXISTS call_center (
     cc_tax_percentage DECIMAL(5,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/call_center/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS catalog_page (
@@ -59,8 +56,7 @@ CREATE TABLE IF NOT EXISTS catalog_page (
     cp_type VARCHAR(100)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/catalog_page/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS catalog_returns (
@@ -93,8 +89,8 @@ CREATE TABLE IF NOT EXISTS catalog_returns (
     cr_net_loss DECIMAL(7,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/catalog_returns/data/'
+    format = 'PARQUET'
+    , partitioning = array['cr_returned_date_sk']
 );
 
 CREATE TABLE IF NOT EXISTS catalog_sales (
@@ -134,8 +130,8 @@ CREATE TABLE IF NOT EXISTS catalog_sales (
     cs_net_profit DECIMAL(7,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/catalog_sales/data/'
+    format = 'PARQUET'
+    , partitioning = array['cs_sold_date_sk']
 );
 
 CREATE TABLE IF NOT EXISTS customer (
@@ -159,8 +155,7 @@ CREATE TABLE IF NOT EXISTS customer (
     c_last_review_date_sk INT
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/customer/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS customer_address (
@@ -179,8 +174,7 @@ CREATE TABLE IF NOT EXISTS customer_address (
     ca_location_type VARCHAR(20)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/customer_address/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS customer_demographics (
@@ -195,8 +189,7 @@ CREATE TABLE IF NOT EXISTS customer_demographics (
     cd_dep_college_count INT
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/customer_demographics/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS date_dim (
@@ -230,8 +223,7 @@ CREATE TABLE IF NOT EXISTS date_dim (
     d_current_year VARCHAR(1)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/date_dim/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS household_demographics (
@@ -242,8 +234,7 @@ CREATE TABLE IF NOT EXISTS household_demographics (
     hd_vehicle_count INT
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/household_demographics/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS income_band (
@@ -252,8 +243,7 @@ CREATE TABLE IF NOT EXISTS income_band (
     ib_upper_bound INT
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/income_band/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS inventory (
@@ -263,8 +253,8 @@ CREATE TABLE IF NOT EXISTS inventory (
     inv_quantity_on_hand INT
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/inventory/data/'
+    format = 'PARQUET'
+    , partitioning = array['inv_date_sk']
 );
 
 CREATE TABLE IF NOT EXISTS item (
@@ -292,8 +282,7 @@ CREATE TABLE IF NOT EXISTS item (
     i_product_name VARCHAR(50)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/item/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS promotion (
@@ -303,7 +292,7 @@ CREATE TABLE IF NOT EXISTS promotion (
     p_end_date_sk INT,
     p_item_sk INT,
     p_cost DECIMAL(15,2),
-    p_response_targe INT,
+    p_response_target INT,
     p_promo_name VARCHAR(50),
     p_channel_dmail VARCHAR(1),
     p_channel_email VARCHAR(1),
@@ -318,8 +307,7 @@ CREATE TABLE IF NOT EXISTS promotion (
     p_discount_active VARCHAR(1)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/promotion/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS reason (
@@ -328,8 +316,7 @@ CREATE TABLE IF NOT EXISTS reason (
     r_reason_desc VARCHAR(100)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/reason/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS ship_mode (
@@ -341,8 +328,7 @@ CREATE TABLE IF NOT EXISTS ship_mode (
     sm_contract VARCHAR(20)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/ship_mode/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS store (
@@ -377,8 +363,7 @@ CREATE TABLE IF NOT EXISTS store (
     s_tax_precentage DECIMAL(5,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/store/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS store_returns (
@@ -404,8 +389,8 @@ CREATE TABLE IF NOT EXISTS store_returns (
     sr_net_loss DECIMAL(7,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/store_returns/data/'
+    format = 'PARQUET'
+    , partitioning = array['sr_returned_date_sk']
 );
 
 CREATE TABLE IF NOT EXISTS store_sales (
@@ -434,8 +419,8 @@ CREATE TABLE IF NOT EXISTS store_sales (
     ss_net_profit DECIMAL(7,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/store_sales/data/'
+    format = 'PARQUET'
+    , partitioning = array['ss_sold_date_sk']
 );
 
 CREATE TABLE IF NOT EXISTS time_dim (
@@ -451,8 +436,7 @@ CREATE TABLE IF NOT EXISTS time_dim (
     t_meal_time VARCHAR(20)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/time_dim/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS warehouse (
@@ -472,8 +456,7 @@ CREATE TABLE IF NOT EXISTS warehouse (
     w_gmt_offset DECIMAL(5,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/warehouse/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS web_page (
@@ -493,8 +476,7 @@ CREATE TABLE IF NOT EXISTS web_page (
     wp_max_ad_count INT
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/web_page/data/'
+    format = 'PARQUET'
 );
 
 CREATE TABLE IF NOT EXISTS web_returns (
@@ -524,8 +506,8 @@ CREATE TABLE IF NOT EXISTS web_returns (
     wr_net_loss DECIMAL(7,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/web_returns/data/'
+    format = 'PARQUET'
+    , partitioning = array['wr_returned_date_sk']
 );
 
 CREATE TABLE IF NOT EXISTS web_sales (
@@ -565,8 +547,8 @@ CREATE TABLE IF NOT EXISTS web_sales (
     ws_net_profit DECIMAL(7,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/web_sales/data/'
+    format = 'PARQUET'
+    , partitioning = array['ws_sold_date_sk']
 );
 
 CREATE TABLE IF NOT EXISTS web_site (
@@ -598,31 +580,5 @@ CREATE TABLE IF NOT EXISTS web_site (
     web_tax_percentage DECIMAL(5,2)
 )
 WITH (
-    format = 'PARQUET',
-    external_location = 's3a://presto-workload-v2/tpcds-sf100-parquet-iceberg/web_site/data/'
+    format = 'PARQUET'
 );
-ANALYZE call_center;
-ANALYZE catalog_page;
-ANALYZE catalog_returns;
-ANALYZE catalog_sales;
-ANALYZE customer;
-ANALYZE customer_address;
-ANALYZE customer_demographics;
-ANALYZE date_dim;
-ANALYZE household_demographics;
-ANALYZE income_band;
-ANALYZE inventory;
-ANALYZE item;
-ANALYZE promotion;
-ANALYZE reason;
-ANALYZE ship_mode;
-ANALYZE store;
-ANALYZE store_returns;
-ANALYZE store_sales;
-ANALYZE time_dim;
-ANALYZE warehouse;
-ANALYZE web_page;
-ANALYZE web_returns;
-ANALYZE web_sales;
-ANALYZE web_site;
-

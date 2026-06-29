@@ -1,0 +1,52 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+{{- /* This template is used for ENHANCED_INGESTION mode - creates target tables */ -}}
+{{- if .TargetSchema }}
+{{- if .TargetCatalog }}
+CREATE SCHEMA IF NOT EXISTS {{ .TargetCatalog }}.{{ .TargetSchema }}
+WITH (
+  location = '{{ .S3TargetLocation }}/'
+);
+
+USE {{ .TargetCatalog }}.{{ .TargetSchema }};
+{{- else }}
+{{- if .Iceberg }}
+CREATE SCHEMA IF NOT EXISTS iceberg.{{ .TargetSchema }}
+WITH (
+  location = '{{ .S3TargetLocation }}/'
+);
+
+USE iceberg.{{ .TargetSchema }};
+{{- else }}
+CREATE SCHEMA IF NOT EXISTS hive.{{ .TargetSchema }}
+WITH (
+  location = '{{ .S3TargetLocation }}/'
+);
+
+USE hive.{{ .TargetSchema }};
+{{- end }}
+{{- end }}
+
+{{ range .Tables }}
+CREATE TABLE IF NOT EXISTS {{ .Name }} (
+{{- $first := true }}
+{{- range .Columns }}
+    {{- if $first }}
+        {{- $first = false }}
+    {{- else -}}
+        ,
+    {{- end }}
+    {{ .Name }} {{ .Type }}
+{{- end }}
+)
+WITH (
+    format = 'PARQUET'
+    {{- if and $.Partitioned .Partitioned }}
+    {{- if $.Iceberg}}
+    , partitioning = array['{{ .LastColumn.Name }}']
+    {{- else }}
+    , partitioned_by = array['{{ .LastColumn.Name }}']
+    {{- end }}
+    {{- end }}
+);
+{{ end -}}
+{{- end -}}
