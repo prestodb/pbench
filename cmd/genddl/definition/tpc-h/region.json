@@ -1,0 +1,17 @@
+{
+  "name": "region",
+  "columns": [
+    {
+      "name": "r_regionkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "r_name",
+      "type": "VARCHAR(25)"
+    },
+    {
+      "name": "r_comment",
+      "type": "VARCHAR(152)"
+    }
+  ]
+}

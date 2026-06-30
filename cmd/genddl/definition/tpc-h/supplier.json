@@ -1,0 +1,33 @@
+{
+  "name": "supplier",
+  "columns": [
+    {
+      "name": "s_suppkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "s_name",
+      "type": "VARCHAR(25)"
+    },
+    {
+      "name": "s_address",
+      "type": "VARCHAR(40)"
+    },
+    {
+      "name": "s_nationkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "s_phone",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "s_acctbal",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "s_comment",
+      "type": "VARCHAR(101)"
+    }
+  ]
+}

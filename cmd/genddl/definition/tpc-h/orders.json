@@ -1,0 +1,43 @@
+{
+  "name": "orders",
+  "partitioned": true,
+  "columns": [
+    {
+      "name": "o_orderkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "o_custkey",
+      "type": "BIGINT"
+    },
+    {
+      "name": "o_orderstatus",
+      "type": "VARCHAR(1)"
+    },
+    {
+      "name": "o_totalprice",
+      "type": "DOUBLE"
+    },
+    {
+      "name": "o_orderdate",
+      "type": "DATE",
+      "partition_key": true
+    },
+    {
+      "name": "o_orderpriority",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "o_clerk",
+      "type": "VARCHAR(15)"
+    },
+    {
+      "name": "o_shippriority",
+      "type": "INTEGER"
+    },
+    {
+      "name": "o_comment",
+      "type": "VARCHAR(79)"
+    }
+  ]
+}
