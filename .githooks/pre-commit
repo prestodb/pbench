@@ -39,8 +39,8 @@ fi
 echo "Checking coverage..."
 COVERAGE=$(go tool cover -func=coverage.out 2>/dev/null | grep total | awk '{print $3}' | sed 's/%//')
 if [ -n "$COVERAGE" ]; then
-  COVERAGE_INT=$(awk -v c="$COVERAGE" 'BEGIN { printf "%d", c * 100 }')
-  if [ "$COVERAGE_INT" -lt 5000 ]; then
+  COVERAGE_INT=$(awk -v c="$COVERAGE" 'BEGIN { printf "%d", c }')
+  if [ "$COVERAGE_INT" -lt 50 ]; then
     echo "Coverage ${COVERAGE}% is below 50% threshold"
     FAILED=1
   else

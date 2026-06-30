@@ -1,5 +1,9 @@
 import mysql.connector
 from mysql.connector import Error
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def create_connection(host_name, user_name, user_password, db_name):
     connection = None
@@ -10,11 +14,12 @@ def create_connection(host_name, user_name, user_password, db_name):
             passwd=user_password,
             database=db_name
         )
-        print("Connection to Benchmark Database is successful")
+        logger.info("Connection to Benchmark Database is successful")
     except Error as e:
-        print(f"The error '{e}' occurred")
+        logger.error("The error '%s' occurred", e)
 
     return connection
+
 
 def execute_mysql_query(connection, query, cluster_name):
     cursor = None
@@ -24,7 +29,7 @@ def execute_mysql_query(connection, query, cluster_name):
         result = cursor.fetchall()
         return result
     except Error as e:
-        print(f"The error '{e}' occurred")
+        logger.error("The error '%s' occurred", e)
         return []
     finally:
         if cursor is not None:
