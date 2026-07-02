@@ -1,8 +1,91 @@
 {{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+{{- if ne .Engine "spark" }}
+{{- /* Only generate SET SESSION for Presto, skip for Spark */ -}}
 {{ range $key, $value := .SessionVariables -}}
 SET SESSION {{ $key }}='{{ $value }}';
 {{ end }}
+{{- end }}
 
+{{- if .TargetSchema }}
+{{- /* ENHANCED_INGESTION MODE */ -}}
+{{- if eq .Engine "spark" }}
+{{- /* Spark INSERT syntax */ -}}
+{{ range .InsertTables -}}
+{{- if $.TargetCatalog }}
+INSERT OVERWRITE TABLE {{ $.TargetCatalog }}.{{ $.TargetSchema }}.{{ .Name }} SELECT /*+ COALESCE({{ if .Partitioned }}2000{{ else }}200{{ end }}) */ * FROM {{ $.SourceSchema }}.{{ .Name }}_ext;
+{{- else }}
+INSERT OVERWRITE TABLE {{ $.TargetSchema }}.{{ .Name }} SELECT /*+ COALESCE({{ if .Partitioned }}2000{{ else }}200{{ end }}) */ * FROM {{ $.SourceSchema }}.{{ .Name }}_ext;
+{{- end }}
+{{ end }}
+{{- else }}
+{{- /* Presto INSERT syntax */ -}}
+{{- if .TargetCatalog }}
+USE {{ .TargetCatalog }}.{{ .TargetSchema }};
+{{- else }}
+{{- if .Iceberg }}
+USE iceberg.{{ .TargetSchema }};
+{{- else }}
+USE hive.{{ .TargetSchema }};
+{{- end }}
+{{- end }}
+
+{{ range .InsertTables -}}
+{{- if $.TargetCatalog }}
+INSERT INTO {{ $.TargetCatalog }}.{{ $.TargetSchema }}.{{ .Name }}
+{{- else }}
+INSERT INTO {{ .Name }}
+{{- end }}
+{{- if eq $.SourceFileFormat "TEXTFILE" }}
+SELECT * FROM {{ if $.SourceCatalog }}{{ $.SourceCatalog }}.{{ $.SourceSchema }}.{{ .Name }}{{ else }}hive.{{ $.SourceSchema }}.{{ .Name }}{{ end }};
+{{- else }}
+SELECT
+{{- $first := true }}
+{{- range .Columns }}
+  {{- if $first }}
+  {{- $first = false }}
+  {{- else }},
+  {{- end }}
+  {{- if eq $.SourceFileFormat "CSV" }}
+    {{- if .IsVarchar }}
+  NULLIF({{ .Name }}, '') AS {{ .Name }}
+    {{- else }}
+  CAST(NULLIF({{ .Name }}, '') AS {{ .Type }}) AS {{ .Name }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+FROM {{ if $.SourceCatalog }}{{ $.SourceCatalog }}.{{ $.SourceSchema }}.{{ .Name }}{{ else }}hive.{{ $.SourceSchema }}.{{ .Name }}{{ end }};
+{{- end }}
+
+{{ end }}
+{{- end }}
+{{- else }}
+{{- /* LEGACY MODE (old workflow) */ -}}
+{{- if eq .Engine "spark" }}
+{{- /* Spark legacy mode */ -}}
+{{ range .InsertTables -}}
+INSERT OVERWRITE TABLE {{ .Name }}
+{{- if eq $.CompressionMethod "uncompressed" }}
+SELECT {{- $first := true }}
+{{- range .Columns }}
+    {{- if $first }}
+        {{- $first = false }}
+    {{- else -}}
+        ,
+    {{- end }}
+    {{- if .IsVarchar }}
+    trim(cast({{ .Name }} as {{ .Type }}))
+    {{- else }}
+    cast({{ .Name }} as {{ .Type }})
+    {{- end }}
+{{- end }}
+FROM {{ $.Workload }}.sf{{ $.ScaleFactor }}.{{ .Name }};
+{{- else }}
+SELECT * FROM {{ $.UncompressedName }}.{{ .Name }};
+{{- end }}
+
+{{ end }}
+{{- else }}
+{{- /* Presto legacy mode */ -}}
 {{- if .Iceberg }}
 USE iceberg.{{ .SchemaName }};
 {{- else }}
@@ -31,6 +114,11 @@ SELECT * FROM {{ if $.Iceberg }}iceberg{{ else }}hive{{ end }}.{{ $.Uncompressed
 {{- end }}
 
 {{ end }}
+{{- end }}
+{{- end }}
+
+{{- if eq .Engine "presto" }}
 {{- range .InsertTables -}}
 ANALYZE {{ .Name }};
 {{ end -}}
+{{- end -}}

@@ -1,0 +1,82 @@
+{{- /*gotype:pbench/cmd/genddl.Schema*/ -}}
+{{- /* This template is used for ENHANCED_INGESTION mode - creates target tables */ -}}
+{{- if .TargetSchema }}
+{{- if eq .Engine "spark" }}
+{{- /* Spark DDL syntax */ -}}
+{{- if .TargetCatalog }}
+CREATE DATABASE IF NOT EXISTS {{ .TargetCatalog }}.{{ .TargetSchema }} LOCATION '{{ .S3TargetLocation }}/{{ .TargetSchema }}';
+{{- else }}
+CREATE DATABASE IF NOT EXISTS {{ .TargetSchema }} LOCATION '{{ .S3TargetLocation }}/{{ .TargetSchema }}';
+{{- end }}
+
+{{ range .Tables }}
+{{- if $.TargetCatalog }}
+CREATE TABLE IF NOT EXISTS {{ $.TargetCatalog }}.{{ $.TargetSchema }}.{{ .Name }} (
+{{- else }}
+CREATE TABLE IF NOT EXISTS {{ $.TargetSchema }}.{{ .Name }} (
+{{- end }}
+{{- $first := true }}
+{{- range .Columns }}
+{{- if $first }}
+{{- $first = false }}
+{{- else }},
+{{- end }}
+{{ .Name }} {{ .Type }}
+{{- end }}
+) USING iceberg
+{{- if and $.Partitioned .Partitioned }}
+ PARTITIONED BY ({{ .LastColumn.Name }})
+{{- end }};
+{{ end }}
+{{- else }}
+{{- /* Presto DDL syntax */ -}}
+{{- if .TargetCatalog }}
+CREATE SCHEMA IF NOT EXISTS {{ .TargetCatalog }}.{{ .TargetSchema }}
+WITH (
+  location = '{{ .S3TargetLocation }}/'
+);
+
+USE {{ .TargetCatalog }}.{{ .TargetSchema }};
+{{- else }}
+{{- if .Iceberg }}
+CREATE SCHEMA IF NOT EXISTS iceberg.{{ .TargetSchema }}
+WITH (
+  location = '{{ .S3TargetLocation }}/'
+);
+
+USE iceberg.{{ .TargetSchema }};
+{{- else }}
+CREATE SCHEMA IF NOT EXISTS hive.{{ .TargetSchema }}
+WITH (
+  location = '{{ .S3TargetLocation }}/'
+);
+
+USE hive.{{ .TargetSchema }};
+{{- end }}
+{{- end }}
+
+{{ range .Tables }}
+CREATE TABLE IF NOT EXISTS {{ .Name }} (
+{{- $first := true }}
+{{- range .Columns }}
+    {{- if $first }}
+        {{- $first = false }}
+    {{- else -}}
+        ,
+    {{- end }}
+    {{ .Name }} {{ .Type }}
+{{- end }}
+)
+WITH (
+    format = 'PARQUET'
+    {{- if and $.Partitioned .Partitioned }}
+    {{- if $.Iceberg}}
+    , partitioning = array['{{ .LastColumn.Name }}']
+    {{- else }}
+    , partitioned_by = array['{{ .LastColumn.Name }}']
+    {{- end }}
+    {{- end }}
+);
+{{ end }}
+{{- end }}
+{{- end -}}

@@ -26,7 +26,7 @@
       "type": "DECIMAL(15,2)"
     },
     {
-      "name": "p_response_targe",
+      "name": "p_response_target",
       "type": "INT"
     },
     {
