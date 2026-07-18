@@ -30,4 +30,12 @@ func init() {
 	runCmd.Flags().StringVar(&run.InfluxCfgPath, "influx", "", "InfluxDB connection config for run recorder (optional)")
 	runCmd.Flags().StringVar(&run.MySQLCfgPath, "mysql", "", "MySQL connection config for run recorder (optional)")
 	runCmd.Flags().StringVar(&run.PulumiCfgPath, "pulumi", "", "(only works when a MySQL run recorder is specified) Pulumi API config for storing deployment details with MySQL (optional)")
+	runCmd.Flags().BoolVar(&run.Snapshots, "snapshots", false,
+		"Periodically save /v1/query snapshots while queries run (DIAGNOSTIC MODE: adds coordinator load, not for timed baseline runs; default false)")
+	runCmd.Flags().DurationVar(&run.SnapshotInterval, "snapshot-interval", 30*time.Second,
+		"Polling interval for query json snapshots when --snapshots is on (floor 5s)")
+	runCmd.Flags().IntVar(&run.SnapshotMax, "snapshot-max", 20,
+		"Maximum snapshots retained per query (0 = unlimited; must be set explicitly)")
+	runCmd.Flags().DurationVar(&run.SnapshotFetchTimeout, "snapshot-fetch-timeout", 0,
+		"Per-fetch timeout for query json snapshots (default: same as --snapshot-interval)")
 }

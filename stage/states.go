@@ -21,6 +21,18 @@ type SharedStageStates struct {
 	// OutputPath is where we store the logs, query results, query json files, query column metadata files, etc.
 	// It should be set by the --output/-o command-line argument. Once set there, its value gets propagated to all the stages.
 	OutputPath string
+	// SnapshotsEnabled is the run-wide default for periodic query JSON snapshot collection,
+	// set via the --snapshots command-line flag. Stages can override it with SaveJsonSnapshots.
+	// See stage/json_snapshot.go.
+	SnapshotsEnabled bool
+	// SnapshotInterval is the run-wide default snapshot polling interval, set via --snapshot-interval.
+	SnapshotInterval time.Duration
+	// SnapshotMax is the run-wide default snapshot retention cap per query, set via --snapshot-max.
+	// 0 means unlimited (only meaningful when explicitly set, since the flag's own default is non-zero).
+	SnapshotMax int
+	// SnapshotFetchTimeout is the run-wide default per-fetch timeout for snapshot requests, set via
+	// --snapshot-fetch-timeout. <= 0 means "use the polling interval".
+	SnapshotFetchTimeout time.Duration
 	// NewClient is called when the stage needs to create a new Presto client. This function is passed down to descendant stages by default.
 	NewClient utils.NewPrestoClientFn
 	// AbortAll is passed down to descendant stages by default and will be used to cancel the current context.

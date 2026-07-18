@@ -90,6 +90,18 @@ func (s *Stage) MergeWith(other *Stage) *Stage {
 	if other.SaveJson != nil {
 		s.SaveJson = other.SaveJson
 	}
+	if other.SaveJsonSnapshots != nil {
+		s.SaveJsonSnapshots = other.SaveJsonSnapshots
+	}
+	if other.JsonSnapshotInterval != nil {
+		s.JsonSnapshotInterval = other.JsonSnapshotInterval
+	}
+	if other.JsonSnapshotMax != nil {
+		s.JsonSnapshotMax = other.JsonSnapshotMax
+	}
+	if other.JsonSnapshotFetchTimeout != nil {
+		s.JsonSnapshotFetchTimeout = other.JsonSnapshotFetchTimeout
+	}
 	if other.StreamCount != nil {
 		s.StreamCount = other.StreamCount
 	}
@@ -239,6 +251,7 @@ func (s *Stage) setDefaults() {
 		s.ColdRuns = intPtr(1)
 		s.WarmRuns = intPtr(0)
 	}
+	s.resolveSnapshotSettings()
 }
 
 func (s *Stage) propagateStates() {
@@ -296,6 +309,18 @@ func (s *Stage) propagateStates() {
 			}
 			if nextStage.SaveJson == nil {
 				nextStage.SaveJson = s.SaveJson
+			}
+			if nextStage.SaveJsonSnapshots == nil {
+				nextStage.SaveJsonSnapshots = s.SaveJsonSnapshots
+			}
+			if nextStage.JsonSnapshotInterval == nil {
+				nextStage.JsonSnapshotInterval = s.JsonSnapshotInterval
+			}
+			if nextStage.JsonSnapshotMax == nil {
+				nextStage.JsonSnapshotMax = s.JsonSnapshotMax
+			}
+			if nextStage.JsonSnapshotFetchTimeout == nil {
+				nextStage.JsonSnapshotFetchTimeout = s.JsonSnapshotFetchTimeout
 			}
 			nextStage.States = s.States
 			nextStage.Client = s.Client

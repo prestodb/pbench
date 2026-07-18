@@ -24,6 +24,14 @@ var (
 	InfluxCfgPath string
 	MySQLCfgPath  string
 	PulumiCfgPath string
+	// Snapshots and friends are the run-wide defaults for periodic query JSON snapshot
+	// collection (diagnostic mode; see stage/json_snapshot.go). Individual stages can
+	// override them via save_json_snapshots / json_snapshot_interval / json_snapshot_max /
+	// json_snapshot_fetch_timeout.
+	Snapshots            bool
+	SnapshotInterval     time.Duration
+	SnapshotMax          int
+	SnapshotFetchTimeout time.Duration
 )
 
 func Run(_ *cobra.Command, args []string) {
@@ -35,17 +43,7 @@ func Run(_ *cobra.Command, args []string) {
 	utils.ExpandHomeDirectory(&InfluxCfgPath)
 	utils.ExpandHomeDirectory(&MySQLCfgPath)
 	utils.ExpandHomeDirectory(&PulumiCfgPath)
-	mainStage := &stage.Stage{
-		States: &stage.SharedStageStates{
-			RunName:      Name,
-			Comment:      Comment,
-			RandSeed:     RandSeed,
-			RandSkip:     RandSkip,
-			ServerFQDN:   parsedServerUrl.Host,
-			RunStartTime: time.Now(),
-			OutputPath:   OutputPath,
-		},
-	}
+	mainStage := &stage.Stage{States: newSharedStageStates(parsedServerUrl)}
 
 	var defaultRunNameBuilder *strings.Builder
 	if mainStage.States.RunName == "" {
@@ -84,6 +82,27 @@ func Run(_ *cobra.Command, args []string) {
 	mainStage.States.RegisterRunRecorder(mySQLRunRecorder)
 	mainStage.States.RegisterRunRecorder(stage.NewPulumiMySQLRunRecorder(PulumiCfgPath, mySQLRunRecorder))
 	os.Exit(mainStage.Run(context.Background()))
+}
+
+// newSharedStageStates builds the SharedStageStates populated from the run-level CLI flag
+// vars, including the four --snapshots/--snapshot-interval/--snapshot-max/
+// --snapshot-fetch-timeout vars (M2). Extracted out of Run() - which calls os.Exit() and so
+// cannot be safely invoked from a test - specifically so this flag-to-SharedStageStates
+// wiring can be asserted directly; see main_test.go.
+func newSharedStageStates(parsedServerUrl *url.URL) *stage.SharedStageStates {
+	return &stage.SharedStageStates{
+		RunName:              Name,
+		Comment:              Comment,
+		RandSeed:             RandSeed,
+		RandSkip:             RandSkip,
+		ServerFQDN:           parsedServerUrl.Host,
+		RunStartTime:         time.Now(),
+		OutputPath:           OutputPath,
+		SnapshotsEnabled:     Snapshots,
+		SnapshotInterval:     SnapshotInterval,
+		SnapshotMax:          SnapshotMax,
+		SnapshotFetchTimeout: SnapshotFetchTimeout,
+	}
 }
 
 func processStagePath(path string) (st *stage.Stage, returnErr error) {
