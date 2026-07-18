@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"pbench/log"
 	"strconv"
 	"strings"
 	"sync"
@@ -1008,4 +1009,231 @@ func TestQueryFileDirectoryWithPreStageScript(t *testing.T) {
 	assert.Equal(t, 2, len(queryTexts))
 	assert.Equal(t, "select 'query 1'", queryTexts[0])
 	assert.Equal(t, "select 'query 2'", queryTexts[1])
+}
+
+// --- UT-1 / UT-8: snapshot config resolution (FP-1) ---
+//
+// These tests exercise resolveSnapshotSettings() (called from setDefaults()) and
+// propagateStates() directly, without spinning up a mock coordinator, to prove the fixed
+// precedence: per-stage JSON value > CLI flag (SharedStageStates run-wide default) >
+// built-in default.
+
+func newSnapshotTestStage(states *SharedStageStates) *Stage {
+	s := &Stage{Id: "snapshot_test_stage", States: states}
+	return s
+}
+
+func TestSnapshotConfigResolution_RunWideDefaultAppliesToPlainStage(t *testing.T) {
+	// CLI flags (simulated via SharedStageStates) become the run-wide default for a stage
+	// that does not set any per-stage override.
+	states := &SharedStageStates{
+		SnapshotsEnabled: true,
+		SnapshotInterval: 10 * time.Second,
+		SnapshotMax:      7,
+		// SnapshotFetchTimeout left at zero -> "use the interval".
+	}
+	s := newSnapshotTestStage(states)
+	s.setDefaults()
+
+	assert.True(t, s.snapshotsEnabled)
+	assert.Equal(t, 10*time.Second, s.snapshotInterval)
+	assert.Equal(t, 7, s.snapshotMax)
+	assert.Equal(t, 10*time.Second, s.snapshotFetchTimeout, "fetch timeout should default to the interval")
+}
+
+func TestSnapshotConfigResolution_StageCanOptOutUnderRunWideSnapshots(t *testing.T) {
+	// --snapshots turns snapshots on run-wide; a stage can opt out explicitly.
+	states := &SharedStageStates{SnapshotsEnabled: true, SnapshotInterval: 30 * time.Second, SnapshotMax: 20}
+	falseVal := false
+	s := newSnapshotTestStage(states)
+	s.SaveJsonSnapshots = &falseVal
+	s.setDefaults()
+
+	assert.False(t, s.snapshotsEnabled)
+}
+
+func TestSnapshotConfigResolution_StageCanOptInWithoutRunWideSnapshots(t *testing.T) {
+	// A stage can opt in on an otherwise snapshot-free run.
+	states := &SharedStageStates{SnapshotsEnabled: false, SnapshotInterval: 30 * time.Second, SnapshotMax: 20}
+	trueVal := true
+	s := newSnapshotTestStage(states)
+	s.SaveJsonSnapshots = &trueVal
+	s.setDefaults()
+
+	assert.True(t, s.snapshotsEnabled)
+}
+
+func TestSnapshotConfigResolution_PerStageOverridesInterval(t *testing.T) {
+	states := &SharedStageStates{SnapshotsEnabled: true, SnapshotInterval: 30 * time.Second, SnapshotMax: 20}
+	interval := "15s"
+	s := newSnapshotTestStage(states)
+	s.JsonSnapshotInterval = &interval
+	s.setDefaults()
+
+	assert.Equal(t, 15*time.Second, s.snapshotInterval)
+	assert.Equal(t, 15*time.Second, s.snapshotFetchTimeout, "fetch timeout should default to the resolved (per-stage) interval")
+}
+
+func TestSnapshotConfigResolution_PerStageOverridesMaxAndFetchTimeout(t *testing.T) {
+	states := &SharedStageStates{SnapshotsEnabled: true, SnapshotInterval: 30 * time.Second, SnapshotMax: 20}
+	max := 40
+	fetchTimeout := "60s"
+	s := newSnapshotTestStage(states)
+	s.JsonSnapshotMax = &max
+	s.JsonSnapshotFetchTimeout = &fetchTimeout
+	s.setDefaults()
+
+	assert.Equal(t, 40, s.snapshotMax)
+	assert.Equal(t, 60*time.Second, s.snapshotFetchTimeout)
+}
+
+func TestSnapshotConfigResolution_ExplicitZeroMaxMeansUnlimited(t *testing.T) {
+	// json_snapshot_max: 0 (explicit, non-nil pointer) means unlimited for this stage, even
+	// though the run-wide/CLI default (simulated here as 20, as the --snapshot-max flag's
+	// own registered default would produce) is non-zero.
+	states := &SharedStageStates{SnapshotsEnabled: true, SnapshotInterval: 30 * time.Second, SnapshotMax: 20}
+	zero := 0
+	s := newSnapshotTestStage(states)
+	s.JsonSnapshotMax = &zero
+	s.setDefaults()
+
+	assert.Equal(t, 0, s.snapshotMax)
+}
+
+func TestSnapshotConfigResolution_BuiltInDefaults(t *testing.T) {
+	// With no per-stage override and a zero-value SharedStageStates (as if --snapshot-max
+	// 20 / --snapshot-interval 30s were never explicitly threaded through, e.g. a stage
+	// constructed directly in a test), the stage package's own built-in defaults apply for
+	// interval (nonsensical at zero) while an unset run-wide max (0) is treated as unlimited
+	// -- exactly like an explicit override would be. Real runs always populate
+	// SharedStageStates.SnapshotMax from the --snapshot-max flag, whose own default is 20.
+	states := &SharedStageStates{}
+	s := newSnapshotTestStage(states)
+	s.setDefaults()
+
+	assert.False(t, s.snapshotsEnabled)
+	assert.Equal(t, DefaultSnapshotInterval, s.snapshotInterval)
+	assert.Equal(t, DefaultSnapshotInterval, s.snapshotFetchTimeout)
+}
+
+func TestSnapshotConfigResolution_CLIFlagDefaultMax(t *testing.T) {
+	// Simulates the actual --snapshot-max flag default (20) being threaded through
+	// SharedStageStates, as cmd/run.go does.
+	states := &SharedStageStates{SnapshotMax: DefaultSnapshotMax}
+	s := newSnapshotTestStage(states)
+	s.setDefaults()
+
+	assert.Equal(t, DefaultSnapshotMax, s.snapshotMax)
+}
+
+func TestSnapshotConfigResolution_InheritedByGrandchildStages(t *testing.T) {
+	// propagateStates() must inherit unset per-stage overrides down the DAG, exactly like
+	// SaveJson.
+	states := &SharedStageStates{SnapshotsEnabled: false, SnapshotInterval: 30 * time.Second, SnapshotMax: 20}
+	trueVal := true
+	interval := "20s"
+	parent := newSnapshotTestStage(states)
+	parent.SaveJsonSnapshots = &trueVal
+	parent.JsonSnapshotInterval = &interval
+
+	child := &Stage{Id: "child"}
+	grandchild := &Stage{Id: "grandchild"}
+	parent.NextStages = []*Stage{child}
+	child.NextStages = []*Stage{grandchild}
+
+	parent.setDefaults()
+	parent.propagateStates()
+	assert.NotNil(t, child.SaveJsonSnapshots)
+	assert.True(t, *child.SaveJsonSnapshots)
+	assert.NotNil(t, child.JsonSnapshotInterval)
+	assert.Equal(t, "20s", *child.JsonSnapshotInterval)
+
+	child.setDefaults()
+	child.propagateStates()
+	assert.True(t, child.snapshotsEnabled)
+	assert.Equal(t, 20*time.Second, child.snapshotInterval)
+	assert.NotNil(t, grandchild.SaveJsonSnapshots)
+	assert.True(t, *grandchild.SaveJsonSnapshots)
+	assert.NotNil(t, grandchild.JsonSnapshotInterval)
+	assert.Equal(t, "20s", *grandchild.JsonSnapshotInterval)
+
+	grandchild.setDefaults()
+	assert.True(t, grandchild.snapshotsEnabled)
+	assert.Equal(t, 20*time.Second, grandchild.snapshotInterval)
+}
+
+func TestSnapshotConfigResolution_MergeWith(t *testing.T) {
+	// MergeWith() must copy the four override fields exactly like SaveJson.
+	base := &Stage{}
+	trueVal := true
+	max := 5
+	interval := "45s"
+	fetchTimeout := "90s"
+	other := &Stage{
+		SaveJsonSnapshots:        &trueVal,
+		JsonSnapshotInterval:     &interval,
+		JsonSnapshotMax:          &max,
+		JsonSnapshotFetchTimeout: &fetchTimeout,
+	}
+	base.MergeWith(other)
+
+	assert.Same(t, other.SaveJsonSnapshots, base.SaveJsonSnapshots)
+	assert.Same(t, other.JsonSnapshotInterval, base.JsonSnapshotInterval)
+	assert.Same(t, other.JsonSnapshotMax, base.JsonSnapshotMax)
+	assert.Same(t, other.JsonSnapshotFetchTimeout, base.JsonSnapshotFetchTimeout)
+}
+
+// UT-8: unparsable json_snapshot_interval disables snapshots for the stage (never fatal)
+// and logs an error; a sub-floor interval is clamped to the 5s floor with a warning.
+func TestSnapshotIntervalValidation_UnparsableDisablesStageSnapshots(t *testing.T) {
+	buf := new(strings.Builder)
+	log.SetGlobalLogger(log.Output(buf))
+	defer log.SetGlobalLogger(log.Output(os.Stderr))
+
+	states := &SharedStageStates{SnapshotsEnabled: true, SnapshotInterval: 30 * time.Second}
+	bogus := "not-a-duration"
+	s := newSnapshotTestStage(states)
+	s.JsonSnapshotInterval = &bogus
+
+	s.setDefaults()
+
+	assert.False(t, s.snapshotsEnabled, "an unparsable interval must disable snapshots for the stage, never be fatal")
+	assert.Contains(t, buf.String(), "\"level\":\"error\"")
+	assert.Contains(t, buf.String(), "json_snapshot_interval")
+}
+
+func TestSnapshotIntervalValidation_SubFloorClamped(t *testing.T) {
+	buf := new(strings.Builder)
+	log.SetGlobalLogger(log.Output(buf))
+	defer log.SetGlobalLogger(log.Output(os.Stderr))
+
+	states := &SharedStageStates{SnapshotsEnabled: true, SnapshotInterval: 30 * time.Second}
+	tooShort := "1s"
+	s := newSnapshotTestStage(states)
+	s.JsonSnapshotInterval = &tooShort
+
+	s.setDefaults()
+
+	assert.True(t, s.snapshotsEnabled)
+	assert.Equal(t, MinSnapshotInterval, s.snapshotInterval)
+	assert.Contains(t, buf.String(), "\"level\":\"warn\"")
+}
+
+func TestSnapshotFetchTimeoutValidation_UnparsableFallsBackToInterval(t *testing.T) {
+	buf := new(strings.Builder)
+	log.SetGlobalLogger(log.Output(buf))
+	defer log.SetGlobalLogger(log.Output(os.Stderr))
+
+	states := &SharedStageStates{SnapshotsEnabled: true, SnapshotInterval: 12 * time.Second}
+	bogus := "nope"
+	s := newSnapshotTestStage(states)
+	s.JsonSnapshotFetchTimeout = &bogus
+
+	s.setDefaults()
+
+	// Fetch timeout falls back to the resolved interval; snapshots stay enabled (only the
+	// interval field's own unparsable case disables the stage, per UT-8).
+	assert.True(t, s.snapshotsEnabled)
+	assert.Equal(t, 12*time.Second, s.snapshotFetchTimeout)
+	assert.Contains(t, buf.String(), "\"level\":\"error\"")
 }

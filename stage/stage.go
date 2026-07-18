@@ -96,8 +96,24 @@ type Stage struct {
 	// Children stages will inherit this value from their parent if it is not set.
 	// When a query failed to execute for whatever reason, a query json file will be automatically saved even if this
 	// knob was not set to true.
-	SaveJson       *bool    `json:"save_json,omitempty"`
-	NextStagePaths []string `json:"next,omitempty"`
+	SaveJson *bool `json:"save_json,omitempty"`
+	// If SaveJsonSnapshots is set, it overrides the run-wide --snapshots default for
+	// this stage (and its children via inheritance). When true, pbench periodically
+	// fetches /v1/query/{queryId} while the query runs and saves each raw response as
+	// an additional snapshot file.
+	// DIAGNOSTIC MODE: adds coordinator load; do not enable on timed baseline runs.
+	// The terminal query json file is unaffected.
+	SaveJsonSnapshots *bool `json:"save_json_snapshots,omitempty"`
+	// Go duration string, e.g. "30s". Overrides --snapshot-interval when set.
+	JsonSnapshotInterval *string `json:"json_snapshot_interval,omitempty"`
+	// Maximum snapshots retained per query; overrides --snapshot-max when set.
+	// Default (via the flag) is 20; 0 means unlimited and must be set explicitly.
+	// When exceeded, the oldest snapshot except the very first is deleted.
+	JsonSnapshotMax *int `json:"json_snapshot_max,omitempty" validate:"omitempty,gte=0"`
+	// Per-fetch timeout as a Go duration string; overrides --snapshot-fetch-timeout.
+	// Default: the polling interval. Raise for very large queries on busy coordinators.
+	JsonSnapshotFetchTimeout *string  `json:"json_snapshot_fetch_timeout,omitempty"`
+	NextStagePaths           []string `json:"next,omitempty"`
 	// StreamCount specifies how many parallel instances of this stage should run.
 	// Each stream gets a deterministically derived seed for reproducible randomization.
 	// Not inherited by child stages.
@@ -122,6 +138,14 @@ type Stage struct {
 	currentCatalog  string
 	currentSchema   string
 	currentTimeZone string
+	// snapshotsEnabled, snapshotInterval, snapshotMax, and snapshotFetchTimeout are the
+	// effective, fully-resolved snapshot settings for this stage, computed once in
+	// setDefaults() from the precedence: per-stage JSON value > CLI flag (SharedStageStates)
+	// > built-in default. See resolveSnapshotSettings() in stage/json_snapshot.go.
+	snapshotsEnabled     bool
+	snapshotInterval     time.Duration
+	snapshotMax          int
+	snapshotFetchTimeout time.Duration
 	// wgPrerequisites is a count-down latch to wait for all the prerequisites to finish before starting this stage.
 	wgPrerequisites sync.WaitGroup
 
@@ -371,6 +395,10 @@ func (s *Stage) newStreamInstance(index int) *Stage {
 		SaveOutput:                 s.SaveOutput,
 		SaveColumnMetadata:         s.SaveColumnMetadata,
 		SaveJson:                   s.SaveJson,
+		SaveJsonSnapshots:          s.SaveJsonSnapshots,
+		JsonSnapshotInterval:       s.JsonSnapshotInterval,
+		JsonSnapshotMax:            s.JsonSnapshotMax,
+		JsonSnapshotFetchTimeout:   s.JsonSnapshotFetchTimeout,
 		PreQueryShellScripts:       s.PreQueryShellScripts,
 		PostQueryShellScripts:      s.PostQueryShellScripts,
 		PreQueryCycleShellScripts:  s.PreQueryCycleShellScripts,
@@ -381,6 +409,10 @@ func (s *Stage) newStreamInstance(index int) *Stage {
 		currentCatalog:             s.currentCatalog,
 		currentSchema:              s.currentSchema,
 		currentTimeZone:            s.currentTimeZone,
+		snapshotsEnabled:           s.snapshotsEnabled,
+		snapshotInterval:           s.snapshotInterval,
+		snapshotMax:                s.snapshotMax,
+		snapshotFetchTimeout:       s.snapshotFetchTimeout,
 	}
 }
 
@@ -670,6 +702,13 @@ func (s *Stage) runQuery(ctx context.Context, query *Query) (result *QueryResult
 	if err != nil {
 		return result, err
 	}
+
+	// Start periodic query JSON snapshotting (diagnostic mode, opt-in). Returns nil (a
+	// no-op poller.stop()) when snapshotting is disabled for this stage. defer guarantees
+	// the poller stops on every exit path of runQuery (drain complete, drain error,
+	// post-query script error, panic-recover). See stage/json_snapshot.go.
+	poller := s.startJsonSnapshotPoller(ctx, result)
+	defer poller.stop()
 
 	// Log query submission
 	e := log.Info().EmbedObject(result.SimpleLogging())
